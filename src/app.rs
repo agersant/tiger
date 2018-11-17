@@ -95,7 +95,7 @@ pub fn run<F: FnMut(&Ui) -> Result<(), Error>>(
         run_ui(&ui)?;
 
         let mut target = display.draw();
-        target.clear_color(1.0, 0.0, 0.0, 1.0);
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
         if renderer.render(&mut target, ui).is_err() {
             return Err(DrawError {}.into());
         }
