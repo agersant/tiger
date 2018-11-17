@@ -43,7 +43,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             .movable(false)
             .build(|| {
                 for document in state.documents_iter() {
-                    ui.small_button(&ImString::new(document.get_source().to_string_lossy()));
+                    if ui.small_button(&ImString::new(document.get_source().to_string_lossy())) {
+                        commands.focus_document(document);
+                    }
                     ui.same_line(0.0);
                 }
             });

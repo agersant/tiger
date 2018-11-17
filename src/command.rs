@@ -1,5 +1,10 @@
+use std::path::PathBuf;
+
+use state::Document;
+
 pub enum Command {
     NewDocument,
+    FocusDocument(PathBuf),
 }
 
 pub struct CommandBuffer {
@@ -21,5 +26,9 @@ impl CommandBuffer {
 
     pub fn new_document(&mut self) {
         self.queue.push(Command::NewDocument);
+    }
+
+    pub fn focus_document(&mut self, document: &Document) {
+        self.queue.push(Command::FocusDocument(document.get_source().to_owned()));
     }
 }

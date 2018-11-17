@@ -79,6 +79,9 @@ impl State {
     pub fn process_command(&mut self, command: &Command) -> Result<(), Error> {
         match command {
             Command::NewDocument => self.new_document()?,
+            Command::FocusDocument(p) => if self.is_document_open(&p) {
+                self.current_document = Some(p.clone());
+            },
         };
         Ok(())
     }
