@@ -32,7 +32,7 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
         });
     });
 
-     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Documents"))
             .position((20.0, 30.0), ImGuiCond::FirstUseEver)
             .always_auto_resize(true)
@@ -43,8 +43,8 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             .movable(false)
             .build(|| {
                 for document in state.documents_iter() {
-                  ui.small_button(&ImString::new(document.get_source().to_string_lossy()));
-                  ui.same_line(0.0);
+                    ui.small_button(&ImString::new(document.get_source().to_string_lossy()));
+                    ui.same_line(0.0);
                 }
             });
     });
