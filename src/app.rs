@@ -28,7 +28,7 @@ pub fn run<F: FnMut(&Ui) -> Result<(), Error>>(
 
     let mut events_loop = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
-    let builder = glutin::WindowBuilder::new().with_title(window_title);
+    let builder = glutin::WindowBuilder::new().with_title(window_title).with_maximized(true);
     let display = match Display::new(builder, context, &events_loop) {
         Ok(d) => d,
         _ => return Err(DisplayInitError {}.into()),
