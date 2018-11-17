@@ -7,6 +7,7 @@ pub enum Command {
     FocusDocument(PathBuf),
     CloseCurrentDocument,
     CloseAllDocuments,
+    Import,
 }
 
 pub struct CommandBuffer {
@@ -31,7 +32,8 @@ impl CommandBuffer {
     }
 
     pub fn focus_document(&mut self, document: &Document) {
-        self.queue.push(Command::FocusDocument(document.get_source().to_owned()));
+        self.queue
+            .push(Command::FocusDocument(document.get_source().to_owned()));
     }
 
     pub fn close_current_document(&mut self) {
@@ -40,5 +42,9 @@ impl CommandBuffer {
 
     pub fn close_all_documents(&mut self) {
         self.queue.push(Command::CloseAllDocuments);
+    }
+
+    pub fn import(&mut self) {
+        self.queue.push(Command::Import);
     }
 }
