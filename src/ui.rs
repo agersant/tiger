@@ -70,9 +70,11 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
 
                     ui.collapsing_header(im_str!("Frames")).build();
                     for frame in sheet.frames_iter() {
-                        ui.tree_node(&ImString::new(frame.get_source().to_string_lossy()))
-                            .leaf(true)
-                            .build(|| {});
+                        if let Some(name) = frame.get_source().file_name() {
+                            ui.tree_node(&ImString::new(name.to_string_lossy()))
+                                .leaf(true)
+                                .build(|| {});
+                        }
                     }
 
                     ui.collapsing_header(im_str!("Animations")).build();
