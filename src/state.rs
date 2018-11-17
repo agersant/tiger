@@ -77,6 +77,7 @@ impl State {
             if let Some(index) = self.documents.iter().position(|d| &d.source == path ) {
                 self.documents.remove(index);
             }
+            self.current_document = None;
         }
     }
 
