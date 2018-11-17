@@ -27,30 +27,49 @@ impl Document {
 #[derive(Clone, Debug)]
 pub struct State {
     documents: Vec<Document>,
+    current_document: Option<PathBuf>,
 }
 
 impl State {
     pub fn new() -> State {
-        State { documents: vec![] }
+        State {
+            documents: vec![],
+            current_document: None,
+        }
+    }
+
+    fn is_document_open<T: AsRef<Path>>(&self, path: T) -> bool {
+        self
+            .documents
+            .iter()
+            .any(|d| &d.source == path.as_ref())
+    }
+
+    fn get_mut_document<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
+        self.documents.iter_mut().find(|d| &d.source == path.as_ref())
     }
 
     fn new_document(&mut self) -> Result<(), Error> {
         match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 let path = std::path::PathBuf::from(path_string);
-                let document = Document::new(path);
-                self.documents.push(document);
-            },
-            nfd::Response::OkayMultiple(path_strings) => {
-                for path_string in &path_strings {
-                    let path = std::path::PathBuf::from(path_string);
-                    let document = Document::new(path);
-                    self.documents.push(document);
+                match self.get_mut_document(&path) {
+                    Some(d) => *d = Document::new(&path),
+                    None => {
+                        let document = Document::new(&path);
+                        self.add_document(document);
+                    }
                 }
-            },
-            nfd::Response::Cancel => (),
-		};
+                self.current_document = Some(path.clone());
+            }
+            _ => (),
+        };
         Ok(())
+    }
+
+    fn add_document(&mut self, added_document: Document) {
+        assert!(!self.is_document_open(&added_document.source));
+        self.documents.push(added_document);
     }
 
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
@@ -64,4 +83,3 @@ impl State {
         Ok(())
     }
 }
-

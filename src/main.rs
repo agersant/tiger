@@ -1,3 +1,5 @@
+#![feature(nll)]
+
 #[macro_use]
 extern crate failure;
 extern crate glium;
@@ -15,7 +17,6 @@ mod ui;
 mod window;
 
 fn main() -> Result<(), failure::Error> {
-
     let shared_command_buffer = Arc::new(Mutex::new(command::CommandBuffer::new()));
     let ui_state = Arc::new(Mutex::new(state::State::new()));
 
