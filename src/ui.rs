@@ -3,7 +3,7 @@ use imgui::StyleVar::*;
 use imgui::*;
 
 use command::CommandBuffer;
-use state::State;
+use state::{self, State};
 
 pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
     let (w, h) = ui.frame_size().logical_size;
@@ -63,7 +63,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             .resizable(false)
             .movable(false)
             .build(|| {
-                if let Some(sheet) = state.get_current_sheet() {
+
+                if let Some(document) = state.get_current_document() {
+                    let sheet = document.get_sheet();
                     if ui.small_button(im_str!("Import…")) {
                         commands.import();
                     }
@@ -71,9 +73,14 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
                     if ui.collapsing_header(im_str!("Frames")).build() {
                         for frame in sheet.frames_iter() {
                             if let Some(name) = frame.get_source().file_name() {
-                                ui.tree_node(&ImString::new(name.to_string_lossy()))
-                                    .leaf(true)
-                                    .build(|| {});
+                                let is_selected = match document.get_content_selection() {
+                                    Some(state::ContentSelection::Frame(p)) => p == frame.get_source(),
+                                    _ => false,
+                                };
+                                let flags = ImGuiSelectableFlags::empty();
+                                if ui.selectable(&ImString::new(name.to_string_lossy()), is_selected, flags, ImVec2::new(0.0, 0.0)) {
+                                    commands.select_frame(frame);
+                                }
                             }
                         }
                     }

@@ -9,12 +9,15 @@ use sheet::Sheet;
 pub enum StateError {
     #[fail(display = "No document is open")]
     NoDocumentOpen,
+    #[fail(display = "Requested frame is not in document")]
+    FrameNotInDocument,
 }
 
 #[derive(Clone, Debug)]
 pub struct Document {
     source: PathBuf,
     sheet: Sheet,
+    content_selection: Option<ContentSelection>,
 }
 
 impl Document {
@@ -22,6 +25,7 @@ impl Document {
         Document {
             source: path.as_ref().to_owned(),
             sheet: Sheet::new(),
+            content_selection: None,
         }
     }
 
@@ -36,6 +40,15 @@ impl Document {
     fn get_sheet_mut(&mut self) -> &mut Sheet {
         &mut self.sheet
     }
+
+    pub fn get_content_selection(&self) -> &Option<ContentSelection> {
+        &self.content_selection
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ContentSelection {
+    Frame(PathBuf),
 }
 
 #[derive(Clone, Debug)]
@@ -66,16 +79,12 @@ impl State {
         }
     }
 
-    fn get_current_document(&self) -> Option<&Document> {
+    pub fn get_current_document(&self) -> Option<&Document> {
         if let Some(current_path) = &self.current_document {
             self.documents.iter().find(|d| &d.source == current_path)
         } else {
             None
         }
-    }
-
-    pub fn get_current_sheet(&self) -> Option<&Sheet> {
-        self.get_current_document().map(|d| d.get_sheet())
     }
 
     fn get_current_sheet_mut(&mut self) -> Option<&mut Sheet> {
@@ -140,6 +149,16 @@ impl State {
         Ok(())
     }
 
+    fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
+        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet();
+        if !sheet.has_frame(&path) {
+            return Err(StateError::FrameNotInDocument.into());
+        }
+        document.content_selection = Some(ContentSelection::Frame(path.as_ref().to_owned()));
+        Ok(())
+    }
+
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
         self.documents.iter()
     }
@@ -158,6 +177,7 @@ impl State {
                 self.current_document = None;
             }
             Command::Import => self.import()?,
+            Command::SelectFrame(p) => self.select_frame(&p)?,
         };
         Ok(())
     }

@@ -59,7 +59,7 @@ impl Sheet {
         self.frames.iter()
     }
 
-    fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {
+    pub fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {
         self.frames.iter().any(|f| &f.source == path.as_ref())
     }
 

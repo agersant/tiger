@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use state::Document;
+use sheet::Frame;
 
 pub enum Command {
     NewDocument,
@@ -8,6 +9,7 @@ pub enum Command {
     CloseCurrentDocument,
     CloseAllDocuments,
     Import,
+    SelectFrame(PathBuf),
 }
 
 pub struct CommandBuffer {
@@ -46,5 +48,9 @@ impl CommandBuffer {
 
     pub fn import(&mut self) {
         self.queue.push(Command::Import);
+    }
+
+    pub fn select_frame(&mut self, frame: &Frame) {
+        self.queue.push(Command::SelectFrame(frame.get_source().to_owned()));
     }
 }
