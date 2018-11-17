@@ -5,10 +5,10 @@ extern crate imgui;
 extern crate imgui_glium_renderer;
 extern crate imgui_glutin_support;
 
-mod app;
+mod window;
 mod ui;
 
 fn main() -> Result<(), failure::Error> {
-    app::run("Tiger", ui::draw)?;
+    window::run("Tiger", ui::draw)?;
     Ok(())
 }
