@@ -2,19 +2,17 @@ use failure::Error;
 use imgui::StyleVar::*;
 use imgui::*;
 
+use command::CommandBuffer;
 use state::State;
 
-pub fn draw<'a>(ui: &Ui<'a>, state: &mut State) -> Result<(), Error> {
+pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
     let (w, h) = ui.frame_size().logical_size;
+    let mut commands = CommandBuffer::new();
 
     ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
             if ui.menu_item(im_str!("New Sheet…")).build() {
-                if let nfd::Response::Okay(path_string) = nfd::open_save_dialog(None, None).unwrap() {
-                     // TODO error handling above + other cases
-                    let path = std::path::PathBuf::from(path_string);
-                    state.new_document(&path);
-                }
+                commands.new_document();
             }
             ui.menu_item(im_str!("Open Sheet…")).build();
             ui.separator();
@@ -63,5 +61,5 @@ pub fn draw<'a>(ui: &Ui<'a>, state: &mut State) -> Result<(), Error> {
             });
     });
 
-    Ok(())
+    Ok(commands)
 }
