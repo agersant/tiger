@@ -33,7 +33,7 @@ fn main() -> Result<(), failure::Error> {
             for command in &new_commands {
                 if let Err(_e) = state.process_command(&command) {
                     // TODO log error
-                    // TODO drop further commands
+                    break;
                 }
             }
             {
