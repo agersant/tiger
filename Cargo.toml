@@ -5,7 +5,11 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 
 [dependencies]
 failure = "0.1.3"
-glium = "0.22.0"
 imgui = { git = "https://github.com/Gekkio/imgui-rs" }
 imgui-glium-renderer = { git = "https://github.com/Gekkio/imgui-rs" }
 imgui-glutin-support = { git = "https://github.com/Gekkio/imgui-rs" }
+
+[dependencies.glium]
+version = "0.22.0"
+default-features = true
+features = ["icon_loading"]

@@ -28,7 +28,9 @@ pub fn run<F: FnMut(&Ui) -> Result<(), Error>>(
 
     let mut events_loop = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
+    let icon = include_bytes!("../res/app_icon.png");
     let builder = glutin::WindowBuilder::new()
+        .with_window_icon(glutin::Icon::from_bytes(icon).ok())
         .with_title(window_title)
         .with_maximized(true);
     let display = match Display::new(builder, context, &events_loop) {
