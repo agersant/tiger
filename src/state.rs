@@ -72,6 +72,14 @@ impl State {
         self.documents.push(added_document);
     }
 
+    fn close_current_document(&mut self) {
+        if let Some(path) = &self.current_document {
+            if let Some(index) = self.documents.iter().position(|d| &d.source == path ) {
+                self.documents.remove(index);
+            }
+        }
+    }
+
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
         self.documents.iter()
     }
@@ -81,6 +89,11 @@ impl State {
             Command::NewDocument => self.new_document()?,
             Command::FocusDocument(p) => if self.is_document_open(&p) {
                 self.current_document = Some(p.clone());
+            },
+            Command::CloseCurrentDocument => self.close_current_document(),
+            Command::CloseAllDocuments => {
+                self.documents.clear();
+                self.current_document = None;
             },
         };
         Ok(())

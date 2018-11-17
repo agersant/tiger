@@ -5,6 +5,8 @@ use state::Document;
 pub enum Command {
     NewDocument,
     FocusDocument(PathBuf),
+    CloseCurrentDocument,
+    CloseAllDocuments,
 }
 
 pub struct CommandBuffer {
@@ -30,5 +32,13 @@ impl CommandBuffer {
 
     pub fn focus_document(&mut self, document: &Document) {
         self.queue.push(Command::FocusDocument(document.get_source().to_owned()));
+    }
+
+    pub fn close_current_document(&mut self) {
+        self.queue.push(Command::CloseCurrentDocument);
+    }
+
+    pub fn close_all_documents(&mut self) {
+        self.queue.push(Command::CloseAllDocuments);
     }
 }

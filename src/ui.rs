@@ -20,8 +20,12 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             ui.menu_item(im_str!("Save As…")).build();
             ui.menu_item(im_str!("Save All")).build();
             ui.separator();
-            ui.menu_item(im_str!("Close")).build();
-            ui.menu_item(im_str!("Close All")).build();
+            if ui.menu_item(im_str!("Close")).build() {
+                commands.close_current_document();
+            }
+            if ui.menu_item(im_str!("Close All")).build() {
+                commands.close_all_documents();
+            }
         });
         ui.menu(im_str!("View")).build(|| {
             ui.menu_item(im_str!("Grid")).build();
