@@ -26,7 +26,15 @@ pub struct Animation {
 }
 
 pub struct Sheet {
-    name: String,
     frames: Vec<Rc<Frame>>,
     animations: Vec<Animation>,
+}
+
+impl Sheet {
+    pub fn new() -> Sheet {
+        Sheet {
+            frames: vec![],
+            animations: vec![],
+        }
+    }
 }
