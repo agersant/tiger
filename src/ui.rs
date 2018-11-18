@@ -15,7 +15,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             if ui.menu_item(im_str!("New Sheet…")).build() {
                 commands.new_document();
             }
-            ui.menu_item(im_str!("Open Sheet…")).build();
+            if ui.menu_item(im_str!("Open Sheet…")).build() {
+                commands.open_document();
+            }
             ui.separator();
             if ui.menu_item(im_str!("Save")).build() {
                 commands.save();

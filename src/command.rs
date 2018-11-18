@@ -5,6 +5,7 @@ use sheet::Frame;
 
 pub enum Command {
     NewDocument,
+    OpenDocument,
     FocusDocument(PathBuf),
     CloseCurrentDocument,
     CloseAllDocuments,
@@ -34,6 +35,10 @@ impl CommandBuffer {
 
     pub fn new_document(&mut self) {
         self.queue.push(Command::NewDocument);
+    }
+
+    pub fn open_document(&mut self) {
+        self.queue.push(Command::OpenDocument);
     }
 
     pub fn focus_document(&mut self, document: &Document) {

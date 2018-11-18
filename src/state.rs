@@ -1,6 +1,6 @@
 use failure::Error;
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use command::Command;
@@ -29,6 +29,16 @@ impl Document {
             sheet: Sheet::new(),
             content_selection: None,
         }
+    }
+
+    pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
+        let file = BufReader::new(File::open(path.as_ref())?);
+        let sheet = serde_json::from_reader(file)?;
+        Ok(Document {
+            source: path.as_ref().to_owned(),
+            sheet: sheet,
+            content_selection: None,
+        })
     }
 
     fn save(&mut self) -> Result<(), Error> {
@@ -124,6 +134,31 @@ impl State {
         Ok(())
     }
 
+    fn open_document(&mut self) -> Result<(), Error> {
+        match nfd::open_file_multiple_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
+            nfd::Response::Okay(path_string) => {
+                let path = std::path::PathBuf::from(path_string);
+                if self.get_document_mut(&path).is_none() {
+                    let document = Document::open(&path)?;
+                    self.add_document(document);
+                }
+                self.current_document = Some(path.clone());
+            }
+            nfd::Response::OkayMultiple(path_strings) => {
+                for path_string in path_strings {
+                    let path = std::path::PathBuf::from(path_string);
+                    if self.get_document_mut(&path).is_none() {
+                        let document = Document::open(&path)?;
+                        self.add_document(document);
+                    }
+                    self.current_document = Some(path.clone());
+                }
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
     fn add_document(&mut self, added_document: Document) {
         assert!(!self.is_document_open(&added_document.source));
         self.documents.push(added_document);
@@ -205,6 +240,7 @@ impl State {
     pub fn process_command(&mut self, command: &Command) -> Result<(), Error> {
         match command {
             Command::NewDocument => self.new_document()?,
+            Command::OpenDocument => self.open_document()?,
             Command::FocusDocument(p) => {
                 if self.is_document_open(&p) {
                     self.current_document = Some(p.clone());
