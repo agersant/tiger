@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use state::Document;
 use sheet::Frame;
+use state::Document;
 
 pub enum Command {
     NewDocument,
@@ -71,6 +71,7 @@ impl CommandBuffer {
     }
 
     pub fn select_frame(&mut self, frame: &Frame) {
-        self.queue.push(Command::SelectFrame(frame.get_source().to_owned()));
+        self.queue
+            .push(Command::SelectFrame(frame.get_source().to_owned()));
     }
 }
