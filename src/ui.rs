@@ -20,7 +20,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             if ui.menu_item(im_str!("Save")).build() {
                 commands.save();
             }
-            ui.menu_item(im_str!("Save As…")).build();
+            if ui.menu_item(im_str!("Save As…")).build() {
+                commands.save_as();
+            }
             if ui.menu_item(im_str!("Save All")).build() {
                 commands.save_all();
             }

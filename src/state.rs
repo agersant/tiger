@@ -148,6 +148,19 @@ impl State {
         document.save()
     }
 
+    fn save_current_document_as(&mut self) -> Result<(), Error> {
+        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
+            nfd::Response::Okay(path_string) => {
+                document.source = std::path::PathBuf::from(path_string);
+                document.save()?;
+                self.current_document = Some(document.source.clone());
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
     fn save_all_documents(&mut self) -> Result<(), Error> {
         for document in &mut self.documents {
             document.save()?;
@@ -200,6 +213,7 @@ impl State {
             Command::CloseCurrentDocument => self.close_current_document(),
             Command::CloseAllDocuments => self.close_all_documents(),
             Command::SaveCurrentDocument => self.save_current_document()?,
+            Command::SaveCurrentDocumentAs => self.save_current_document_as()?,
             Command::SaveAllDocuments => self.save_all_documents()?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,

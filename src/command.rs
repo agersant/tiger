@@ -9,6 +9,7 @@ pub enum Command {
     CloseCurrentDocument,
     CloseAllDocuments,
     SaveCurrentDocument,
+    SaveCurrentDocumentAs,
     SaveAllDocuments,
     Import,
     SelectFrame(PathBuf),
@@ -50,6 +51,10 @@ impl CommandBuffer {
 
     pub fn save(&mut self) {
         self.queue.push(Command::SaveCurrentDocument);
+    }
+
+    pub fn save_as(&mut self) {
+        self.queue.push(Command::SaveCurrentDocumentAs);
     }
 
     pub fn save_all(&mut self) {
