@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Hitbox {
     name: String,
     top: u32,
@@ -9,7 +9,7 @@ pub struct Hitbox {
     bottom: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Frame {
     source: PathBuf,
     hitboxes: Vec<Hitbox>,
@@ -28,20 +28,20 @@ impl Frame {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AnimationFrame {
     frame: PathBuf,
     duration: u32,
     offset: (u32, u32),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Animation {
     name: String,
     timeline: Vec<AnimationFrame>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Sheet {
     frames: Vec<Frame>,
     animations: Vec<Animation>,

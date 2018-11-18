@@ -1,4 +1,6 @@
 use failure::Error;
+use std::fs::File;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
 use command::Command;
@@ -129,6 +131,19 @@ impl State {
         }
     }
 
+    fn close_all_documents(&mut self) {
+        self.documents.clear();
+        self.current_document = None;
+    }
+
+    fn save_current_document(&mut self) -> Result<(), Error> {
+        let document = self.get_current_document().ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet();
+        let file = BufWriter::new(File::create(document.get_source())?);
+        serde_json::to_writer_pretty(file, &sheet)?;
+        Ok(())
+    }
+
     fn import(&mut self) -> Result<(), Error> {
         let sheet = self
             .get_current_sheet_mut()
@@ -172,10 +187,8 @@ impl State {
                 }
             }
             Command::CloseCurrentDocument => self.close_current_document(),
-            Command::CloseAllDocuments => {
-                self.documents.clear();
-                self.current_document = None;
-            }
+            Command::CloseAllDocuments => self.close_all_documents(),
+            Command::SaveCurrentDocument => self.save_current_document()?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
         };

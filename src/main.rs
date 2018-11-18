@@ -6,6 +6,10 @@ extern crate glium;
 extern crate imgui;
 extern crate imgui_glium_renderer;
 extern crate imgui_glutin_support;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 use std::sync::{Arc, Mutex};
 
