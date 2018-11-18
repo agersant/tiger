@@ -180,12 +180,16 @@ impl State {
     }
 
     fn save_current_document(&mut self) -> Result<(), Error> {
-        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
         document.save()
     }
 
     fn save_current_document_as(&mut self) -> Result<(), Error> {
-        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
         match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 document.source = std::path::PathBuf::from(path_string);
@@ -226,7 +230,9 @@ impl State {
     }
 
     fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
-        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
         let sheet = document.get_sheet();
         if !sheet.has_frame(&path) {
             return Err(StateError::FrameNotInDocument.into());
