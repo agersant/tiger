@@ -8,6 +8,8 @@ use state::{self, State};
 pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
 
+    let (w, _) = ui.frame_size().logical_size;
+
     ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
             if ui.menu_item(im_str!("New Sheet…")).build() {
@@ -15,7 +17,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
             }
             ui.menu_item(im_str!("Open Sheet…")).build();
             ui.separator();
-            ui.menu_item(im_str!("Save")).build();
+            if ui.menu_item(im_str!("Save")).build() {
+                commands.save();
+            }
             ui.menu_item(im_str!("Save As…")).build();
             ui.menu_item(im_str!("Save All")).build();
             ui.separator();
