@@ -119,7 +119,8 @@ impl State {
     fn new_document(&mut self) -> Result<(), Error> {
         match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
-                let path = std::path::PathBuf::from(path_string);
+                let mut path = std::path::PathBuf::from(path_string);
+                path.set_extension(disk::SHEET_FILE_EXTENSION);
                 match self.get_document_mut(&path) {
                     Some(d) => *d = Document::new(&path),
                     None => {
@@ -188,6 +189,7 @@ impl State {
         match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 document.source = std::path::PathBuf::from(path_string);
+                document.source.set_extension(disk::SHEET_FILE_EXTENSION);
                 document.save()?;
                 self.current_document = Some(document.source.clone());
             }
