@@ -6,7 +6,6 @@ use command::CommandBuffer;
 use state::{self, State};
 
 pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
-    let (w, h) = ui.frame_size().logical_size;
     let mut commands = CommandBuffer::new();
 
     ui.main_menu_bar(|| {
@@ -57,13 +56,12 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
 
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
-            .size((w as f32 * 0.20, h as f32 - 100.0), ImGuiCond::Always)
+            .size((w as f32 * 0.20, 400.0), ImGuiCond::Always)
             .position((20.0, 80.0), ImGuiCond::FirstUseEver)
             .collapsible(false)
             .resizable(false)
             .movable(false)
             .build(|| {
-
                 if let Some(document) = state.get_current_document() {
                     let sheet = document.get_sheet();
                     if ui.small_button(im_str!("Import…")) {
@@ -87,6 +85,27 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
 
                     if ui.collapsing_header(im_str!("Animations")).build() {
 
+                    }
+                }
+            });
+    });
+
+     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+        ui.window(im_str!("Selection"))
+            .size((w as f32 * 0.20, 400.0), ImGuiCond::Always)
+            .position((20.0, 500.0), ImGuiCond::FirstUseEver)
+            .collapsible(false)
+            .resizable(false)
+            .movable(false)
+            .build(|| {
+                if let Some(document) = state.get_current_document() {
+                    match document.get_content_selection() {
+                        Some(state::ContentSelection::Frame(path)) => {
+                            if let Some(name) = path.file_name() {
+                                ui.text(&ImString::new(name.to_string_lossy()));
+                            }
+                        },
+                        _ => (),
                     }
                 }
             });
