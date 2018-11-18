@@ -1,11 +1,39 @@
 use failure::Error;
+use glium::backend::glutin::Display;
 use imgui::StyleVar::*;
 use imgui::*;
 
 use command::CommandBuffer;
 use state::{self, State};
+use streamer::TextureCache;
 
-pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
+pub fn init(display: &Display) -> ImGui {
+    let mut imgui = ImGui::init();
+    imgui.set_ini_filename(None);
+
+    let window = display.gl_window();
+    let rounded_hidpi_factor = window.get_hidpi_factor().round();
+    let font_size = (13.0 * rounded_hidpi_factor) as f32;
+
+    imgui.fonts().add_default_font_with_config(
+        ImFontConfig::new()
+            .oversample_h(1)
+            .pixel_snap_h(true)
+            .size_pixels(font_size),
+    );
+
+    imgui.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
+
+    imgui_glutin_support::configure_keys(&mut imgui);
+
+    imgui
+}
+
+pub fn run<'a>(
+    ui: &Ui<'a>,
+    state: &State,
+    texture_cache: &TextureCache,
+) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
 
     let (w, _) = ui.frame_size().logical_size;
@@ -82,25 +110,31 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
                         for frame in sheet.frames_iter() {
                             if let Some(name) = frame.get_source().file_name() {
                                 let is_selected = match document.get_content_selection() {
-                                    Some(state::ContentSelection::Frame(p)) => p == frame.get_source(),
+                                    Some(state::ContentSelection::Frame(p)) => {
+                                        p == frame.get_source()
+                                    }
                                     _ => false,
                                 };
+
                                 let flags = ImGuiSelectableFlags::empty();
-                                if ui.selectable(&ImString::new(name.to_string_lossy()), is_selected, flags, ImVec2::new(0.0, 0.0)) {
+                                if ui.selectable(
+                                    &ImString::new(name.to_string_lossy()),
+                                    is_selected,
+                                    flags,
+                                    ImVec2::new(0.0, 0.0),
+                                ) {
                                     commands.select_frame(frame);
                                 }
                             }
                         }
                     }
 
-                    if ui.collapsing_header(im_str!("Animations")).build() {
-
-                    }
+                    if ui.collapsing_header(im_str!("Animations")).build() {}
                 }
             });
     });
 
-     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
             .size((w as f32 * 0.20, 400.0), ImGuiCond::Always)
             .position((20.0, 500.0), ImGuiCond::FirstUseEver)
@@ -113,8 +147,11 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
                         Some(state::ContentSelection::Frame(path)) => {
                             if let Some(name) = path.file_name() {
                                 ui.text(&ImString::new(name.to_string_lossy()));
+                                if let Some(texture) = texture_cache.get(path) {
+                                    ui.image(texture, ImVec2::new(256.0, 256.0)).build();
+                                }
                             }
-                        },
+                        }
                         _ => (),
                     }
                 }
@@ -122,7 +159,7 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
     });
 
     let mut opened = true;
-    ui.show_demo_window(&mut opened);
+    ui.show_metrics_window(&mut opened);
 
     Ok(commands)
 }
