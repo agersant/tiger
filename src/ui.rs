@@ -21,7 +21,9 @@ pub fn run<'a>(ui: &Ui<'a>, state: &State) -> Result<CommandBuffer, Error> {
                 commands.save();
             }
             ui.menu_item(im_str!("Save As…")).build();
-            ui.menu_item(im_str!("Save All")).build();
+            if ui.menu_item(im_str!("Save All")).build() {
+                commands.save_all();
+            }
             ui.separator();
             if ui.menu_item(im_str!("Close")).build() {
                 commands.close_current_document();

@@ -31,6 +31,13 @@ impl Document {
         }
     }
 
+    fn save(&mut self) -> Result<(), Error> {
+        let sheet = self.get_sheet();
+        let file = BufWriter::new(File::create(&self.source)?);
+        serde_json::to_writer_pretty(file, &sheet)?;
+        Ok(())
+    }
+
     pub fn get_source(&self) -> &Path {
         &self.source
     }
@@ -137,10 +144,14 @@ impl State {
     }
 
     fn save_current_document(&mut self) -> Result<(), Error> {
-        let document = self.get_current_document().ok_or(StateError::NoDocumentOpen)?;
-        let sheet = document.get_sheet();
-        let file = BufWriter::new(File::create(document.get_source())?);
-        serde_json::to_writer_pretty(file, &sheet)?;
+        let document = self.get_current_document_mut().ok_or(StateError::NoDocumentOpen)?;
+        document.save()
+    }
+
+    fn save_all_documents(&mut self) -> Result<(), Error> {
+        for document in &mut self.documents {
+            document.save()?;
+        }
         Ok(())
     }
 
@@ -189,6 +200,7 @@ impl State {
             Command::CloseCurrentDocument => self.close_current_document(),
             Command::CloseAllDocuments => self.close_all_documents(),
             Command::SaveCurrentDocument => self.save_current_document()?,
+            Command::SaveAllDocuments => self.save_all_documents()?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
         };
