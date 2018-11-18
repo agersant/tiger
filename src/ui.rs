@@ -100,6 +100,7 @@ pub fn run<'a>(
             .resizable(false)
             .movable(false)
             .build(|| {
+                // TODO draw something before document is loaded?
                 if let Some(document) = state.get_current_document() {
                     let sheet = document.get_sheet();
                     if ui.small_button(im_str!("Import…")) {
@@ -142,6 +143,7 @@ pub fn run<'a>(
             .resizable(false)
             .movable(false)
             .build(|| {
+                // TODO draw something for no selection or loading in progress
                 if let Some(document) = state.get_current_document() {
                     match document.get_content_selection() {
                         Some(state::ContentSelection::Frame(path)) => {
