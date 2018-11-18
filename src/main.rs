@@ -157,12 +157,6 @@ fn main() -> Result<(), failure::Error> {
                 buff.append(new_commands);
             }
 
-            // Allow command thread to tick
-            {
-                let &(_, ref cvar) = &*main_thread_frame;
-                cvar.notify_all();
-            }
-
             {
                 let mut target = gpu.display.draw();
                 target.clear_color(0.0, 0.0, 0.0, 1.0);
@@ -176,6 +170,12 @@ fn main() -> Result<(), failure::Error> {
             {
                 let mut texture_cache = shared_texture_cache.lock().unwrap();
                 streamer::upload(&mut texture_cache, &mut gpu, &streamer_to_gpu);
+            }
+
+            // Allow command and streamer thread to tick
+            {
+                let &(_, ref cvar) = &*main_thread_frame;
+                cvar.notify_all();
             }
 
             if quit {
