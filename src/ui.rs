@@ -15,8 +15,8 @@ pub fn init(window: &glutin::GlWindow) -> ImGui {
     let mut imgui_instance = ImGui::init();
     imgui_instance.set_ini_filename(None);
 
+    // Fix incorrect colors with sRGB framebuffer
     {
-        // Fix incorrect colors with sRGB framebuffer
         fn imgui_gamma_to_linear(col: imgui::ImVec4) -> imgui::ImVec4 {
             let x = col.x.powf(2.2);
             let y = col.y.powf(2.2);
@@ -31,17 +31,35 @@ pub fn init(window: &glutin::GlWindow) -> ImGui {
         }
     }
 
-    let rounded_hidpi_factor = window.get_hidpi_factor().round();
-    let font_size = (13.0 * rounded_hidpi_factor) as f32;
+    // Set up font
+    {
+        let rounded_hidpi_factor = window.get_hidpi_factor().round();
+        let font_size = (15.0 * rounded_hidpi_factor) as f32;
+        let oversample = 8;
 
-    imgui_instance.fonts().add_default_font_with_config(
-        ImFontConfig::new()
-            .oversample_h(1)
-            .pixel_snap_h(true)
-            .size_pixels(font_size),
-    );
+        imgui_instance.fonts().add_font_with_config(
+            include_bytes!("../res/FiraSans-Regular.ttf"),
+            ImFontConfig::new()
+                .merge_mode(false)
+                .oversample_h(oversample)
+                .oversample_v(oversample)
+                .pixel_snap_h(true)
+                .size_pixels(font_size),
+            &FontGlyphRange::default(),
+        );
 
-    imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
+        imgui_instance.fonts().add_font_with_config(
+            include_bytes!("../res/FiraSans-Regular.ttf"),
+            ImFontConfig::new()
+                .merge_mode(true)
+                .oversample_h(oversample)
+                .oversample_v(oversample)
+                .pixel_snap_h(true)
+                .size_pixels(font_size),
+            &FontGlyphRange::from_slice(&[8192, 8303, 0]),// General punctuation
+        );
+        imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
+    }
 
     imgui_glutin_support::configure_keys(&mut imgui_instance);
 
