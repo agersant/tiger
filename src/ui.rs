@@ -1,5 +1,4 @@
 use failure::Error;
-use glium::backend::glutin::Display;
 use imgui::StyleVar::*;
 use imgui::*;
 
@@ -7,26 +6,41 @@ use command::CommandBuffer;
 use state::{self, State};
 use streamer::TextureCache;
 
-pub fn init(display: &Display) -> ImGui {
-    let mut imgui = ImGui::init();
-    imgui.set_ini_filename(None);
+pub fn init(window: &glutin::GlWindow) -> ImGui {
+    let mut imgui_instance = ImGui::init();
+    imgui_instance.set_ini_filename(None);
 
-    let window = display.gl_window();
+    {
+        // Fix incorrect colors with sRGB framebuffer
+        fn imgui_gamma_to_linear(col: imgui::ImVec4) -> imgui::ImVec4 {
+            let x = col.x.powf(2.2);
+            let y = col.y.powf(2.2);
+            let z = col.z.powf(2.2);
+            let w = 1.0 - (1.0 - col.w).powf(2.2);
+            imgui::ImVec4::new(x, y, z, w)
+        }
+
+        let style = imgui_instance.style_mut();
+        for col in 0..style.colors.len() {
+            style.colors[col] = imgui_gamma_to_linear(style.colors[col]);
+        }
+    }
+
     let rounded_hidpi_factor = window.get_hidpi_factor().round();
     let font_size = (13.0 * rounded_hidpi_factor) as f32;
 
-    imgui.fonts().add_default_font_with_config(
+    imgui_instance.fonts().add_default_font_with_config(
         ImFontConfig::new()
             .oversample_h(1)
             .pixel_snap_h(true)
             .size_pixels(font_size),
     );
 
-    imgui.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
+    imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
 
-    imgui_glutin_support::configure_keys(&mut imgui);
+    imgui_glutin_support::configure_keys(&mut imgui_instance);
 
-    imgui
+    imgui_instance
 }
 
 pub fn run<'a>(

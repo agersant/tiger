@@ -4,7 +4,7 @@ use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use command::Command;
-use disk;
+use constants::*;
 use sheet::Sheet;
 
 #[derive(Fail, Debug)]
@@ -117,10 +117,10 @@ impl State {
     }
 
     fn new_document(&mut self) -> Result<(), Error> {
-        match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
+        match nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 let mut path = std::path::PathBuf::from(path_string);
-                path.set_extension(disk::SHEET_FILE_EXTENSION);
+                path.set_extension(SHEET_FILE_EXTENSION);
                 match self.get_document_mut(&path) {
                     Some(d) => *d = Document::new(&path),
                     None => {
@@ -136,7 +136,7 @@ impl State {
     }
 
     fn open_document(&mut self) -> Result<(), Error> {
-        match nfd::open_file_multiple_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
+        match nfd::open_file_multiple_dialog(Some(SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 let path = std::path::PathBuf::from(path_string);
                 if self.get_document_mut(&path).is_none() {
@@ -190,10 +190,10 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        match nfd::open_save_dialog(Some(disk::SHEET_FILE_EXTENSION), None)? {
+        match nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
                 document.source = std::path::PathBuf::from(path_string);
-                document.source.set_extension(disk::SHEET_FILE_EXTENSION);
+                document.source.set_extension(SHEET_FILE_EXTENSION);
                 document.save()?;
                 self.current_document = Some(document.source.clone());
             }
@@ -213,7 +213,7 @@ impl State {
         let sheet = self
             .get_current_sheet_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        match nfd::open_file_multiple_dialog(Some(disk::IMAGE_FILE_EXTENSIONS), None)? {
+        match nfd::open_file_multiple_dialog(Some(IMAGE_FILE_EXTENSIONS), None)? {
             nfd::Response::Okay(path_string) => {
                 let path = std::path::PathBuf::from(path_string);
                 sheet.add_frame(&path);

@@ -1,6 +1,8 @@
-use glium::texture::texture2d::Texture2d;
-use glium::texture::RawImage2d;
+use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
+use gfx::Factory;
+use gfx_device_gl::Resources;
 use imgui::ImTexture;
+use imgui_gfx_renderer::Renderer;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -8,22 +10,21 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use app::GPU;
 use state::State;
 
-pub struct StreamerPayload<'a> {
-    new_textures: HashMap<PathBuf, RawImage2d<'a, u8>>,
+pub struct StreamerPayload {
+    new_textures: HashMap<PathBuf, image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     obsolete_textures: HashSet<PathBuf>,
 }
 
-pub fn init<'a>() -> (Sender<StreamerPayload<'a>>, Receiver<StreamerPayload<'a>>) {
+pub fn init() -> (Sender<StreamerPayload>, Receiver<StreamerPayload>) {
     channel()
 }
 
-pub fn load_from_disk<'a>(
+pub fn load_from_disk(
     state: &State,
     texture_cache: Arc<Mutex<TextureCache>>,
-    sender: &Sender<StreamerPayload<'a>>,
+    sender: &Sender<StreamerPayload>,
 ) {
     let mut desired_textures = HashSet::new();
     for document in state.documents_iter() {
@@ -47,13 +48,7 @@ pub fn load_from_disk<'a>(
         }
         if let Ok(file) = File::open(&path) {
             if let Ok(image) = image::load(BufReader::new(file), image::PNG) {
-                let image = image.to_rgba();
-                let dimensions = image.dimensions();
-                let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
-                    &image.into_raw(),
-                    dimensions,
-                );
-                new_textures.insert(path.clone(), raw_image);
+                new_textures.insert(path.clone(), image.to_rgba());
             };
         } else {
             // TODO log and mark as bad image in cache
@@ -76,23 +71,33 @@ pub fn load_from_disk<'a>(
     }
 }
 
-pub fn upload<'a>(
+pub fn upload(
     texture_cache: &mut TextureCache,
-    gpu: &mut GPU,
-    receiver: &Receiver<StreamerPayload<'a>>,
+    factory: &mut gfx_device_gl::Factory,
+    renderer: &mut Renderer<Resources>,
+    receiver: &Receiver<StreamerPayload>,
 ) {
     if let Ok(payload) = receiver.try_recv() {
-        for (path, raw_image) in payload.new_textures {
-            if let Ok(texture) = Texture2d::new(&gpu.display, raw_image) {
-                let id = gpu.renderer.textures().insert(texture);
+        for (path, texture_data) in payload.new_textures {
+            let sampler =
+                factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
+            let (width, height) = texture_data.dimensions();
+            let kind =
+                gfx::texture::Kind::D2(width as u16, height as u16, gfx::texture::AaMode::Single);
+            if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
+                kind,
+                gfx::texture::Mipmap::Allocated,
+                &[&texture_data],
+            ) {
+                let id = renderer.textures().insert((texture, sampler));
                 texture_cache.insert(path, id);
             } else {
                 // TODO log and mark as bad image in cache
             }
         }
         for path in payload.obsolete_textures {
-            if let Some(texture) = texture_cache.get(&path) {
-                gpu.renderer.textures().remove(texture);
+            if let Some(texture_id) = texture_cache.get(&path) {
+                renderer.textures().remove(texture_id);
                 texture_cache.remove(path);
             }
         }
