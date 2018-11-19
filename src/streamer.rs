@@ -90,14 +90,14 @@ pub fn upload(
                 &[&texture_data],
             ) {
                 let id = renderer.textures().insert((texture, sampler));
-                texture_cache.insert(path, id);
+                texture_cache.insert(path, id, (width, height));
             } else {
                 // TODO log and mark as bad image in cache
             }
         }
         for path in payload.obsolete_textures {
-            if let Some(texture_id) = texture_cache.get(&path) {
-                renderer.textures().remove(texture_id);
+            if let Some(texture) = texture_cache.get(&path) {
+                renderer.textures().remove(texture.id);
                 texture_cache.remove(path);
             }
         }
@@ -106,8 +106,23 @@ pub fn upload(
 
 #[derive(Clone)]
 struct TextureCacheEntry {
-    pub texture: ImTexture,
+    pub id: ImTexture,
+    pub size: (u32, u32),
     // TODO dirty flag and file watches
+}
+
+pub struct TextureCacheResult {
+    pub id: ImTexture,
+    pub size: (f32, f32),
+}
+
+impl From<&TextureCacheEntry> for TextureCacheResult {
+    fn from(entry: &TextureCacheEntry) -> TextureCacheResult {
+        TextureCacheResult {
+            id: entry.id,
+            size: (entry.size.0 as f32, entry.size.1 as f32)
+        }
+    }
 }
 
 pub struct TextureCache {
@@ -125,13 +140,13 @@ impl TextureCache {
         self.cache.keys().map(|k| k.to_owned()).collect()
     }
 
-    pub fn get<T: AsRef<Path>>(&self, path: T) -> Option<ImTexture> {
-        self.cache.get(path.as_ref()).map(|e| e.texture)
+    pub fn get<T: AsRef<Path>>(&self, path: T) -> Option<TextureCacheResult> {
+        self.cache.get(path.as_ref()).map(|e| e.into())
     }
 
-    pub fn insert<T: AsRef<Path>>(&mut self, path: T, texture: ImTexture) {
+    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: (u32, u32)) {
         self.cache
-            .insert(path.as_ref().to_owned(), TextureCacheEntry { texture });
+            .insert(path.as_ref().to_owned(), TextureCacheEntry { id, size });
     }
 
     pub fn remove<T: AsRef<Path>>(&mut self, path: T) {

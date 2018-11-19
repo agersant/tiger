@@ -191,7 +191,10 @@ fn draw_workbench_window<'a>(
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(texture) = texture_cache.get(&path) {
-                                ui.image(texture, ImVec2::new(256.0, 256.0)).build();
+                                let cursor_x = (rect.size.0 - texture.size.0) / 2.0;
+                                let cursor_y = (rect.size.1 - texture.size.1) / 2.0;
+                                ui.set_cursor_pos((cursor_x, cursor_y));
+                                ui.image(texture.id, texture.size).build();
                             }
                         }
                         _ => (),
@@ -272,7 +275,7 @@ fn draw_selection_window<'a>(
                             if let Some(name) = path.file_name() {
                                 ui.text(&ImString::new(name.to_string_lossy()));
                                 if let Some(texture) = texture_cache.get(path) {
-                                    ui.image(texture, ImVec2::new(256.0, 256.0)).build();
+                                    ui.image(texture.id, ImVec2::new(256.0, 256.0)).build();
                                 }
                             }
                         }
