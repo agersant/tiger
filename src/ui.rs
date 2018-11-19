@@ -56,7 +56,7 @@ pub fn init(window: &glutin::GlWindow) -> ImGui {
                 .oversample_v(oversample)
                 .pixel_snap_h(true)
                 .size_pixels(font_size),
-            &FontGlyphRange::from_slice(&[8192, 8303, 0]),// General punctuation
+            &FontGlyphRange::from_slice(&[8192, 8303, 0]), // General punctuation
         );
         imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
     }
@@ -275,7 +275,40 @@ fn draw_selection_window<'a>(
                             if let Some(name) = path.file_name() {
                                 ui.text(&ImString::new(name.to_string_lossy()));
                                 if let Some(texture) = texture_cache.get(path) {
-                                    ui.image(texture.id, ImVec2::new(256.0, 256.0)).build();
+                                    let mut space = ui.get_content_region_avail();
+                                    space = (200.0, 200.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+
+                                    if texture.size.0 == 0.0 || texture.size.1 == 0.0 {
+                                        return;
+                                    }
+                                    if space.0 == 0.0 || space.1 == 0.0 {
+                                        return;
+                                    }
+                                    let aspect_ratio = texture.size.0 / texture.size.1;
+                                    let fit_horizontally =
+                                        (texture.size.0 / space.0) >= (texture.size.1 / space.1);
+                                    let (w, h);
+                                    if fit_horizontally {
+                                        if space.0 > texture.size.0 {
+                                            w = texture.size.0 * (space.0 / texture.size.0).floor();
+                                        } else {
+                                            w = space.0;
+                                        }
+                                        h = w / aspect_ratio;
+                                    } else {
+                                        if space.1 > texture.size.1 {
+                                            h = texture.size.1 * (space.1 / texture.size.1).floor();
+                                        } else {
+                                            h = space.1;
+                                        }
+                                        w = h * aspect_ratio;
+                                    }
+                                    let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+                                    cursor_pos = (0.0, 50.0);
+                                    let x = cursor_pos.0 + (space.0 - w) / 2.0;
+                                    let y = cursor_pos.1 + (space.1 - h) / 2.0;
+                                    ui.set_cursor_pos((x, y));
+                                    ui.image(texture.id, (w, h)).build();
                                 }
                             }
                         }
