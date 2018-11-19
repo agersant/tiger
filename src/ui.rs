@@ -6,6 +6,11 @@ use command::CommandBuffer;
 use state::{self, State};
 use streamer::TextureCache;
 
+struct Rect {
+    position: (f32, f32),
+    size: (f32, f32),
+}
+
 pub fn init(window: &glutin::GlWindow) -> ImGui {
     let mut imgui_instance = ImGui::init();
     imgui_instance.set_ini_filename(None);
@@ -50,7 +55,60 @@ pub fn run<'a>(
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
 
-    let (w, h) = ui.frame_size().logical_size;
+    let (window_width, window_height) = ui.frame_size().logical_size;
+    let (window_width, window_height) = (window_width as f32, window_height as f32);
+    let window_padding = 20.0;
+
+    let (_, mut menu_height) = draw_main_menu(ui, &mut commands); // TODO this comes back as 0
+    menu_height = 20.0; // TMP
+
+    {
+        let workbench_rect = Rect {
+            position: (0.0, menu_height),
+            size: (window_width, window_height - menu_height),
+        };
+        draw_workbench_window(ui, &workbench_rect, state, texture_cache);
+    }
+
+    let documents_rect = Rect {
+        position: (window_padding, menu_height),
+        size: (window_width - 2.0 * window_padding, 0.0),
+    };
+    let (_, mut documents_height) =
+        draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
+    documents_height = 20.0; // TMP
+
+    {
+        let content_width = 0.20 * (window_width - 2.0 * window_padding);
+        let selection_width = content_width;
+
+        let panels_height = window_height - menu_height - documents_height - 2.0 * window_padding;
+        let content_height = 0.60 * panels_height;
+        let selection_height = panels_height - content_height;
+
+        let content_rect = Rect {
+            position: (
+                window_padding,
+                menu_height + documents_height + window_padding,
+            ),
+            size: (content_width, content_height),
+        };
+        let selection_rect = Rect {
+            position: (
+                window_padding,
+                window_height - window_padding - selection_height,
+            ),
+            size: (selection_width, selection_height),
+        };
+        draw_content_window(ui, &content_rect, state, &mut commands);
+        draw_selection_window(ui, &selection_rect, state, texture_cache);
+    }
+
+    Ok(commands)
+}
+
+fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
+    let size = &mut (0.0, 0.0);
 
     ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
@@ -85,17 +143,29 @@ pub fn run<'a>(
         ui.menu(im_str!("Help")).build(|| {
             ui.menu_item(im_str!("About")).build();
         });
+
+        *size = ui.get_window_size();
     });
 
+    *size
+}
+
+fn draw_workbench_window<'a>(
+    ui: &Ui<'a>,
+    rect: &Rect,
+    state: &State,
+    texture_cache: &TextureCache,
+) {
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Workbench"))
-            .position((0.0, 40.0), ImGuiCond::FirstUseEver)
-            .size((w as f32, h as f32), ImGuiCond::Always)
+            .position(rect.position, ImGuiCond::Always)
+            .size(rect.size, ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .title_bar(false)
             .menu_bar(false)
             .movable(false)
+            .no_bring_to_front_on_focus(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
                     match document.get_workbench_item() {
@@ -103,36 +173,19 @@ pub fn run<'a>(
                             if let Some(texture) = texture_cache.get(&path) {
                                 ui.image(texture, ImVec2::new(256.0, 256.0)).build();
                             }
-                        },
+                        }
                         _ => (),
                     }
                 }
             });
     });
+}
 
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Documents"))
-            .position((20.0, 30.0), ImGuiCond::FirstUseEver)
-            .always_auto_resize(true)
-            .collapsible(false)
-            .resizable(false)
-            .title_bar(false)
-            .menu_bar(false)
-            .movable(false)
-            .build(|| {
-                for document in state.documents_iter() {
-                    if ui.small_button(&ImString::new(document.get_source().to_string_lossy())) {
-                        commands.focus_document(document);
-                    }
-                    ui.same_line(0.0);
-                }
-            });
-    });
-
+fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
-            .size((w as f32 * 0.20, 400.0), ImGuiCond::Always)
-            .position((20.0, 80.0), ImGuiCond::FirstUseEver)
+            .position(rect.position, ImGuiCond::Always)
+            .size(rect.size, ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .movable(false)
@@ -176,11 +229,18 @@ pub fn run<'a>(
                 }
             });
     });
+}
 
+fn draw_selection_window<'a>(
+    ui: &Ui<'a>,
+    rect: &Rect,
+    state: &State,
+    texture_cache: &TextureCache,
+) {
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
-            .size((w as f32 * 0.20, 400.0), ImGuiCond::Always)
-            .position((20.0, 500.0), ImGuiCond::FirstUseEver)
+            .position(rect.position, ImGuiCond::Always)
+            .size(rect.size, ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .movable(false)
@@ -201,9 +261,35 @@ pub fn run<'a>(
                 }
             });
     });
+}
 
-    let mut opened = true;
-    ui.show_metrics_window(&mut opened);
+fn draw_documents_window<'a>(
+    ui: &Ui<'a>,
+    rect: &Rect,
+    state: &State,
+    commands: &mut CommandBuffer,
+) -> (f32, f32) {
+    let size = &mut (0.0, 0.0);
 
-    Ok(commands)
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+        ui.window(im_str!("Documents"))
+            .position(rect.position, ImGuiCond::FirstUseEver)
+            .always_auto_resize(true)
+            .collapsible(false)
+            .resizable(false)
+            .title_bar(false)
+            .menu_bar(false)
+            .movable(false)
+            .build(|| {
+                for document in state.documents_iter() {
+                    if ui.small_button(&ImString::new(document.get_source().to_string_lossy())) {
+                        commands.focus_document(document);
+                    }
+                    ui.same_line(0.0);
+                }
+                *size = ui.get_window_size();
+            });
+    });
+
+    *size
 }
