@@ -60,7 +60,7 @@ pub fn run<'a>(
     let window_padding = 20.0;
 
     let (_, mut menu_height) = draw_main_menu(ui, &mut commands); // TODO this comes back as 0
-    menu_height = 20.0; // TMP
+    menu_height = 20.0; // TMP https://github.com/Gekkio/imgui-rs/issues/175
 
     {
         let workbench_rect = Rect {
@@ -76,7 +76,7 @@ pub fn run<'a>(
     };
     let (_, mut documents_height) =
         draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
-    documents_height = 20.0; // TMP
+    documents_height = 20.0; // TMP https://github.com/Gekkio/imgui-rs/issues/175
 
     {
         let content_width = 0.20 * (window_width - 2.0 * window_padding);
