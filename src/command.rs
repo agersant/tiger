@@ -14,6 +14,7 @@ pub enum Command {
     SaveAllDocuments,
     Import,
     SelectFrame(PathBuf),
+    EditFrame(PathBuf),
 }
 
 pub struct CommandBuffer {
@@ -73,5 +74,10 @@ impl CommandBuffer {
     pub fn select_frame(&mut self, frame: &Frame) {
         self.queue
             .push(Command::SelectFrame(frame.get_source().to_owned()));
+    }
+
+    pub fn edit_frame(&mut self, frame: &Frame) {
+        self.queue
+            .push(Command::EditFrame(frame.get_source().to_owned()));
     }
 }

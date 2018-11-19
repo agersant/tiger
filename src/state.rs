@@ -20,6 +20,7 @@ pub struct Document {
     source: PathBuf,
     sheet: Sheet,
     content_selection: Option<ContentSelection>,
+    workbench_item: Option<WorkbenchItem>,
 }
 
 impl Document {
@@ -28,6 +29,7 @@ impl Document {
             source: path.as_ref().to_owned(),
             sheet: Sheet::new(),
             content_selection: None,
+            workbench_item: None,
         }
     }
 
@@ -38,6 +40,7 @@ impl Document {
             source: path.as_ref().to_owned(),
             sheet: sheet,
             content_selection: None,
+            workbench_item: None,
         })
     }
 
@@ -63,10 +66,19 @@ impl Document {
     pub fn get_content_selection(&self) -> &Option<ContentSelection> {
         &self.content_selection
     }
+
+    pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
+        &self.workbench_item
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum ContentSelection {
+    Frame(PathBuf),
+}
+
+#[derive(Clone, Debug)]
+pub enum WorkbenchItem {
     Frame(PathBuf),
 }
 
@@ -241,6 +253,18 @@ impl State {
         Ok(())
     }
 
+    fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet();
+        if !sheet.has_frame(&path) {
+            return Err(StateError::FrameNotInDocument.into());
+        }
+        document.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
+        Ok(())
+    }
+
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
         self.documents.iter()
     }
@@ -261,6 +285,7 @@ impl State {
             Command::SaveAllDocuments => self.save_all_documents()?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
+            Command::EditFrame(p) => self.edit_frame(&p)?,
         };
         Ok(())
     }

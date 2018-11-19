@@ -50,7 +50,7 @@ pub fn run<'a>(
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
 
-    let (w, _) = ui.frame_size().logical_size;
+    let (w, h) = ui.frame_size().logical_size;
 
     ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
@@ -85,6 +85,29 @@ pub fn run<'a>(
         ui.menu(im_str!("Help")).build(|| {
             ui.menu_item(im_str!("About")).build();
         });
+    });
+
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+        ui.window(im_str!("Workbench"))
+            .position((0.0, 40.0), ImGuiCond::FirstUseEver)
+            .size((w as f32, h as f32), ImGuiCond::Always)
+            .collapsible(false)
+            .resizable(false)
+            .title_bar(false)
+            .menu_bar(false)
+            .movable(false)
+            .build(|| {
+                if let Some(document) = state.get_current_document() {
+                    match document.get_workbench_item() {
+                        Some(state::WorkbenchItem::Frame(path)) => {
+                            if let Some(texture) = texture_cache.get(&path) {
+                                ui.image(texture, ImVec2::new(256.0, 256.0)).build();
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+            });
     });
 
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
@@ -131,14 +154,19 @@ pub fn run<'a>(
                                     _ => false,
                                 };
 
-                                let flags = ImGuiSelectableFlags::empty();
+                                let mut flags = ImGuiSelectableFlags::empty();
+                                flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
                                 if ui.selectable(
                                     &ImString::new(name.to_string_lossy()),
                                     is_selected,
                                     flags,
                                     ImVec2::new(0.0, 0.0),
                                 ) {
-                                    commands.select_frame(frame);
+                                    if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
+                                        commands.edit_frame(frame);
+                                    } else {
+                                        commands.select_frame(frame);
+                                    }
                                 }
                             }
                         }
