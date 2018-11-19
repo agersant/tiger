@@ -128,41 +128,43 @@ pub fn run<'a>(
 fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
 
-    ui.main_menu_bar(|| {
-        ui.menu(im_str!("File")).build(|| {
-            if ui.menu_item(im_str!("New Sheet…")).build() {
-                commands.new_document();
-            }
-            if ui.menu_item(im_str!("Open Sheet…")).build() {
-                commands.open_document();
-            }
-            ui.separator();
-            if ui.menu_item(im_str!("Save")).build() {
-                commands.save();
-            }
-            if ui.menu_item(im_str!("Save As…")).build() {
-                commands.save_as();
-            }
-            if ui.menu_item(im_str!("Save All")).build() {
-                commands.save_all();
-            }
-            ui.separator();
-            if ui.menu_item(im_str!("Close")).build() {
-                commands.close_current_document();
-            }
-            if ui.menu_item(im_str!("Close All")).build() {
-                commands.close_all_documents();
-            }
-        });
-        ui.menu(im_str!("View")).build(|| {
-            ui.menu_item(im_str!("Grid")).build();
-            ui.menu_item(im_str!("Hitboxes")).build();
-        });
-        ui.menu(im_str!("Help")).build(|| {
-            ui.menu_item(im_str!("About")).build();
-        });
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+        ui.main_menu_bar(|| {
+            ui.menu(im_str!("File")).build(|| {
+                if ui.menu_item(im_str!("New Sheet…")).build() {
+                    commands.new_document();
+                }
+                if ui.menu_item(im_str!("Open Sheet…")).build() {
+                    commands.open_document();
+                }
+                ui.separator();
+                if ui.menu_item(im_str!("Save")).build() {
+                    commands.save();
+                }
+                if ui.menu_item(im_str!("Save As…")).build() {
+                    commands.save_as();
+                }
+                if ui.menu_item(im_str!("Save All")).build() {
+                    commands.save_all();
+                }
+                ui.separator();
+                if ui.menu_item(im_str!("Close")).build() {
+                    commands.close_current_document();
+                }
+                if ui.menu_item(im_str!("Close All")).build() {
+                    commands.close_all_documents();
+                }
+            });
+            ui.menu(im_str!("View")).build(|| {
+                ui.menu_item(im_str!("Grid")).build();
+                ui.menu_item(im_str!("Hitboxes")).build();
+            });
+            ui.menu(im_str!("Help")).build(|| {
+                ui.menu_item(im_str!("About")).build();
+            });
 
-        *size = ui.get_window_size();
+            *size = ui.get_window_size();
+        });
     });
 
     *size
