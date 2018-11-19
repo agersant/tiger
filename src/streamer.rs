@@ -12,6 +12,8 @@ use std::sync::{Arc, Mutex};
 
 use state::State;
 
+const MAX_TEXTURES_LOAD_TIME_PER_TICK: u128 = 250; // ms
+
 pub struct StreamerPayload {
     new_textures: HashMap<PathBuf, image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     obsolete_textures: HashSet<PathBuf>,
@@ -41,18 +43,24 @@ pub fn load_from_disk(
     let mut obsolete_textures = cached_textures.clone();
 
     let mut new_textures = HashMap::new();
+    let mut io_time = std::time::Duration::new(0, 0);
+
     for path in desired_textures.iter() {
         obsolete_textures.remove(path);
         if cached_textures.contains(path) {
             continue;
         }
-        if let Ok(file) = File::open(&path) {
-            if let Ok(image) = image::load(BufReader::new(file), image::PNG) {
-                new_textures.insert(path.clone(), image.to_rgba());
-            };
-        } else {
-            // TODO log and mark as bad image in cache
-            continue;
+        if io_time.as_millis() < MAX_TEXTURES_LOAD_TIME_PER_TICK {
+            let start = std::time::Instant::now();
+            if let Ok(file) = File::open(&path) {
+                if let Ok(image) = image::load(BufReader::new(file), image::PNG) {
+                    new_textures.insert(path.clone(), image.to_rgba());
+                };
+            } else {
+                // TODO log and mark as bad image in cache
+                continue;
+            }
+            io_time += io_time + (std::time::Instant::now() - start);
         }
     }
 
@@ -120,7 +128,7 @@ impl From<&TextureCacheEntry> for TextureCacheResult {
     fn from(entry: &TextureCacheEntry) -> TextureCacheResult {
         TextureCacheResult {
             id: entry.id,
-            size: (entry.size.0 as f32, entry.size.1 as f32)
+            size: (entry.size.0 as f32, entry.size.1 as f32),
         }
     }
 }
