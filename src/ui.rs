@@ -226,10 +226,13 @@ fn draw_workbench_window<'a>(
                         }
                     }
 
-                    if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
-                        // if ui.is_window_hovered() {
+                    if ui.is_window_hovered() {
+                        if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
                             commands.pan(ui.imgui().mouse_delta());
-                        // }
+                        }
+                        if ui.imgui().is_mouse_down(ImMouseButton::Right) {
+                           ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                        }
                     }
                 }
             });

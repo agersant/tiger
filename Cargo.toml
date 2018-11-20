@@ -5,19 +5,22 @@ authors = ["Antoine Gersant <antoine.gersant@lesforges.org>"]
 
 [dependencies]
 failure = "0.1.3"
-gfx = "0.17"
-gfx_core = "0.8.3"
-gfx_device_gl = "*"
-gfx_window_glutin = "0.26"
-image = "0.19"
-imgui = { git = "https://github.com/Gekkio/imgui-rs" }
-imgui-gfx-renderer = { git = "https://github.com/Gekkio/imgui-rs" }
-imgui-glutin-support = { git = "https://github.com/Gekkio/imgui-rs" }
+gfx = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
+gfx_core = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll", version = "0.8.3" }
+gfx_device_gl = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
+gfx_window_glutin = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
+image = "0.20"
+imgui = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
+imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
+imgui-glutin-support = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
 nfd = "0.0.4"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
 
 [dependencies.glutin]
-version = "0.18.0"
+version = "0.19.0"
 features = [ "icon_loading" ]
+
+[replace]
+"gfx:0.17.1" = { git = 'https://github.com/gfx-rs/gfx', branch = 'pre-ll' }

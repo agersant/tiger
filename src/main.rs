@@ -18,7 +18,6 @@ extern crate serde_json;
 extern crate serde_derive;
 
 use gfx::Device;
-use glutin::GlContext;
 use std::sync::*;
 
 mod command;
@@ -223,7 +222,6 @@ fn main() -> Result<(), failure::Error> {
                     .or(Err(MainError::DrawError))?;
                 encoder.flush(&mut device);
                 window
-                    .context()
                     .swap_buffers()
                     .or(Err(MainError::SwapError))?;
                 device.cleanup();
