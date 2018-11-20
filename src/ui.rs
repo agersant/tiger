@@ -156,6 +156,13 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 }
             });
             ui.menu(im_str!("View")).build(|| {
+                if ui.menu_item(im_str!("Zoom In")).build() {
+                    commands.zoom_in();
+                }
+                if ui.menu_item(im_str!("Zoom Out")).build() {
+                    commands.zoom_out();
+                }
+                ui.separator();
                 ui.menu_item(im_str!("Grid")).build();
                 ui.menu_item(im_str!("Hitboxes")).build();
             });
