@@ -85,7 +85,7 @@ pub fn run<'a>(
             position: (0.0, menu_height),
             size: (window_width, window_height - menu_height),
         };
-        draw_workbench_window(ui, &workbench_rect, state, texture_cache);
+        draw_workbench_window(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 
     let documents_rect = Rect {
@@ -174,6 +174,7 @@ fn draw_workbench_window<'a>(
     ui: &Ui<'a>,
     rect: &Rect,
     state: &State,
+    commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
@@ -191,13 +192,26 @@ fn draw_workbench_window<'a>(
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(texture) = texture_cache.get(&path) {
-                                let cursor_x = (rect.size.0 - texture.size.0) / 2.0;
-                                let cursor_y = (rect.size.1 - texture.size.1) / 2.0;
-                                ui.set_cursor_pos((cursor_x, cursor_y));
-                                ui.image(texture.id, texture.size).build();
+                                if let Ok(zoom) = state.get_zoom_factor() {
+                                    let (width, height) =
+                                        (zoom * texture.size.0, zoom * texture.size.1);
+                                    let cursor_x = (rect.size.0 - width) / 2.0;
+                                    let cursor_y = (rect.size.1 - height) / 2.0;
+                                    ui.set_cursor_pos((cursor_x, cursor_y));
+                                    ui.image(texture.id, (width, height)).build();
+                                }
                             }
                         }
                         _ => (),
+                    }
+
+                    if ui.is_window_hovered() {
+                        let mouse_wheel = ui.imgui().mouse_wheel();
+                        if mouse_wheel > 0.0 {
+                            commands.zoom_in();
+                        } else if mouse_wheel < 0.0 {
+                            commands.zoom_out();
+                        }
                     }
                 }
             });

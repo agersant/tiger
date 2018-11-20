@@ -15,6 +15,8 @@ pub enum Command {
     Import,
     SelectFrame(PathBuf),
     EditFrame(PathBuf),
+    ZoomIn,
+    ZoomOut,
 }
 
 pub struct CommandBuffer {
@@ -79,5 +81,13 @@ impl CommandBuffer {
     pub fn edit_frame(&mut self, frame: &Frame) {
         self.queue
             .push(Command::EditFrame(frame.get_source().to_owned()));
+    }
+
+    pub fn zoom_in(&mut self) {
+        self.queue.push(Command::ZoomIn);
+    }
+
+    pub fn zoom_out(&mut self) {
+        self.queue.push(Command::ZoomOut);
     }
 }

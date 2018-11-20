@@ -21,6 +21,7 @@ pub struct Document {
     sheet: Sheet,
     content_selection: Option<ContentSelection>,
     workbench_item: Option<WorkbenchItem>,
+    zoom_level: i32,
 }
 
 impl Document {
@@ -30,6 +31,7 @@ impl Document {
             sheet: Sheet::new(),
             content_selection: None,
             workbench_item: None,
+            zoom_level: 1,
         }
     }
 
@@ -41,6 +43,7 @@ impl Document {
             sheet: sheet,
             content_selection: None,
             workbench_item: None,
+            zoom_level: 1,
         })
     }
 
@@ -265,6 +268,47 @@ impl State {
         Ok(())
     }
 
+    fn zoom_in(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        if document.zoom_level >= 1 {
+            document.zoom_level *= 2;
+        } else if document.zoom_level == -2 {
+            document.zoom_level = 1;
+        } else {
+            document.zoom_level /= 2;
+        }
+        document.zoom_level = std::cmp::min(document.zoom_level, 16);
+        Ok(())
+    }
+
+    fn zoom_out(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        if document.zoom_level > 1 {
+            document.zoom_level /= 2;
+        } else if document.zoom_level == 1 {
+            document.zoom_level = -2;
+        } else {
+            document.zoom_level *= 2;
+        }
+        document.zoom_level = std::cmp::max(document.zoom_level, -8);
+        Ok(())
+    }
+
+    pub fn get_zoom_factor(&self) -> Result<f32, Error> {
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+        Ok(if document.zoom_level >= 0 {
+            document.zoom_level as f32
+        } else {
+            1.0 / document.zoom_level as f32
+        })
+    }
+
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
         self.documents.iter()
     }
@@ -286,6 +330,8 @@ impl State {
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
+            Command::ZoomIn => self.zoom_in()?,
+            Command::ZoomOut => self.zoom_out()?,
         };
         Ok(())
     }
