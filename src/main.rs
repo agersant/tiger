@@ -18,6 +18,7 @@ extern crate serde_json;
 extern crate serde_derive;
 
 use gfx::Device;
+use glutin::GlContext;
 use std::sync::*;
 
 mod command;
