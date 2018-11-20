@@ -162,6 +162,9 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 if ui.menu_item(im_str!("Zoom Out")).build() {
                     commands.zoom_out();
                 }
+                if ui.menu_item(im_str!("Reset Zoom")).build() {
+                    commands.reset_zoom();
+                }
                 ui.separator();
                 ui.menu_item(im_str!("Grid")).build();
                 ui.menu_item(im_str!("Hitboxes")).build();

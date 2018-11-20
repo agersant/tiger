@@ -297,6 +297,14 @@ impl State {
         Ok(())
     }
 
+    fn reset_zoom(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.workbench_zoom_level = 1;
+        Ok(())
+    }
+
     fn pan(&mut self, delta: (f32, f32)) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -347,6 +355,7 @@ impl State {
             Command::EditFrame(p) => self.edit_frame(&p)?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
+            Command::ResetZoom => self.reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
         };
         Ok(())
