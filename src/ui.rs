@@ -205,7 +205,7 @@ fn draw_workbench_window<'a>(
                         _ => (),
                     }
 
-                    if ui.is_window_hovered() {
+                    if ui.imgui().key_ctrl() {
                         let mouse_wheel = ui.imgui().mouse_wheel();
                         if mouse_wheel > 0.0 {
                             commands.zoom_in();
