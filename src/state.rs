@@ -21,7 +21,8 @@ pub struct Document {
     sheet: Sheet,
     content_selection: Option<ContentSelection>,
     workbench_item: Option<WorkbenchItem>,
-    zoom_level: i32,
+    workbench_offset: (f32, f32),
+    workbench_zoom_level: i32,
 }
 
 impl Document {
@@ -31,7 +32,8 @@ impl Document {
             sheet: Sheet::new(),
             content_selection: None,
             workbench_item: None,
-            zoom_level: 1,
+            workbench_offset: (0.0, 0.0),
+            workbench_zoom_level: 1,
         }
     }
 
@@ -261,6 +263,7 @@ impl State {
             return Err(StateError::FrameNotInDocument.into());
         }
         document.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
+        document.workbench_offset = (0.0, 0.0);
         Ok(())
     }
 
@@ -268,14 +271,14 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        if document.zoom_level >= 1 {
-            document.zoom_level *= 2;
-        } else if document.zoom_level == -2 {
-            document.zoom_level = 1;
+        if document.workbench_zoom_level >= 1 {
+            document.workbench_zoom_level *= 2;
+        } else if document.workbench_zoom_level == -2 {
+            document.workbench_zoom_level = 1;
         } else {
-            document.zoom_level /= 2;
+            document.workbench_zoom_level /= 2;
         }
-        document.zoom_level = std::cmp::min(document.zoom_level, 16);
+        document.workbench_zoom_level = std::cmp::min(document.workbench_zoom_level, 16);
         Ok(())
     }
 
@@ -283,26 +286,42 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        if document.zoom_level > 1 {
-            document.zoom_level /= 2;
-        } else if document.zoom_level == 1 {
-            document.zoom_level = -2;
+        if document.workbench_zoom_level > 1 {
+            document.workbench_zoom_level /= 2;
+        } else if document.workbench_zoom_level == 1 {
+            document.workbench_zoom_level = -2;
         } else {
-            document.zoom_level *= 2;
+            document.workbench_zoom_level *= 2;
         }
-        document.zoom_level = std::cmp::max(document.zoom_level, -8);
+        document.workbench_zoom_level = std::cmp::max(document.workbench_zoom_level, -8);
         Ok(())
     }
 
-    pub fn get_zoom_factor(&self) -> Result<f32, Error> {
+    fn pan(&mut self, delta: (f32, f32)) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.workbench_offset.0 += delta.0;
+        document.workbench_offset.1 += delta.1;
+        Ok(())
+    }
+
+    pub fn get_workbench_zoom_factor(&self) -> Result<f32, Error> {
         let document = self
             .get_current_document()
             .ok_or(StateError::NoDocumentOpen)?;
-        Ok(if document.zoom_level >= 0 {
-            document.zoom_level as f32
+        Ok(if document.workbench_zoom_level >= 0 {
+            document.workbench_zoom_level as f32
         } else {
-            1.0 / document.zoom_level as f32
+            1.0 / document.workbench_zoom_level as f32
         })
+    }
+
+    pub fn get_workbench_offset(&self) -> Result<(f32, f32), Error> {
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+        Ok(document.workbench_offset)
     }
 
     pub fn documents_iter(&self) -> std::slice::Iter<Document> {
@@ -328,6 +347,7 @@ impl State {
             Command::EditFrame(p) => self.edit_frame(&p)?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
+            Command::Pan(delta) => self.pan(*delta)?,
         };
         Ok(())
     }

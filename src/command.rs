@@ -17,6 +17,7 @@ pub enum Command {
     EditFrame(PathBuf),
     ZoomIn,
     ZoomOut,
+    Pan((f32, f32)),
 }
 
 pub struct CommandBuffer {
@@ -89,5 +90,9 @@ impl CommandBuffer {
 
     pub fn zoom_out(&mut self) {
         self.queue.push(Command::ZoomOut);
+    }
+
+    pub fn pan(&mut self, delta: (f32, f32)) {
+        self.queue.push(Command::Pan(delta));
     }
 }

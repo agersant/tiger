@@ -192,13 +192,15 @@ fn draw_workbench_window<'a>(
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(texture) = texture_cache.get(&path) {
-                                if let Ok(zoom) = state.get_zoom_factor() {
-                                    let (width, height) =
-                                        (zoom * texture.size.0, zoom * texture.size.1);
-                                    let cursor_x = (rect.size.0 - width) / 2.0;
-                                    let cursor_y = (rect.size.1 - height) / 2.0;
+                                if let (Ok(zoom), Ok(offset)) = (
+                                    state.get_workbench_zoom_factor(),
+                                    state.get_workbench_offset(),
+                                ) {
+                                    let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+                                    let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
+                                    let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
                                     ui.set_cursor_pos((cursor_x, cursor_y));
-                                    ui.image(texture.id, (width, height)).build();
+                                    ui.image(texture.id, draw_size).build();
                                 }
                             }
                         }
@@ -212,6 +214,12 @@ fn draw_workbench_window<'a>(
                         } else if mouse_wheel < 0.0 {
                             commands.zoom_out();
                         }
+                    }
+
+                    if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
+                        // if ui.is_window_hovered() {
+                            commands.pan(ui.imgui().mouse_delta());
+                        // }
                     }
                 }
             });
