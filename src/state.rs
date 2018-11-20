@@ -38,13 +38,9 @@ impl Document {
     pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
         let file = BufReader::new(File::open(path.as_ref())?);
         let sheet = serde_json::from_reader(file)?;
-        Ok(Document {
-            source: path.as_ref().to_owned(),
-            sheet: sheet,
-            content_selection: None,
-            workbench_item: None,
-            zoom_level: 1,
-        })
+        let mut document = Document::new(&path);
+        document.sheet = sheet;
+        Ok(document)
     }
 
     fn save(&mut self) -> Result<(), Error> {
