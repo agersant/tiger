@@ -2,9 +2,9 @@ use failure::Error;
 use imgui::StyleVar::*;
 use imgui::*;
 
-use command::CommandBuffer;
-use state::{self, State};
-use streamer::TextureCache;
+use crate::command::CommandBuffer;
+use crate::state::{self, State};
+use crate::streamer::TextureCache;
 
 struct Rect {
     position: (f32, f32),

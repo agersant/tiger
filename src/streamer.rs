@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use state::State;
+use crate::state::State;
 
 const MAX_TEXTURES_LOAD_TIME_PER_TICK: u128 = 250; // ms
 
