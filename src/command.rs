@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::sheet::Frame;
-use crate::state::Document;
+use crate::state::{ContentTab, Document};
 
 pub enum Command {
     NewDocument,
@@ -12,6 +12,7 @@ pub enum Command {
     SaveCurrentDocument,
     SaveCurrentDocumentAs,
     SaveAllDocuments,
+    SwitchToContentTab(ContentTab),
     Import,
     SelectFrame(PathBuf),
     EditFrame(PathBuf),
@@ -69,6 +70,10 @@ impl CommandBuffer {
 
     pub fn save_all(&mut self) {
         self.queue.push(Command::SaveAllDocuments);
+    }
+
+    pub fn switch_to_content_tab(&mut self, tab: ContentTab) {
+        self.queue.push(Command::SwitchToContentTab(tab));
     }
 
     pub fn import(&mut self) {

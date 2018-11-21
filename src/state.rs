@@ -20,6 +20,7 @@ pub struct Document {
     source: PathBuf,
     sheet: Sheet,
     content_selection: Option<ContentSelection>,
+    content_current_tab: ContentTab,
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
@@ -31,6 +32,7 @@ impl Document {
             source: path.as_ref().to_owned(),
             sheet: Sheet::new(),
             content_selection: None,
+            content_current_tab: ContentTab::Frames,
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
@@ -64,6 +66,10 @@ impl Document {
         &mut self.sheet
     }
 
+    pub fn get_content_tab(&self) -> &ContentTab {
+        &self.content_current_tab
+    }
+
     pub fn get_content_selection(&self) -> &Option<ContentSelection> {
         &self.content_selection
     }
@@ -76,6 +82,12 @@ impl Document {
 #[derive(Clone, Debug)]
 pub enum ContentSelection {
     Frame(PathBuf),
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ContentTab {
+    Frames,
+    Animations,
 }
 
 #[derive(Clone, Debug)]
@@ -222,6 +234,14 @@ impl State {
         Ok(())
     }
 
+    fn switch_to_content_tab(&mut self, tab: ContentTab) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.content_current_tab = tab;
+        Ok(())
+    }
+
     fn import(&mut self) -> Result<(), Error> {
         let sheet = self
             .get_current_sheet_mut()
@@ -350,6 +370,7 @@ impl State {
             Command::SaveCurrentDocument => self.save_current_document()?,
             Command::SaveCurrentDocumentAs => self.save_current_document_as()?,
             Command::SaveAllDocuments => self.save_all_documents()?,
+            Command::SwitchToContentTab(tab) => self.switch_to_content_tab(*tab)?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,

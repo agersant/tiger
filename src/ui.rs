@@ -240,6 +240,7 @@ fn draw_workbench_window<'a>(
 }
 
 fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
+    use crate::state::{ContentSelection, ContentTab};
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
             .position(rect.position, ImGuiCond::Always)
@@ -250,40 +251,47 @@ fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &m
             .build(|| {
                 // TODO draw something before document is loaded?
                 if let Some(document) = state.get_current_document() {
-                    let sheet = document.get_sheet();
-                    if ui.small_button(im_str!("Import…")) {
-                        commands.import();
+                    if ui.small_button(im_str!("Frames")) {
+                        commands.switch_to_content_tab(ContentTab::Frames);
                     }
+                    ui.same_line(0.0);
+                    if ui.small_button(im_str!("Animations")) {
+                        commands.switch_to_content_tab(ContentTab::Animations);
+                    }
+                    ui.separator();
 
-                    if ui.collapsing_header(im_str!("Frames")).build() {
-                        for frame in sheet.frames_iter() {
-                            if let Some(name) = frame.get_source().file_name() {
-                                let is_selected = match document.get_content_selection() {
-                                    Some(state::ContentSelection::Frame(p)) => {
-                                        p == frame.get_source()
-                                    }
-                                    _ => false,
-                                };
+                    let sheet = document.get_sheet();
+                    match document.get_content_tab() {
+                        ContentTab::Frames => {
+                            if ui.small_button(im_str!("Import…")) {
+                                commands.import();
+                            }
+                            for frame in sheet.frames_iter() {
+                                if let Some(name) = frame.get_source().file_name() {
+                                    let is_selected = match document.get_content_selection() {
+                                        Some(ContentSelection::Frame(p)) => p == frame.get_source(),
+                                        _ => false,
+                                    };
 
-                                let mut flags = ImGuiSelectableFlags::empty();
-                                flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
-                                if ui.selectable(
-                                    &ImString::new(name.to_string_lossy()),
-                                    is_selected,
-                                    flags,
-                                    ImVec2::new(0.0, 0.0),
-                                ) {
-                                    if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
-                                        commands.edit_frame(frame);
-                                    } else {
-                                        commands.select_frame(frame);
+                                    let mut flags = ImGuiSelectableFlags::empty();
+                                    flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
+                                    if ui.selectable(
+                                        &ImString::new(name.to_string_lossy()),
+                                        is_selected,
+                                        flags,
+                                        ImVec2::new(0.0, 0.0),
+                                    ) {
+                                        if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
+                                            commands.edit_frame(frame);
+                                        } else {
+                                            commands.select_frame(frame);
+                                        }
                                     }
                                 }
                             }
                         }
+                        ContentTab::Animations => {}
                     }
-
-                    if ui.collapsing_header(im_str!("Animations")).build() {}
                 }
             });
     });
