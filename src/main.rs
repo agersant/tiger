@@ -216,9 +216,7 @@ fn main() -> Result<(), failure::Error> {
                     .render(ui_frame, &mut factory, &mut encoder)
                     .or(Err(MainError::DrawError))?;
                 encoder.flush(&mut device);
-                window
-                    .swap_buffers()
-                    .or(Err(MainError::SwapError))?;
+                window.swap_buffers().or(Err(MainError::SwapError))?;
                 device.cleanup();
             }
 

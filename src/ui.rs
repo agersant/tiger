@@ -231,7 +231,7 @@ fn draw_workbench_window<'a>(
                             commands.pan(ui.imgui().mouse_delta());
                         }
                         if ui.imgui().is_mouse_down(ImMouseButton::Right) {
-                           ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                         }
                     }
                 }
