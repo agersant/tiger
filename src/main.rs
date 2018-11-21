@@ -4,16 +4,11 @@
 #[macro_use]
 extern crate failure;
 use gfx;
-
 use gfx_device_gl;
 use gfx_window_glutin;
 use glutin;
-
-
 use imgui_gfx_renderer;
 use imgui_glutin_support;
-
-
 #[macro_use]
 extern crate serde_derive;
 
