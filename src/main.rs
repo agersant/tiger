@@ -3,17 +3,17 @@
 
 #[macro_use]
 extern crate failure;
-extern crate gfx;
-extern crate gfx_core;
-extern crate gfx_device_gl;
-extern crate gfx_window_glutin;
-extern crate glutin;
-extern crate image;
-extern crate imgui;
-extern crate imgui_gfx_renderer;
-extern crate imgui_glutin_support;
-extern crate serde;
-extern crate serde_json;
+use gfx;
+
+use gfx_device_gl;
+use gfx_window_glutin;
+use glutin;
+
+
+use imgui_gfx_renderer;
+use imgui_glutin_support;
+
+
 #[macro_use]
 extern crate serde_derive;
 
