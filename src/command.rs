@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::sheet::Frame;
+use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
 
 pub enum Command {
@@ -16,6 +16,10 @@ pub enum Command {
     Import,
     SelectFrame(PathBuf),
     EditFrame(PathBuf),
+    CreateAnimation,
+    BeginAnimationRename(String),
+    UpdateAnimationRename(String),
+    EndAnimationRename,
     ZoomIn,
     ZoomOut,
     ResetZoom,
@@ -88,6 +92,25 @@ impl CommandBuffer {
     pub fn edit_frame(&mut self, frame: &Frame) {
         self.queue
             .push(Command::EditFrame(frame.get_source().to_owned()));
+    }
+
+    pub fn create_animation(&mut self) {
+        self.queue.push(Command::CreateAnimation);
+    }
+
+    pub fn begin_animation_rename(&mut self, animation: &Animation) {
+        self.queue.push(Command::BeginAnimationRename(
+            animation.get_name().to_owned(),
+        ));
+    }
+
+    pub fn update_animation_rename<T: AsRef<str>>(&mut self, new_name: T) {
+        self.queue
+            .push(Command::UpdateAnimationRename(new_name.as_ref().to_owned()));
+    }
+
+    pub fn end_animation_rename(&mut self) {
+        self.queue.push(Command::EndAnimationRename);
     }
 
     pub fn zoom_in(&mut self) {

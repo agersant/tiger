@@ -13,6 +13,10 @@ pub enum StateError {
     NoDocumentOpen,
     #[fail(display = "Requested frame is not in document")]
     FrameNotInDocument,
+    #[fail(display = "Requested animation is not in document")]
+    AnimationNotInDocument,
+    #[fail(display = "An animation with this name already exists")]
+    AnimationAlreadyExists,
 }
 
 #[derive(Clone, Debug)]
@@ -21,6 +25,8 @@ pub struct Document {
     sheet: Sheet,
     content_selection: Option<ContentSelection>,
     content_current_tab: ContentTab,
+    content_rename_animation_target: Option<String>,
+    content_rename_animation_buffer: Option<String>,
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
@@ -33,6 +39,8 @@ impl Document {
             sheet: Sheet::new(),
             content_selection: None,
             content_current_tab: ContentTab::Frames,
+            content_rename_animation_target: None,
+            content_rename_animation_buffer: None,
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
@@ -72,6 +80,14 @@ impl Document {
 
     pub fn get_content_selection(&self) -> &Option<ContentSelection> {
         &self.content_selection
+    }
+
+    pub fn get_animation_rename_target(&self) -> &Option<String> {
+        &self.content_rename_animation_target
+    }
+
+    pub fn get_animation_rename_buffer(&self) -> &Option<String> {
+        &self.content_rename_animation_buffer
     }
 
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
@@ -287,6 +303,61 @@ impl State {
         Ok(())
     }
 
+    fn create_animation(&mut self) -> Result<(), Error> {
+        let animation_name;
+        {
+            let document = self
+                .get_current_document_mut()
+                .ok_or(StateError::NoDocumentOpen)?;
+            let sheet = document.get_sheet_mut();
+            animation_name = sheet.add_animation();
+        }
+        self.begin_animation_rename(animation_name)?;
+        Ok(())
+    }
+
+    fn begin_animation_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet_mut();
+        let animation = sheet
+            .get_animation(&old_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+        document.content_rename_animation_target = Some(old_name.as_ref().to_owned());
+        document.content_rename_animation_buffer = Some(old_name.as_ref().to_owned());
+        Ok(())
+    }
+
+    fn update_animation_rename<T: AsRef<str>>(&mut self, new_name: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.content_rename_animation_buffer = Some(new_name.as_ref().to_owned());
+        Ok(())
+    }
+
+    fn end_animation_rename(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        if let (Some(old_name), Some(new_name)) = (
+            document.content_rename_animation_target.as_ref().cloned(),
+            document.content_rename_animation_buffer.as_ref().cloned(),
+        ) {
+            if old_name != new_name {
+                if document.get_sheet().has_animation(&new_name) {
+                    return Err(StateError::AnimationAlreadyExists.into());
+                }
+                let sheet = document.get_sheet_mut();
+                sheet.rename_animation(&old_name, &new_name)?;
+            }
+            document.content_rename_animation_target = None;
+            document.content_rename_animation_buffer = None;
+        }
+        Ok(())
+    }
+
     fn zoom_in(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -374,6 +445,10 @@ impl State {
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
+            Command::CreateAnimation => self.create_animation()?,
+            Command::BeginAnimationRename(old_name) => self.begin_animation_rename(old_name)?,
+            Command::UpdateAnimationRename(new_name) => self.update_animation_rename(new_name)?,
+            Command::EndAnimationRename => self.end_animation_rename()?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,

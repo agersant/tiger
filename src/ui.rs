@@ -3,6 +3,7 @@ use imgui::StyleVar::*;
 use imgui::*;
 
 use crate::command::CommandBuffer;
+use crate::constants::*;
 use crate::state::{self, State};
 use crate::streamer::TextureCache;
 
@@ -290,7 +291,48 @@ fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &m
                                 }
                             }
                         }
-                        ContentTab::Animations => {}
+                        ContentTab::Animations => {
+                            if ui.small_button(im_str!("Add")) {
+                                commands.create_animation();
+                            }
+                            for animation in sheet.animations_iter() {
+                                if Some(animation.get_name().to_owned())
+                                    == *document.get_animation_rename_target()
+                                {
+                                    let popup_id = im_str!("Rename Animation");
+                                    // TODO position modal where selectable is
+                                    ui.popup_modal(&popup_id)
+                                        .title_bar(false)
+                                        .resizable(false)
+                                        .always_auto_resize(true)
+                                        .build(|| {
+                                            let mut s =
+                                                ImString::with_capacity(MAX_ANIMATION_NAME_LENGTH);
+                                            s.push_str(
+                                                &document
+                                                    .get_animation_rename_buffer()
+                                                    .as_ref()
+                                                    .unwrap(),
+                                            );
+                                            let end_rename = ui
+                                                .input_text(im_str!(""), &mut s)
+                                                .enter_returns_true(true)
+                                                .build();
+                                            commands.update_animation_rename(s.to_str());
+                                            if end_rename {
+                                                commands.end_animation_rename();
+                                            }
+                                        });
+                                    ui.open_popup(&popup_id);
+                                }
+                                ui.selectable(
+                                    &ImString::new(animation.get_name()),
+                                    false,
+                                    ImGuiSelectableFlags::empty(),
+                                    ImVec2::new(0.0, 0.0),
+                                );
+                            }
+                        }
                     }
                 }
             });
