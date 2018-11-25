@@ -81,6 +81,7 @@ pub fn run<'a>(
     menu_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
 
     {
+        // TODO Don't overlap other windows
         let workbench_rect = Rect {
             position: (0.0, menu_height),
             size: (window_width, window_height - menu_height),
