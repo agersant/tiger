@@ -77,6 +77,8 @@ pub fn run<'a>(
     let (window_width, window_height) = ui.frame_size().logical_size;
     let (window_width, window_height) = (window_width as f32, window_height as f32);
 
+    let content_width = 0.12 * window_width;
+
     let (_, mut menu_height) = draw_main_menu(ui, &mut commands); // TODO this comes back as 0
     menu_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
 
@@ -89,22 +91,25 @@ pub fn run<'a>(
         draw_workbench_window(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 
-    let documents_rect = Rect {
-        position: (0.0, menu_height),
-        size: (window_width, 0.0),
-    };
-    let (_, mut documents_height) =
-        draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
-    documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+    let documents_height: f32;
+    {
+        let documents_rect = Rect {
+            position: (content_width, menu_height),
+            size: (window_width, 0.0),
+        };
+        let (_, _h) =
+            draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
+        documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+    }
 
     let panels_height = window_height - menu_height - documents_height;
-    let content_width = 0.20 * window_width;
-    let content_height = 0.60 * panels_height;
+    let content_height = 0.80 * panels_height;
+
     {
         let content_rect = Rect {
             position: (
                 0.0,
-                menu_height + documents_height,
+                menu_height,
             ),
             size: (content_width, content_height),
         };
@@ -426,7 +431,7 @@ fn draw_documents_window<'a>(
 
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Documents"))
-            .position(rect.position, ImGuiCond::FirstUseEver)
+            .position(rect.position, ImGuiCond::Always)
             .always_auto_resize(true)
             .collapsible(false)
             .resizable(false)
