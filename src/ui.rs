@@ -448,7 +448,7 @@ fn draw_documents_window<'a>(
 
 fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
     ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Timelint"))
+        ui.window(im_str!("Timeline"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)
             .collapsible(false)
