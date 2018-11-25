@@ -4,8 +4,10 @@ use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use crate::command::Command;
-use crate::constants::*;
 use crate::sheet::Sheet;
+
+const SHEET_FILE_EXTENSION: &str = "tiger";
+const IMAGE_FILE_EXTENSIONS: &str = "png;tga;bmp";
 
 #[derive(Fail, Debug)]
 pub enum StateError {
@@ -321,7 +323,7 @@ impl State {
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
         let sheet = document.get_sheet_mut();
-        let animation = sheet
+        let _animation = sheet
             .get_animation(&old_name)
             .ok_or(StateError::AnimationNotInDocument)?;
         document.content_rename_animation_target = Some(old_name.as_ref().to_owned());

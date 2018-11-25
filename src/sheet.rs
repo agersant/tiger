@@ -1,7 +1,9 @@
 use failure::Error;
 use std::path::{Path, PathBuf};
 
-use crate::constants::*;
+use self::constants::*;
+
+pub mod constants;
 
 #[derive(Fail, Debug)]
 pub enum SheetError {

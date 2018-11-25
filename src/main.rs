@@ -16,11 +16,12 @@ use gfx::Device;
 use std::sync::*;
 
 mod command;
-mod constants;
 mod sheet;
 mod state;
 mod streamer;
 mod ui;
+
+const WINDOW_TITLE: &str = "Tiger";
 
 #[derive(Fail, Debug)]
 pub enum MainError {
@@ -59,7 +60,7 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
 fn main() -> Result<(), failure::Error> {
     let mut events_loop = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
-    let window = glutin::WindowBuilder::new().with_title(constants::WINDOW_TITLE);
+    let window = glutin::WindowBuilder::new().with_title(WINDOW_TITLE);
 
     let (window, mut device, mut factory, mut color_rt, mut depth_rt) =
         gfx_window_glutin::init::<gfx::format::Rgba8, gfx::format::DepthStencil>(
