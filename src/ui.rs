@@ -6,6 +6,7 @@ use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
 use crate::state::{self, State};
 use crate::streamer::TextureCache;
+use crate::utils;
 
 struct Rect {
     position: (f32, f32),
@@ -132,6 +133,9 @@ pub fn run<'a>(
         };
         draw_timeline_window(ui, &timeline_rect, state, &mut commands);
     }
+
+    update_drag_and_drop(ui, state, &mut commands);
+    draw_drag_and_drop(ui, state, texture_cache);
 
     Ok(commands)
 }
@@ -298,6 +302,15 @@ fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &m
                                             commands.select_frame(frame);
                                         }
                                     }
+
+                                    if document.get_content_frame_being_dragged().is_none() {
+                                        if ui.is_item_hovered()
+                                            && ui.imgui().is_mouse_down(ImMouseButton::Left)
+                                            && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+                                        {
+                                            commands.begin_frame_drag(frame);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -372,38 +385,14 @@ fn draw_selection_window<'a>(
                                 if let Some(texture) = texture_cache.get(path) {
                                     let mut space = ui.get_content_region_avail();
                                     space = (200.0, 200.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
-
-                                    if texture.size.0 == 0.0 || texture.size.1 == 0.0 {
-                                        return;
+                                    if let Some(fill) = utils::fill(space, texture.size) {
+                                        let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+                                        cursor_pos = (0.0, 50.0);
+                                        let x = cursor_pos.0 + fill.position.0;
+                                        let y = cursor_pos.1 + fill.position.1;
+                                        ui.set_cursor_pos((x, y));
+                                        ui.image(texture.id, fill.size).build();
                                     }
-                                    if space.0 == 0.0 || space.1 == 0.0 {
-                                        return;
-                                    }
-                                    let aspect_ratio = texture.size.0 / texture.size.1;
-                                    let fit_horizontally =
-                                        (texture.size.0 / space.0) >= (texture.size.1 / space.1);
-                                    let (w, h);
-                                    if fit_horizontally {
-                                        if space.0 > texture.size.0 {
-                                            w = texture.size.0 * (space.0 / texture.size.0).floor();
-                                        } else {
-                                            w = space.0;
-                                        }
-                                        h = w / aspect_ratio;
-                                    } else {
-                                        if space.1 > texture.size.1 {
-                                            h = texture.size.1 * (space.1 / texture.size.1).floor();
-                                        } else {
-                                            h = space.1;
-                                        }
-                                        w = h * aspect_ratio;
-                                    }
-                                    let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
-                                    cursor_pos = (0.0, 50.0);
-                                    let x = cursor_pos.0 + (space.0 - w) / 2.0;
-                                    let y = cursor_pos.1 + (space.1 - h) / 2.0;
-                                    ui.set_cursor_pos((x, y));
-                                    ui.image(texture.id, (w, h)).build();
                                 }
                             }
                         }
@@ -453,6 +442,45 @@ fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &
             .collapsible(false)
             .resizable(false)
             .movable(false)
-            .build(|| {});
+            .build(|| {
+                if let Some(document) = state.get_current_document() {
+                    let frame_being_dragged = document.get_content_frame_being_dragged();
+                    if frame_being_dragged.is_some()
+                        && !ui.imgui().is_mouse_down(ImMouseButton::Left)
+                    {
+                        if ui.is_window_hovered() {
+                            println!("DRAG AND DROP {:?}", frame_being_dragged);
+                        }
+                    }
+                }
+            });
     });
+}
+
+fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+    if let Some(document) = state.get_current_document() {
+        let frame_being_dragged = document.get_content_frame_being_dragged();
+        if frame_being_dragged.is_some() && !ui.imgui().is_mouse_down(ImMouseButton::Left) {
+            commands.end_frame_drag();
+        }
+    }
+}
+
+fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCache) {
+    if let Some(document) = state.get_current_document() {
+        if let Some(path) = document.get_content_frame_being_dragged() {
+            if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
+                ui.tooltip(|| {
+                    if let Some(texture) = texture_cache.get(path) {
+                        let tooltip_size = (128.0, 128.0);
+                        if let Some(fill) = utils::fill(tooltip_size, texture.size) {
+                            ui.image(texture.id, fill.size).build();
+                        }
+                    } else {
+                        // TODO spinner
+                    }
+                });
+            }
+        }
+    }
 }

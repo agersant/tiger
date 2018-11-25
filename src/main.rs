@@ -20,6 +20,7 @@ mod sheet;
 mod state;
 mod streamer;
 mod ui;
+mod utils;
 
 const WINDOW_TITLE: &str = "Tiger";
 

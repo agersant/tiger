@@ -20,6 +20,8 @@ pub enum Command {
     BeginAnimationRename(String),
     UpdateAnimationRename(String),
     EndAnimationRename,
+    BeginFrameDrag(PathBuf),
+    EndFrameDrag,
     ZoomIn,
     ZoomOut,
     ResetZoom,
@@ -111,6 +113,15 @@ impl CommandBuffer {
 
     pub fn end_animation_rename(&mut self) {
         self.queue.push(Command::EndAnimationRename);
+    }
+
+    pub fn begin_frame_drag(&mut self, frame: &Frame) {
+        self.queue
+            .push(Command::BeginFrameDrag(frame.get_source().to_path_buf()));
+    }
+
+    pub fn end_frame_drag(&mut self) {
+        self.queue.push(Command::EndFrameDrag);
     }
 
     pub fn zoom_in(&mut self) {

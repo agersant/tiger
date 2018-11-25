@@ -31,6 +31,7 @@ pub struct Document {
     content_current_tab: ContentTab,
     content_rename_animation_target: Option<String>,
     content_rename_animation_buffer: Option<String>,
+    content_frame_being_dragged: Option<PathBuf>,
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
@@ -45,6 +46,7 @@ impl Document {
             content_current_tab: ContentTab::Frames,
             content_rename_animation_target: None,
             content_rename_animation_buffer: None,
+            content_frame_being_dragged: None,
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
@@ -84,6 +86,10 @@ impl Document {
 
     pub fn get_content_selection(&self) -> &Option<ContentSelection> {
         &self.content_selection
+    }
+
+    pub fn get_content_frame_being_dragged(&self) -> &Option<PathBuf> {
+        &self.content_frame_being_dragged
     }
 
     pub fn get_animation_rename_target(&self) -> &Option<String> {
@@ -375,6 +381,22 @@ impl State {
         Ok(())
     }
 
+    fn begin_frame_drag<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.content_frame_being_dragged = Some(frame.as_ref().to_path_buf());
+        Ok(())
+    }
+
+    fn end_frame_drag(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.content_frame_being_dragged = None;
+        Ok(())
+    }
+
     fn zoom_in(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -466,6 +488,8 @@ impl State {
             Command::BeginAnimationRename(old_name) => self.begin_animation_rename(old_name)?,
             Command::UpdateAnimationRename(new_name) => self.update_animation_rename(new_name)?,
             Command::EndAnimationRename => self.end_animation_rename()?,
+            Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
+            Command::EndFrameDrag => self.end_frame_drag()?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,
