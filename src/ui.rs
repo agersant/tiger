@@ -97,8 +97,7 @@ pub fn run<'a>(
             position: (content_width, menu_height),
             size: (window_width, 0.0),
         };
-        let (_, _h) =
-            draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
+        let (_, _h) = draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
         documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
     }
 
@@ -107,10 +106,7 @@ pub fn run<'a>(
 
     {
         let content_rect = Rect {
-            position: (
-                0.0,
-                menu_height,
-            ),
+            position: (0.0, menu_height),
             size: (content_width, content_height),
         };
         draw_content_window(ui, &content_rect, state, &mut commands);
@@ -121,10 +117,7 @@ pub fn run<'a>(
         let selection_height = panels_height - content_height;
 
         let selection_rect = Rect {
-            position: (
-                0.0,
-                window_height - selection_height,
-            ),
+            position: (0.0, window_height - selection_height),
             size: (selection_width, selection_height),
         };
         draw_selection_window(ui, &selection_rect, state, texture_cache);
@@ -460,7 +453,6 @@ fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &
             .collapsible(false)
             .resizable(false)
             .movable(false)
-            .build(|| {
-            });
+            .build(|| {});
     });
 }
