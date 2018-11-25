@@ -13,6 +13,8 @@ const IMAGE_FILE_EXTENSIONS: &str = "png;tga;bmp";
 pub enum StateError {
     #[fail(display = "No document is open")]
     NoDocumentOpen,
+    #[fail(display = "Requested document was not found")]
+    DocumentNotFound,
     #[fail(display = "Requested frame is not in document")]
     FrameNotInDocument,
     #[fail(display = "Requested animation is not in document")]
@@ -208,13 +210,26 @@ impl State {
         self.documents.push(added_document);
     }
 
-    fn close_current_document(&mut self) {
-        if let Some(path) = &self.current_document {
-            if let Some(index) = self.documents.iter().position(|d| &d.source == path) {
-                self.documents.remove(index);
-            }
-            self.current_document = None;
-        }
+    fn close_current_document(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let index = self
+            .documents
+            .iter()
+            .position(|d| d as *const Document == document as *const Document)
+            .ok_or(StateError::DocumentNotFound)?;
+        self.documents.remove(index);
+        self.current_document = if self.documents.is_empty() {
+            None
+        } else {
+            Some(
+                self.documents[std::cmp::min(index, self.documents.len() - 1)]
+                    .source
+                    .clone(),
+            )
+        };
+        Ok(())
     }
 
     fn close_all_documents(&mut self) {
@@ -438,7 +453,7 @@ impl State {
                     self.current_document = Some(p.clone());
                 }
             }
-            Command::CloseCurrentDocument => self.close_current_document(),
+            Command::CloseCurrentDocument => self.close_current_document()?,
             Command::CloseAllDocuments => self.close_all_documents(),
             Command::SaveCurrentDocument => self.save_current_document()?,
             Command::SaveCurrentDocumentAs => self.save_current_document_as()?,
