@@ -21,6 +21,8 @@ pub enum StateError {
     AnimationNotInDocument,
     #[fail(display = "An animation with this name already exists")]
     AnimationAlreadyExists,
+    #[fail(display = "Not currently editing any animation")]
+    NotEditingAnyAnimation,
 }
 
 #[derive(Clone, Debug)]
@@ -108,6 +110,7 @@ impl Document {
 #[derive(Clone, Debug)]
 pub enum ContentSelection {
     Frame(PathBuf),
+    Animation(String),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -119,6 +122,7 @@ pub enum ContentTab {
 #[derive(Clone, Debug)]
 pub enum WorkbenchItem {
     Frame(PathBuf),
+    Animation(String),
 }
 
 #[derive(Clone, Debug)]
@@ -313,6 +317,18 @@ impl State {
         Ok(())
     }
 
+    fn select_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet();
+        if !sheet.has_animation(&name) {
+            return Err(StateError::AnimationNotInDocument.into());
+        }
+        document.content_selection = Some(ContentSelection::Animation(name.as_ref().to_owned()));
+        Ok(())
+    }
+
     fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -322,6 +338,19 @@ impl State {
             return Err(StateError::FrameNotInDocument.into());
         }
         document.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
+        document.workbench_offset = (0.0, 0.0);
+        Ok(())
+    }
+
+    fn edit_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let sheet = document.get_sheet();
+        if !sheet.has_animation(&name) {
+            return Err(StateError::AnimationNotInDocument.into());
+        }
+        document.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
         document.workbench_offset = (0.0, 0.0);
         Ok(())
     }
@@ -394,6 +423,21 @@ impl State {
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
         document.content_frame_being_dragged = None;
+        Ok(())
+    }
+
+    fn create_animation_frame<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        document
+            .get_sheet_mut()
+            .add_animation_frame(animation, frame)?;
         Ok(())
     }
 
@@ -483,13 +527,16 @@ impl State {
             Command::SwitchToContentTab(tab) => self.switch_to_content_tab(*tab)?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
+            Command::SelectAnimation(a) => self.select_animation(&a)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
+            Command::EditAnimation(a) => self.edit_animation(&a)?,
             Command::CreateAnimation => self.create_animation()?,
             Command::BeginAnimationRename(old_name) => self.begin_animation_rename(old_name)?,
             Command::UpdateAnimationRename(new_name) => self.update_animation_rename(new_name)?,
             Command::EndAnimationRename => self.end_animation_rename()?,
             Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
             Command::EndFrameDrag => self.end_frame_drag()?,
+            Command::CreateAnimationFrame(f) => self.create_animation_frame(f)?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,

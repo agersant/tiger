@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
@@ -15,13 +15,16 @@ pub enum Command {
     SwitchToContentTab(ContentTab),
     Import,
     SelectFrame(PathBuf),
+    SelectAnimation(String),
     EditFrame(PathBuf),
+    EditAnimation(String),
     CreateAnimation,
     BeginAnimationRename(String),
     UpdateAnimationRename(String),
     EndAnimationRename,
     BeginFrameDrag(PathBuf),
     EndFrameDrag,
+    CreateAnimationFrame(PathBuf),
     ZoomIn,
     ZoomOut,
     ResetZoom,
@@ -91,9 +94,19 @@ impl CommandBuffer {
             .push(Command::SelectFrame(frame.get_source().to_owned()));
     }
 
+    pub fn select_animation(&mut self, animation: &Animation) {
+        self.queue
+            .push(Command::SelectAnimation(animation.get_name().to_owned()));
+    }
+
     pub fn edit_frame(&mut self, frame: &Frame) {
         self.queue
             .push(Command::EditFrame(frame.get_source().to_owned()));
+    }
+
+    pub fn edit_animation(&mut self, animation: &Animation) {
+        self.queue
+            .push(Command::EditAnimation(animation.get_name().to_owned()));
     }
 
     pub fn create_animation(&mut self) {
@@ -122,6 +135,11 @@ impl CommandBuffer {
 
     pub fn end_frame_drag(&mut self) {
         self.queue.push(Command::EndFrameDrag);
+    }
+
+    pub fn create_animation_frame<T: AsRef<Path>>(&mut self, frame: T) {
+        self.queue
+            .push(Command::CreateAnimationFrame(frame.as_ref().to_path_buf()));
     }
 
     pub fn zoom_in(&mut self) {

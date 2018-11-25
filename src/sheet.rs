@@ -7,6 +7,8 @@ pub mod constants;
 
 #[derive(Fail, Debug)]
 pub enum SheetError {
+    #[fail(display = "Frame was not found")]
+    FrameNotFound,
     #[fail(display = "Animation was not found")]
     AnimationNotFound,
     #[fail(display = "Animation name too long")]
@@ -46,6 +48,16 @@ pub struct AnimationFrame {
     frame: PathBuf,
     duration: u32,
     offset: (u32, u32),
+}
+
+impl AnimationFrame {
+    pub fn new<T: AsRef<Path>>(frame: T) -> AnimationFrame {
+        AnimationFrame {
+            frame: frame.as_ref().to_owned(),
+            duration: 100, // TODO better default?
+            offset: (0, 0),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -89,6 +101,16 @@ impl Sheet {
         self.animations.iter()
     }
 
+    pub fn animation_frames_iter<T: AsRef<str>>(
+        &self,
+        animation: T,
+    ) -> Result<std::slice::Iter<AnimationFrame>, Error> {
+        let animation = self
+            .get_animation(animation)
+            .ok_or(SheetError::AnimationNotFound)?;
+        Ok(animation.timeline.iter())
+    }
+
     pub fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {
         self.frames.iter().any(|f| &f.source == path.as_ref())
     }
@@ -115,6 +137,22 @@ impl Sheet {
         let animation = Animation::new(&name);
         self.animations.push(animation);
         name
+    }
+
+    pub fn add_animation_frame<T: AsRef<str>, U: AsRef<Path>>(
+        &mut self,
+        animation: T,
+        frame: U,
+    ) -> Result<(), SheetError> {
+        if !self.has_frame(&frame) {
+            return Err(SheetError::FrameNotFound.into());
+        }
+        let animation = self
+            .get_animation_mut(animation)
+            .ok_or(SheetError::AnimationNotFound)?;
+        let animation_frame = AnimationFrame::new(frame);
+        animation.timeline.push(animation_frame);
+        Ok(())
     }
 
     pub fn get_animation<T: AsRef<str>>(&self, name: T) -> Option<&Animation> {

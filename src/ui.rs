@@ -348,12 +348,25 @@ fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &m
                                         });
                                     ui.open_popup(&popup_id);
                                 }
-                                ui.selectable(
+
+                                let is_selected = match document.get_content_selection() {
+                                    Some(ContentSelection::Animation(a)) => a == animation.get_name(),
+                                    _ => false,
+                                };
+                                let mut flags = ImGuiSelectableFlags::empty();
+                                flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
+                                if ui.selectable(
                                     &ImString::new(animation.get_name()),
-                                    false,
-                                    ImGuiSelectableFlags::empty(),
+                                    is_selected,
+                                    flags,
                                     ImVec2::new(0.0, 0.0),
-                                );
+                                ) {
+                                    if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
+                                        commands.edit_animation(animation);
+                                    } else {
+                                        commands.select_animation(animation);
+                                    }
+                                }
                             }
                         }
                     }
@@ -444,13 +457,26 @@ fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &
             .movable(false)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-                    let frame_being_dragged = document.get_content_frame_being_dragged();
-                    if frame_being_dragged.is_some()
-                        && !ui.imgui().is_mouse_down(ImMouseButton::Left)
-                    {
-                        if ui.is_window_hovered() {
-                            println!("DRAG AND DROP {:?}", frame_being_dragged);
+                    if ui.is_window_hovered() && !ui.imgui().is_mouse_down(ImMouseButton::Left) {
+                        if let Some(frame_being_dragged) =
+                            document.get_content_frame_being_dragged()
+                        {
+                            // TODO allow dropping on workbench
+                            commands.create_animation_frame(frame_being_dragged);
                         }
+                    }
+                    match document.get_workbench_item() {
+                        Some(state::WorkbenchItem::Animation(animation)) => {
+                            match document.get_sheet().animation_frames_iter(animation) {
+                                Ok(animation_frames) => {
+                                    for animation_frame in animation_frames {
+                                        ui.text("frame");
+                                    }
+                                }
+                                _ => (), // TODO?
+                            }
+                        }
+                        _ => (), // TODO?
                     }
                 }
             });
