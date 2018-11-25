@@ -76,7 +76,6 @@ pub fn run<'a>(
 
     let (window_width, window_height) = ui.frame_size().logical_size;
     let (window_width, window_height) = (window_width as f32, window_height as f32);
-    let window_padding = 20.0;
 
     let (_, mut menu_height) = draw_main_menu(ui, &mut commands); // TODO this comes back as 0
     menu_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
@@ -90,21 +89,21 @@ pub fn run<'a>(
     }
 
     let documents_rect = Rect {
-        position: (window_padding, menu_height),
-        size: (window_width - 2.0 * window_padding, 0.0),
+        position: (0.0, menu_height),
+        size: (window_width, 0.0),
     };
     let (_, mut documents_height) =
         draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
     documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
 
-    let panels_height = window_height - menu_height - documents_height - 2.0 * window_padding;
-    let content_width = 0.20 * (window_width - 2.0 * window_padding);
+    let panels_height = window_height - menu_height - documents_height;
+    let content_width = 0.20 * window_width;
     let content_height = 0.60 * panels_height;
     {
         let content_rect = Rect {
             position: (
-                window_padding,
-                menu_height + documents_height + window_padding,
+                0.0,
+                menu_height + documents_height,
             ),
             size: (content_width, content_height),
         };
@@ -117,8 +116,8 @@ pub fn run<'a>(
 
         let selection_rect = Rect {
             position: (
-                window_padding,
-                window_height - window_padding - selection_height,
+                0.0,
+                window_height - selection_height,
             ),
             size: (selection_width, selection_height),
         };
@@ -126,10 +125,10 @@ pub fn run<'a>(
     }
 
     {
-        let timeline_width = window_width - 2.0 * window_padding - content_width;
+        let timeline_width = window_width - content_width;
         let timeline_height = panels_height - content_height;
         let timeline_rect = Rect {
-            position: (window_padding + content_width, window_height - window_padding - timeline_height),
+            position: (content_width, window_height - timeline_height),
             size: (timeline_width, timeline_height),
         };
         draw_timeline_window(ui, &timeline_rect, state, &mut commands);
