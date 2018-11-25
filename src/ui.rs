@@ -97,14 +97,10 @@ pub fn run<'a>(
         draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
     documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
 
+    let panels_height = window_height - menu_height - documents_height - 2.0 * window_padding;
+    let content_width = 0.20 * (window_width - 2.0 * window_padding);
+    let content_height = 0.60 * panels_height;
     {
-        let content_width = 0.20 * (window_width - 2.0 * window_padding);
-        let selection_width = content_width;
-
-        let panels_height = window_height - menu_height - documents_height - 2.0 * window_padding;
-        let content_height = 0.60 * panels_height;
-        let selection_height = panels_height - content_height;
-
         let content_rect = Rect {
             position: (
                 window_padding,
@@ -112,6 +108,13 @@ pub fn run<'a>(
             ),
             size: (content_width, content_height),
         };
+        draw_content_window(ui, &content_rect, state, &mut commands);
+    }
+
+    {
+        let selection_width = content_width;
+        let selection_height = panels_height - content_height;
+
         let selection_rect = Rect {
             position: (
                 window_padding,
@@ -119,8 +122,17 @@ pub fn run<'a>(
             ),
             size: (selection_width, selection_height),
         };
-        draw_content_window(ui, &content_rect, state, &mut commands);
         draw_selection_window(ui, &selection_rect, state, texture_cache);
+    }
+
+    {
+        let timeline_width = window_width - 2.0 * window_padding - content_width;
+        let timeline_height = panels_height - content_height;
+        let timeline_rect = Rect {
+            position: (window_padding + content_width, window_height - window_padding - timeline_height),
+            size: (timeline_width, timeline_height),
+        };
+        draw_timeline_window(ui, &timeline_rect, state, &mut commands);
     }
 
     Ok(commands)
@@ -433,4 +445,17 @@ fn draw_documents_window<'a>(
     });
 
     *size
+}
+
+fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
+    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+        ui.window(im_str!("Timelint"))
+            .position(rect.position, ImGuiCond::Always)
+            .size(rect.size, ImGuiCond::Always)
+            .collapsible(false)
+            .resizable(false)
+            .movable(false)
+            .build(|| {
+            });
+    });
 }
