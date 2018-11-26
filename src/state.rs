@@ -38,6 +38,7 @@ pub struct Document {
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
+    timeline_zoom_level: i32,
 }
 
 impl Document {
@@ -53,6 +54,7 @@ impl Document {
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
+            timeline_zoom_level: 1,
         }
     }
 
@@ -508,6 +510,17 @@ impl State {
             document.workbench_zoom_level as f32
         } else {
             1.0 / document.workbench_zoom_level as f32
+        })
+    }
+
+    pub fn get_timeline_zoom_factor(&self) -> Result<f32, Error> {
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+        Ok(if document.timeline_zoom_level >= 0 {
+            document.timeline_zoom_level as f32
+        } else {
+            1.0 / document.timeline_zoom_level as f32
         })
     }
 

@@ -41,13 +41,13 @@ fn draw_animation<'a>(
             if let Some(fill) = utils::fill(space, bbox_size) {
                 let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
                 cursor_pos = (0.0, 50.0);
-                let duration = animation.get_duration().unwrap();
+                let duration = animation.get_duration().unwrap(); // TODO no unwrap
                 let time = Duration::new(
                     0,
                     1_000_000 * (state.get_clock().as_millis() as u32 % duration),
                 ); // TODO pause on first and last frame for non looping animation
 
-                let animation_frame = animation.get_frame_at(time).unwrap();
+                let animation_frame = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
                     let x = cursor_pos.0
                         + fill.position.0

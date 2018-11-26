@@ -64,6 +64,10 @@ impl AnimationFrame {
         &self.frame
     }
 
+    pub fn get_duration(&self) -> u32 {
+        self.duration
+    }
+
     pub fn get_offset(&self) -> (i32, i32) {
         self.offset
     }

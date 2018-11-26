@@ -303,7 +303,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
                 ui.tooltip(|| {
                     if let Some(texture) = texture_cache.get(path) {
-                        let tooltip_size = (128.0, 128.0);
+                        let tooltip_size = (128.0, 128.0); // TODO hidpi?
                         if let Some(fill) = utils::fill(tooltip_size, texture.size) {
                             ui.image(texture.id, fill.size).build();
                         }
