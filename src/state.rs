@@ -2,6 +2,7 @@ use failure::Error;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use crate::command::Command;
 use crate::sheet::Sheet;
@@ -129,6 +130,7 @@ pub enum WorkbenchItem {
 pub struct State {
     documents: Vec<Document>,
     current_document: Option<PathBuf>,
+    clock: Duration,
 }
 
 impl State {
@@ -136,7 +138,16 @@ impl State {
         State {
             documents: vec![],
             current_document: None,
+            clock: Duration::new(0, 0),
         }
+    }
+
+    pub fn tick(&mut self, delta: Duration) {
+        self.clock += delta;
+    }
+
+    pub fn get_clock(&self) -> Duration {
+        self.clock
     }
 
     fn is_document_open<T: AsRef<Path>>(&self, path: T) -> bool {

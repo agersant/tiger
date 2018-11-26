@@ -15,6 +15,7 @@ extern crate serde_derive;
 use gfx::Device;
 use std::ops::{Deref, DerefMut};
 use std::sync::*;
+use std::time::Instant;
 
 mod command;
 mod sheet;
@@ -125,11 +126,17 @@ fn main() -> Result<(), failure::Error> {
 
     std::thread::spawn(move || {
         let mut state = state::State::new();
+        let mut last_frame = Instant::now();
 
         loop {
-
             // Wait for main thread to complete its frame
             barrier_for_worker.wait();
+
+            // Update clock
+            let now = Instant::now();
+            let delta = now - last_frame;
+            last_frame = now;
+            state.tick(delta);
 
             // Gather new commands
             let new_commands;
@@ -137,7 +144,6 @@ fn main() -> Result<(), failure::Error> {
                 let mut buff = command_buffer_for_worker.lock().unwrap();
                 new_commands = buff.flush();
             }
-
 
             'commands: for command in &new_commands {
                 if !is_async_command(command) {
@@ -147,7 +153,6 @@ fn main() -> Result<(), failure::Error> {
                         break 'commands;
                     }
                 } else {
-
                     // Offload command to async_worker
 
                     {

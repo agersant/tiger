@@ -1,5 +1,6 @@
 use failure::Error;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use self::constants::*;
 
@@ -46,8 +47,8 @@ impl Frame {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AnimationFrame {
     frame: PathBuf,
-    duration: u32,
-    offset: (u32, u32),
+    duration: u32, // in ms
+    offset: (i32, i32),
 }
 
 impl AnimationFrame {
@@ -58,12 +59,21 @@ impl AnimationFrame {
             offset: (0, 0),
         }
     }
+
+    pub fn get_frame(&self) -> &Path {
+        &self.frame
+    }
+
+    pub fn get_offset(&self) -> (i32, i32) {
+        self.offset
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Animation {
     name: String,
     timeline: Vec<AnimationFrame>,
+    is_looping: bool,
 }
 
 impl Animation {
@@ -71,11 +81,48 @@ impl Animation {
         Animation {
             name: name.as_ref().to_owned(),
             timeline: vec![],
+            is_looping: true,
         }
     }
 
     pub fn get_name(&self) -> &str {
         &self.name
+    }
+
+    pub fn get_num_frames(&self) -> usize {
+        self.timeline.len()
+    }
+
+    pub fn get_duration(&self) -> Option<u32> {
+        if self.timeline.len() == 0 {
+            return None;
+        }
+        Some(self.timeline.iter().map(|f| f.duration).sum())
+    }
+
+    pub fn get_frame_at(&self, time: Duration) -> Option<&AnimationFrame> {
+        let duration = match self.get_duration() {
+            None => return None,
+            Some(0) => return None,
+            Some(d) => d,
+        };
+        let time = if self.is_looping {
+            Duration::new(0, 1_000_000 * (time.as_millis() as u32 % duration))
+        } else {
+            time
+        };
+        let mut cursor = Duration::new(0, 0);
+        for frame in &self.timeline {
+            cursor = cursor + Duration::new(0, frame.duration * 1_000_000);
+            if time < cursor {
+                return Some(frame);
+            }
+        }
+        self.timeline.iter().last()
+    }
+
+    pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {
+        self.timeline.iter()
     }
 }
 
@@ -108,7 +155,7 @@ impl Sheet {
         let animation = self
             .get_animation(animation)
             .ok_or(SheetError::AnimationNotFound)?;
-        Ok(animation.timeline.iter())
+        Ok(animation.frames_iter())
     }
 
     pub fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {

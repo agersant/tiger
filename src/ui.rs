@@ -1,6 +1,7 @@
 use failure::Error;
 use imgui::StyleVar::*;
 use imgui::*;
+use std::time::Duration;
 
 use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
@@ -409,6 +410,57 @@ fn draw_selection_window<'a>(
                                         ui.image(texture.id, fill.size).build();
                                     }
                                 }
+                            }
+                        }
+                        Some(state::ContentSelection::Animation(name)) => {
+                            ui.text(&ImString::new(name.to_owned()));
+                            if let Some(animation) = document.get_sheet().get_animation(name) {
+                                match utils::get_bounding_box(animation, texture_cache) {
+                                    Ok(bbox) => {
+                                        let mut space = ui.get_content_region_avail();
+                                        space = (200.0, 200.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+                                        let bbox_size = (bbox.size.0 as f32, bbox.size.1 as f32);
+                                        if let Some(fill) = utils::fill(space, bbox_size) {
+                                            let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+                                            cursor_pos = (0.0, 50.0);
+                                            let duration = animation.get_duration().unwrap();
+                                            let time = Duration::new(
+                                                0,
+                                                1_000_000
+                                                    * (state.get_clock().as_millis() as u32
+                                                        % duration),
+                                            ); // TODO pause on first and last frame for non looping animation
+
+                                            let animation_frame =
+                                                animation.get_frame_at(time).unwrap();
+                                            if let Some(texture) =
+                                                texture_cache.get(animation_frame.get_frame())
+                                            {
+                                                let x = cursor_pos.0
+                                                    + fill.position.0
+                                                    + fill.zoom * (bbox_size.0 - texture.size.0)
+                                                        / 2.0
+                                                    + animation_frame.get_offset().0 as f32;
+                                                let y = cursor_pos.1
+                                                    + fill.position.1
+                                                    + fill.zoom * (bbox_size.1 - texture.size.1)
+                                                        / 2.0
+                                                    + animation_frame.get_offset().1 as f32;
+                                                ui.set_cursor_pos((x, y));
+                                                let draw_size = (
+                                                    fill.zoom * texture.size.0,
+                                                    fill.zoom * texture.size.1,
+                                                );
+                                                ui.image(texture.id, draw_size).build();
+                                            } else {
+                                                // TODO
+                                            }
+                                        }
+                                    }
+                                    _ => (), // TODO
+                                }
+                            } else {
+                                // TODO
                             }
                         }
                         _ => (),
