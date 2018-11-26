@@ -58,6 +58,7 @@ impl Document {
 
     pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
         let file = BufReader::new(File::open(path.as_ref())?);
+        // TODO support old versions!!!
         let sheet = serde_json::from_reader(file)?;
         let mut document = Document::new(&path);
         document.sheet = sheet;
