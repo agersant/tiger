@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
 
+#[derive(Clone)]
 pub enum Command {
     NewDocument,
     OpenDocument,
