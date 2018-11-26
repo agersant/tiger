@@ -202,6 +202,10 @@ impl Sheet {
         Ok(())
     }
 
+    pub fn get_frame<T: AsRef<Path>>(&self, path: T) -> Option<&Frame> {
+        self.frames.iter().find(|f| &f.source == path.as_ref())
+    }
+
     pub fn get_animation<T: AsRef<str>>(&self, name: T) -> Option<&Animation> {
         self.animations.iter().find(|a| &a.name == name.as_ref())
     }
