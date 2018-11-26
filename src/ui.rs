@@ -9,6 +9,7 @@ use crate::utils;
 
 mod content_window;
 mod selection_window;
+mod timeline_window;
 
 pub struct Rect {
     position: (f32, f32),
@@ -133,7 +134,7 @@ pub fn run<'a>(
             position: (content_width, window_height - timeline_height),
             size: (timeline_width, timeline_height),
         };
-        draw_timeline_window(ui, &timeline_rect, state, &mut commands);
+        timeline_window::draw(ui, &timeline_rect, state, &mut commands);
     }
 
     update_drag_and_drop(ui, state, &mut commands);
@@ -285,42 +286,6 @@ fn draw_documents_window<'a>(
     });
 
     *size
-}
-
-fn draw_timeline_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Timeline"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
-            .collapsible(false)
-            .resizable(false)
-            .movable(false)
-            .build(|| {
-                if let Some(document) = state.get_current_document() {
-                    if ui.is_window_hovered() && !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-                        if let Some(frame_being_dragged) =
-                            document.get_content_frame_being_dragged()
-                        {
-                            // TODO allow dropping on workbench
-                            commands.create_animation_frame(frame_being_dragged);
-                        }
-                    }
-                    match document.get_workbench_item() {
-                        Some(state::WorkbenchItem::Animation(animation)) => {
-                            match document.get_sheet().animation_frames_iter(animation) {
-                                Ok(animation_frames) => {
-                                    for animation_frame in animation_frames {
-                                        ui.text("frame");
-                                    }
-                                }
-                                _ => (), // TODO?
-                            }
-                        }
-                        _ => (), // TODO?
-                    }
-                }
-            });
-    });
 }
 
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
