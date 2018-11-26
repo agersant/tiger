@@ -123,7 +123,7 @@ pub fn run<'a>(
             position: (0.0, window_height - selection_height),
             size: (selection_width, selection_height),
         };
-        self::selection_window::draw(ui, &selection_rect, state, texture_cache);
+        selection_window::draw(ui, &selection_rect, state, texture_cache);
     }
 
     {
