@@ -350,7 +350,9 @@ fn draw_content_window<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &m
                                 }
 
                                 let is_selected = match document.get_content_selection() {
-                                    Some(ContentSelection::Animation(a)) => a == animation.get_name(),
+                                    Some(ContentSelection::Animation(a)) => {
+                                        a == animation.get_name()
+                                    }
                                     _ => false,
                                 };
                                 let mut flags = ImGuiSelectableFlags::empty();
