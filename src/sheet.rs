@@ -71,6 +71,10 @@ impl AnimationFrame {
     pub fn get_offset(&self) -> (i32, i32) {
         self.offset
     }
+
+    pub fn set_duration(&mut self, new_duration: u32) {
+        self.duration = new_duration;
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -102,6 +106,20 @@ impl Animation {
             return None;
         }
         Some(self.timeline.iter().map(|f| f.duration).sum())
+    }
+
+    pub fn get_frame(&mut self, index: usize) -> Option<&AnimationFrame> {
+        if index >= self.timeline.len() {
+            return None;
+        }
+        return Some(&self.timeline[index]);
+    }
+
+    pub fn get_frame_mut(&mut self, index: usize) -> Option<&mut AnimationFrame> {
+        if index >= self.timeline.len() {
+            return None;
+        }
+        return Some(&mut self.timeline[index]);
     }
 
     pub fn get_frame_at(&self, time: Duration) -> Option<&AnimationFrame> {

@@ -26,6 +26,9 @@ pub enum Command {
     BeginFrameDrag(PathBuf),
     EndFrameDrag,
     CreateAnimationFrame(PathBuf),
+    BeginAnimationFrameDurationDrag(usize),
+    UpdateAnimationFrameDurationDrag(u32),
+    EndAnimationFrameDurationDrag(),
     ZoomIn,
     ZoomOut,
     ResetZoom,
@@ -141,6 +144,21 @@ impl CommandBuffer {
     pub fn create_animation_frame<T: AsRef<Path>>(&mut self, frame: T) {
         self.queue
             .push(Command::CreateAnimationFrame(frame.as_ref().to_path_buf()));
+    }
+
+    pub fn begin_animation_frame_duration_drag(&mut self, animation_frame_index: usize) {
+        self.queue.push(Command::BeginAnimationFrameDurationDrag(
+            animation_frame_index,
+        ));
+    }
+
+    pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) {
+        self.queue
+            .push(Command::UpdateAnimationFrameDurationDrag(new_duration));
+    }
+
+    pub fn end_animation_frame_duration_drag(&mut self) {
+        self.queue.push(Command::EndAnimationFrameDurationDrag());
     }
 
     pub fn zoom_in(&mut self) {

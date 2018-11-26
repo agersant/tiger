@@ -4,20 +4,22 @@ use std::time::Duration;
 
 use crate::command::CommandBuffer;
 use crate::sheet::AnimationFrame;
-use crate::state::{self, State};
+use crate::state::{self, Document, State};
 use crate::ui::Rect;
 
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
     state: &State,
+    commands: &mut CommandBuffer,
     draw_list: &WindowDrawList,
+    document: &Document,
+    frame_index: usize,
     frame: &AnimationFrame,
     frame_starts_at: Duration,
 ) {
     if let Ok(zoom) = state.get_timeline_zoom_factor() {
         let w = frame.get_duration() as f32 * zoom;
         let h = 20.0; // TODO DPI?
-        let highlight_height = 4.0; // TODO DPI?
         let outline_size = 1.0; // TODO DPI?
         let resize_handle_size = 16.0; // TODO DPI?
 
@@ -57,10 +59,31 @@ fn draw_animation_frame<'a>(
 
         let id = format!("frame_{}", top_left.0);
         ui.set_cursor_screen_pos((bottom_right.0 - resize_handle_size / 2.0, top_left.1));
+
         ui.invisible_button(&ImString::new(id), (resize_handle_size, h));
-        if ui.is_item_hovered() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-        }
+
+        let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+        match document.get_timeline_frame_being_dragged() {
+            None => {
+                if ui.is_item_hovered() {
+                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
+                    if is_mouse_down && !is_mouse_dragging {
+                        commands.begin_animation_frame_duration_drag(frame_index);
+                    }
+                }
+            }
+            Some(i) if *i == frame_index => {
+                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
+                if is_mouse_dragging {
+                    let mouse_pos = ui.imgui().mouse_pos();
+                    let new_width = mouse_pos.0 - top_left.0;
+                    let new_duration = std::cmp::max((new_width / zoom).ceil() as i32, 1) as u32;
+                    commands.update_animation_frame_duration_drag(new_duration);
+                }
+            }
+            _ => (),
+        };
     }
 }
 
@@ -90,12 +113,17 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     let draw_list = ui.get_window_draw_list();
                                     let initial_cursor_position = ui.get_cursor_screen_pos();
                                     let mut cursor = Duration::new(0, 0);
-                                    for animation_frame in animation_frames {
+                                    for (frame_index, animation_frame) in
+                                        animation_frames.enumerate()
+                                    {
                                         ui.set_cursor_screen_pos(initial_cursor_position);
                                         draw_animation_frame(
                                             ui,
                                             state,
+                                            commands,
                                             &draw_list,
+                                            document,
+                                            frame_index,
                                             animation_frame,
                                             cursor,
                                         );

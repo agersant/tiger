@@ -24,6 +24,10 @@ pub enum StateError {
     AnimationAlreadyExists,
     #[fail(display = "Not currently editing any animation")]
     NotEditingAnyAnimation,
+    #[fail(display = "Animation does not have a frame at the requested index")]
+    InvalidAnimationFrameIndex,
+    #[fail(display = "Currently not adjusting the duration of an animation frame")]
+    NotDraggingATimelineFrame,
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +43,7 @@ pub struct Document {
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
     timeline_zoom_level: i32,
+    timeline_frame_being_dragged: Option<usize>,
 }
 
 impl Document {
@@ -55,6 +60,7 @@ impl Document {
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
             timeline_zoom_level: 1,
+            timeline_frame_being_dragged: None,
         }
     }
 
@@ -104,6 +110,10 @@ impl Document {
 
     pub fn get_animation_rename_buffer(&self) -> &Option<String> {
         &self.content_rename_animation_buffer
+    }
+
+    pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
+        &self.timeline_frame_being_dragged
     }
 
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
@@ -455,6 +465,59 @@ impl State {
         Ok(())
     }
 
+    fn begin_animation_frame_duration_drag(&mut self, animation_index: usize) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        let animation = document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+        let _animation_frame = animation
+            .get_frame(animation_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        document.timeline_frame_being_dragged = Some(animation_index);
+        Ok(())
+    }
+
+    fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        let animation_index = document
+            .timeline_frame_being_dragged
+            .ok_or(StateError::NotDraggingATimelineFrame)?;
+
+        let animation_frame = document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?
+            .get_frame_mut(animation_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+
+        animation_frame.set_duration(new_duration);
+        Ok(())
+    }
+
+    fn end_animation_frame_duration_drag(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_frame_being_dragged = None;
+        Ok(())
+    }
+
     fn zoom_in(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -562,6 +625,13 @@ impl State {
             Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
             Command::EndFrameDrag => self.end_frame_drag()?,
             Command::CreateAnimationFrame(f) => self.create_animation_frame(f)?,
+            Command::BeginAnimationFrameDurationDrag(a) => {
+                self.begin_animation_frame_duration_drag(*a)?
+            }
+            Command::UpdateAnimationFrameDurationDrag(d) => {
+                self.update_animation_frame_duration_drag(*d)?
+            }
+            Command::EndAnimationFrameDurationDrag() => self.end_animation_frame_duration_drag()?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,

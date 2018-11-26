@@ -290,9 +290,15 @@ fn draw_documents_window<'a>(
 
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
-        let frame_being_dragged = document.get_content_frame_being_dragged();
-        if frame_being_dragged.is_some() && !ui.imgui().is_mouse_down(ImMouseButton::Left) {
+        if document.get_content_frame_being_dragged().is_some()
+            && !ui.imgui().is_mouse_down(ImMouseButton::Left)
+        {
             commands.end_frame_drag();
+        }
+        if document.get_timeline_frame_being_dragged().is_some()
+            && !ui.imgui().is_mouse_down(ImMouseButton::Left)
+        {
+            commands.end_animation_frame_duration_drag();
         }
     }
 }
