@@ -132,14 +132,12 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                     {
                         if let Some(animation) = document.get_sheet().get_animation(animation_name)
                         {
-                            if ui.is_window_hovered()
-                                && !ui.imgui().is_mouse_down(ImMouseButton::Left)
-                            {
-                                if let Some(frame_being_dragged) =
-                                    document.get_content_frame_being_dragged()
-                                {
+                            let is_window_hovered = ui.is_window_hovered();
+                            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+                            if is_window_hovered && !is_mouse_down {
+                                if let Some(frame) = document.get_content_frame_being_dragged() {
                                     // TODO allow dropping frame on workbench
-                                    commands.create_animation_frame(frame_being_dragged);
+                                    commands.create_animation_frame(frame);
                                 }
                             }
 

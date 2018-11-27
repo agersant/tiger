@@ -85,8 +85,7 @@ impl Document {
                             // Stop playhead at the end of animation
                             } else if clock_ms >= d as u128 {
                                 self.timeline_playing = false;
-                                self.timeline_clock =
-                                    Duration::new(0, d * 1_000_000)
+                                self.timeline_clock = Duration::new(0, d * 1_000_000)
                             }
                         }
 
