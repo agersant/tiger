@@ -101,6 +101,10 @@ impl Animation {
         self.timeline.len()
     }
 
+    pub fn is_looping(&self) -> bool {
+        self.is_looping
+    }
+
     pub fn get_duration(&self) -> Option<u32> {
         if self.timeline.len() == 0 {
             return None;
@@ -168,16 +172,6 @@ impl Sheet {
 
     pub fn animations_iter(&self) -> std::slice::Iter<Animation> {
         self.animations.iter()
-    }
-
-    pub fn animation_frames_iter<T: AsRef<str>>(
-        &self,
-        animation: T,
-    ) -> Result<std::slice::Iter<AnimationFrame>, Error> {
-        let animation = self
-            .get_animation(animation)
-            .ok_or(SheetError::AnimationNotFound)?;
-        Ok(animation.frames_iter())
     }
 
     pub fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {

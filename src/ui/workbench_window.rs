@@ -40,16 +40,16 @@ fn draw_animation<'a>(
         state.get_workbench_zoom_factor(),
         state.get_workbench_offset(),
     ) {
-		let now = document.get_timeline_clock();
-		if let Some(animation_frame) = animation.get_frame_at(now) {
-			if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-				let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-				let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
-				let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
-				ui.set_cursor_pos((cursor_x, cursor_y));
-				ui.image(texture.id, draw_size).build();
-			}
-		}
+        let now = document.get_timeline_clock();
+        if let Some(animation_frame) = animation.get_frame_at(now) {
+            if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
+                let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+                let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
+                let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
+                ui.set_cursor_pos((cursor_x, cursor_y));
+                ui.image(texture.id, draw_size).build();
+            }
+        }
     }
 }
 
