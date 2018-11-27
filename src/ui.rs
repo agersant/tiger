@@ -3,13 +3,14 @@ use imgui::StyleVar::*;
 use imgui::*;
 
 use crate::command::CommandBuffer;
-use crate::state::{self, State};
+use crate::state::State;
 use crate::streamer::TextureCache;
 use crate::utils;
 
 mod content_window;
 mod selection_window;
 mod timeline_window;
+mod workbench_window;
 
 pub struct Rect {
     position: (f32, f32),
@@ -92,7 +93,7 @@ pub fn run<'a>(
             position: (0.0, menu_height),
             size: (window_width, window_height - menu_height),
         };
-        draw_workbench_window(ui, &workbench_rect, state, &mut commands, texture_cache);
+        workbench_window::draw(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 
     let documents_height: f32;
@@ -196,65 +197,6 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
     });
 
     *size
-}
-
-fn draw_workbench_window<'a>(
-    ui: &Ui<'a>,
-    rect: &Rect,
-    state: &State,
-    commands: &mut CommandBuffer,
-    texture_cache: &TextureCache,
-) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Workbench"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
-            .collapsible(false)
-            .resizable(false)
-            .title_bar(false)
-            .menu_bar(false)
-            .movable(false)
-            .no_bring_to_front_on_focus(true)
-            .build(|| {
-                if let Some(document) = state.get_current_document() {
-                    match document.get_workbench_item() {
-                        Some(state::WorkbenchItem::Frame(path)) => {
-                            if let Some(texture) = texture_cache.get(&path) {
-                                if let (Ok(zoom), Ok(offset)) = (
-                                    state.get_workbench_zoom_factor(),
-                                    state.get_workbench_offset(),
-                                ) {
-                                    let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-                                    let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
-                                    let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
-                                    ui.set_cursor_pos((cursor_x, cursor_y));
-                                    ui.image(texture.id, draw_size).build();
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-
-                    if ui.imgui().key_ctrl() {
-                        let mouse_wheel = ui.imgui().mouse_wheel();
-                        if mouse_wheel > 0.0 {
-                            commands.zoom_in();
-                        } else if mouse_wheel < 0.0 {
-                            commands.zoom_out();
-                        }
-                    }
-
-                    if ui.is_window_hovered() {
-                        if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
-                            commands.pan(ui.imgui().mouse_delta());
-                        }
-                        if ui.imgui().is_mouse_down(ImMouseButton::Right) {
-                            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                        }
-                    }
-                }
-            });
-    });
 }
 
 fn draw_documents_window<'a>(
