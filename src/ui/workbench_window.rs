@@ -2,8 +2,8 @@ use imgui::StyleVar::*;
 use imgui::*;
 
 use crate::command::CommandBuffer;
-use crate::sheet::Frame;
-use crate::state::{self, State};
+use crate::sheet::{Animation, Frame};
+use crate::state::{self, Document, State};
 use crate::streamer::TextureCache;
 use crate::ui::Rect;
 
@@ -28,7 +28,30 @@ fn draw_frame<'a>(
     }
 }
 
-fn draw_animation() {}
+fn draw_animation<'a>(
+    ui: &Ui<'a>,
+    rect: &Rect,
+    state: &State,
+    texture_cache: &TextureCache,
+    document: &Document,
+    animation: &Animation,
+) {
+    if let (Ok(zoom), Ok(offset)) = (
+        state.get_workbench_zoom_factor(),
+        state.get_workbench_offset(),
+    ) {
+		let now = document.get_timeline_clock();
+		if let Some(animation_frame) = animation.get_frame_at(now) {
+			if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
+				let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+				let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
+				let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
+				ui.set_cursor_pos((cursor_x, cursor_y));
+				ui.image(texture.id, draw_size).build();
+			}
+		}
+    }
+}
 
 pub fn draw<'a>(
     ui: &Ui<'a>,
@@ -55,7 +78,12 @@ pub fn draw<'a>(
                                 draw_frame(ui, rect, state, texture_cache, frame);
                             }
                         }
-                        _ => (),
+                        Some(state::WorkbenchItem::Animation(name)) => {
+                            if let Some(animation) = document.get_sheet().get_animation(name) {
+                                draw_animation(ui, rect, state, texture_cache, document, animation);
+                            }
+                        }
+                        None => (),
                     }
 
                     if ui.imgui().key_ctrl() {

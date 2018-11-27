@@ -44,6 +44,8 @@ pub struct Document {
     workbench_zoom_level: i32,
     timeline_zoom_level: i32,
     timeline_frame_being_dragged: Option<usize>,
+    timeline_clock: Duration,
+    timeline_playing: bool,
 }
 
 impl Document {
@@ -61,6 +63,14 @@ impl Document {
             workbench_zoom_level: 1,
             timeline_zoom_level: 1,
             timeline_frame_being_dragged: None,
+            timeline_clock: Duration::new(0, 0),
+            timeline_playing: false,
+        }
+    }
+
+    fn tick(&mut self, delta: Duration) {
+        if self.timeline_playing {
+            self.timeline_clock += delta;
         }
     }
 
@@ -116,6 +126,10 @@ impl Document {
         &self.timeline_frame_being_dragged
     }
 
+    pub fn get_timeline_clock(&self) -> Duration {
+        self.timeline_clock
+    }
+
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
         &self.workbench_item
     }
@@ -157,6 +171,9 @@ impl State {
 
     pub fn tick(&mut self, delta: Duration) {
         self.clock += delta;
+        if let Some(document) = self.get_current_document_mut() {
+            document.tick(delta);
+        }
     }
 
     pub fn get_clock(&self) -> Duration {
@@ -376,6 +393,8 @@ impl State {
         }
         document.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
         document.workbench_offset = (0.0, 0.0);
+        document.timeline_playing = false;
+        document.timeline_clock = Duration::new(0, 0);
         Ok(())
     }
 
@@ -565,6 +584,14 @@ impl State {
         Ok(())
     }
 
+    fn toggle_playback(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_playing = !document.timeline_playing;
+        Ok(())
+    }
+
     pub fn get_workbench_zoom_factor(&self) -> Result<f32, Error> {
         let document = self
             .get_current_document()
@@ -636,6 +663,7 @@ impl State {
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
+            Command::TogglePlayback => self.toggle_playback()?,
         };
         Ok(())
     }

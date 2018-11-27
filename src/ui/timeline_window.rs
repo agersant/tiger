@@ -106,6 +106,11 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                             commands.create_animation_frame(frame_being_dragged);
                         }
                     }
+
+                    if ui.small_button(im_str!("Play/Pause")) {
+                        commands.toggle_playback();
+                    }
+
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Animation(animation)) => {
                             match document.get_sheet().animation_frames_iter(animation) {

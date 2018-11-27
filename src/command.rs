@@ -33,6 +33,7 @@ pub enum Command {
     ZoomOut,
     ResetZoom,
     Pan((f32, f32)),
+    TogglePlayback,
 }
 
 pub struct CommandBuffer {
@@ -175,5 +176,9 @@ impl CommandBuffer {
 
     pub fn pan(&mut self, delta: (f32, f32)) {
         self.queue.push(Command::Pan(delta));
+    }
+
+    pub fn toggle_playback(&mut self) {
+        self.queue.push(Command::TogglePlayback);
     }
 }
