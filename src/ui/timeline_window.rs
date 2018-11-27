@@ -87,7 +87,6 @@ fn draw_animation_frame<'a>(
 }
 
 fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, animation: &Animation) {
-    let now = document.get_timeline_clock();
     let duration = animation.get_duration().unwrap_or(0);
 
     let now_ms = {
