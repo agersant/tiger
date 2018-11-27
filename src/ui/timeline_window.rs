@@ -91,10 +91,7 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, anima
 
     let now_ms = {
         let now = document.get_timeline_clock();
-        let mut ms = now.as_millis();
-        if animation.is_looping() && duration > 0 {
-            ms = ms % duration as u128;
-        }
+        let ms = now.as_millis();
         std::cmp::min(ms, duration.into()) as u32
     };
 
@@ -130,47 +127,52 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
             .always_horizontal_scrollbar(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-                    if ui.is_window_hovered() && !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-                        if let Some(frame_being_dragged) =
-                            document.get_content_frame_being_dragged()
+                    if let Some(state::WorkbenchItem::Animation(animation_name)) =
+                        document.get_workbench_item()
+                    {
+                        if let Some(animation) = document.get_sheet().get_animation(animation_name)
                         {
-                            // TODO allow dropping frame on workbench
-                            commands.create_animation_frame(frame_being_dragged);
-                        }
-                    }
-
-                    if ui.small_button(im_str!("Play/Pause")) {
-                        commands.toggle_playback();
-                    }
-
-                    match document.get_workbench_item() {
-                        Some(state::WorkbenchItem::Animation(animation)) => {
-                            if let Some(animation) = document.get_sheet().get_animation(animation) {
-                                let initial_cursor_position = ui.get_cursor_screen_pos();
-                                let mut cursor = Duration::new(0, 0);
-                                for (frame_index, animation_frame) in
-                                    animation.frames_iter().enumerate()
+                            if ui.is_window_hovered()
+                                && !ui.imgui().is_mouse_down(ImMouseButton::Left)
+                            {
+                                if let Some(frame_being_dragged) =
+                                    document.get_content_frame_being_dragged()
                                 {
-                                    ui.set_cursor_screen_pos(initial_cursor_position);
-                                    draw_animation_frame(
-                                        ui,
-                                        state,
-                                        commands,
-                                        document,
-                                        frame_index,
-                                        animation_frame,
-                                        cursor,
-                                    );
-                                    cursor += Duration::new(
-                                        0,
-                                        1_000_000 * animation_frame.get_duration(),
-                                    );
+                                    // TODO allow dropping frame on workbench
+                                    commands.create_animation_frame(frame_being_dragged);
                                 }
-
-                                draw_playback_head(ui, state, document, animation);
                             }
+
+                            if ui.small_button(im_str!("Play/Pause")) {
+                                commands.toggle_playback();
+                            }
+                            ui.same_line(0.0);
+                            let mut looping = animation.is_looping();
+                            if ui.checkbox(im_str!("Loop"), &mut looping) {
+                                commands.toggle_looping();
+                            }
+
+                            let initial_cursor_position = ui.get_cursor_screen_pos();
+                            let mut cursor = Duration::new(0, 0);
+                            for (frame_index, animation_frame) in
+                                animation.frames_iter().enumerate()
+                            {
+                                ui.set_cursor_screen_pos(initial_cursor_position);
+                                draw_animation_frame(
+                                    ui,
+                                    state,
+                                    commands,
+                                    document,
+                                    frame_index,
+                                    animation_frame,
+                                    cursor,
+                                );
+                                cursor +=
+                                    Duration::new(0, 1_000_000 * animation_frame.get_duration());
+                            }
+
+                            draw_playback_head(ui, state, document, animation);
                         }
-                        _ => (), // TODO?
                     }
                 }
             });

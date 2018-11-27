@@ -105,6 +105,10 @@ impl Animation {
         self.is_looping
     }
 
+    pub fn set_is_looping(&mut self, new_is_looping: bool) {
+        self.is_looping = new_is_looping;
+    }
+
     pub fn get_duration(&self) -> Option<u32> {
         if self.timeline.len() == 0 {
             return None;

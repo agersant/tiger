@@ -71,6 +71,33 @@ impl Document {
     fn tick(&mut self, delta: Duration) {
         if self.timeline_playing {
             self.timeline_clock += delta;
+            if let Some(WorkbenchItem::Animation(animation_name)) = &self.workbench_item {
+                if let Some(animation) = self.get_sheet().get_animation(animation_name) {
+                    match animation.get_duration() {
+                        Some(d) if d > 0 => {
+                            let clock_ms = self.timeline_clock.as_millis();
+
+                            // Loop animation
+                            if animation.is_looping() {
+                                self.timeline_clock =
+                                    Duration::new(0, (clock_ms % d as u128) as u32 * 1_000_000)
+
+                            // Stop playhead at the end of animation
+                            } else if clock_ms >= d as u128 {
+                                self.timeline_playing = false;
+                                self.timeline_clock =
+                                    Duration::new(0, d * 1_000_000)
+                            }
+                        }
+
+                        // Reset playhead
+                        _ => {
+                            self.timeline_clock = Duration::new(0, 0);
+                            self.timeline_playing = false;
+                        }
+                    };
+                }
+            }
         }
     }
 
@@ -589,6 +616,43 @@ impl State {
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
         document.timeline_playing = !document.timeline_playing;
+
+        if document.timeline_playing {
+            if let Some(WorkbenchItem::Animation(animation_name)) = &document.workbench_item {
+                if let Some(animation) = document.get_sheet().get_animation(animation_name) {
+                    if let Some(d) = animation.get_duration() {
+                        if d > 0 {
+                            if !animation.is_looping()
+                                && document.timeline_clock.as_millis() == d as u128
+                            {
+                                document.timeline_clock = Duration::new(0, d);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn toggle_looping(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        let animation = document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+
+        animation.set_is_looping(!animation.is_looping());
         Ok(())
     }
 
@@ -664,6 +728,7 @@ impl State {
             Command::ResetZoom => self.reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
             Command::TogglePlayback => self.toggle_playback()?,
+            Command::ToggleLooping => self.toggle_looping()?,
         };
         Ok(())
     }
