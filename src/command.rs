@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use crate::export::ExportSettings;
 use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
 
@@ -13,6 +14,11 @@ pub enum Command {
     SaveCurrentDocument,
     SaveCurrentDocumentAs,
     SaveAllDocuments,
+    BeginExportAs,
+    UpdateExportAsDestination,
+    UpdateExportAsFormat,
+    CancelExportAs,
+    EndExportAs,
     SwitchToContentTab(ContentTab),
     Import,
     SelectFrame(PathBuf),
@@ -85,6 +91,26 @@ impl CommandBuffer {
 
     pub fn save_all(&mut self) {
         self.queue.push(Command::SaveAllDocuments);
+    }
+
+    pub fn begin_export_as(&mut self) {
+        self.queue.push(Command::BeginExportAs);
+    }
+
+    pub fn update_export_as_destination(&mut self) {
+        self.queue.push(Command::UpdateExportAsDestination);
+    }
+
+    pub fn update_export_as_format(&mut self) {
+        self.queue.push(Command::UpdateExportAsFormat);
+    }
+
+    pub fn cancel_export_as(&mut self) {
+        self.queue.push(Command::CancelExportAs);
+    }
+
+    pub fn end_export_as(&mut self) {
+        self.queue.push(Command::EndExportAs);
     }
 
     pub fn switch_to_content_tab(&mut self, tab: ContentTab) {

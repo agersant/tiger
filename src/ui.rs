@@ -1,8 +1,10 @@
 use failure::Error;
 use imgui::StyleVar::*;
 use imgui::*;
+use std::borrow::Borrow;
 
 use crate::command::CommandBuffer;
+use crate::export::ExportFormat;
 use crate::state::State;
 use crate::streamer::TextureCache;
 use crate::utils;
@@ -138,6 +140,8 @@ pub fn run<'a>(
         timeline_window::draw(ui, &timeline_rect, state, &mut commands);
     }
 
+    draw_export_popup(ui, state, &mut commands);
+
     update_drag_and_drop(ui, state, &mut commands);
     draw_drag_and_drop(ui, state, texture_cache);
 
@@ -165,6 +169,9 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 }
                 if ui.menu_item(im_str!("Save All")).build() {
                     commands.save_all();
+                }
+                if ui.menu_item(im_str!("Export As…")).build() {
+                    commands.begin_export_as();
                 }
                 ui.separator();
                 if ui.menu_item(im_str!("Close")).build() {
@@ -260,6 +267,53 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
                     }
                 });
             }
+        }
+    }
+}
+
+fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+    if let Some(document) = state.get_current_document() {
+        if let Some(settings) = document.get_export_settings() {
+            let popup_id = im_str!("Export Options");
+            ui.popup_modal(&popup_id)
+                .title_bar(true)
+                .resizable(true)
+                .always_auto_resize(true)
+                .build(|| {
+                    ui.label_text(
+                        &ImString::new(settings.destination.to_string_lossy().borrow()),
+                        im_str!("Destination:"),
+                    );
+                    ui.same_line(0.0);
+                    if ui.small_button(im_str!("Browse…")) {
+                        commands.update_export_as_destination();
+                    }
+
+                    match &settings.format {
+                        ExportFormat::Template(p) => {
+                            ui.label_text(
+                                &ImString::new(p.to_string_lossy().borrow()),
+                                im_str!("Data Format:"),
+                            );
+                            ui.same_line(0.0);
+                            ui.push_id(0);
+                            if ui.small_button(im_str!("Browse…")) {
+                                commands.update_export_as_format();
+                            }
+                            ui.pop_id();
+                        }
+                    };
+
+                    // TODO grey out and disable if bad settings
+                    if ui.small_button(im_str!("Ok")) {
+                        commands.end_export_as();
+                    }
+                    ui.same_line(0.0);
+                    if ui.small_button(im_str!("Cancel")) {
+                        commands.cancel_export_as();
+                    }
+                });
+            ui.open_popup(&popup_id);
         }
     }
 }

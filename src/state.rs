@@ -1,13 +1,16 @@
 use failure::Error;
 use std::fs::File;
+use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::command::Command;
+use crate::export::{self, ExportFormat, ExportSettings};
 use crate::sheet::Sheet;
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
+const TEMPLATE_FILE_EXTENSION: &str = "liquid";
 const IMAGE_FILE_EXTENSIONS: &str = "png;tga;bmp";
 
 #[derive(Fail, Debug)]
@@ -28,6 +31,8 @@ pub enum StateError {
     InvalidAnimationFrameIndex,
     #[fail(display = "Currently not adjusting the duration of an animation frame")]
     NotDraggingATimelineFrame,
+    #[fail(display = "Currently not exporting")]
+    NotExporting,
 }
 
 #[derive(Clone, Debug)]
@@ -46,6 +51,7 @@ pub struct Document {
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
+    export_settings: Option<ExportSettings>,
 }
 
 impl Document {
@@ -65,6 +71,7 @@ impl Document {
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
+            export_settings: None,
         }
     }
 
@@ -159,6 +166,10 @@ impl Document {
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
         &self.workbench_item
     }
+
+    pub fn get_export_settings(&self) -> &Option<ExportSettings> {
+        &self.export_settings
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -230,6 +241,10 @@ impl State {
 
     fn get_current_sheet_mut(&mut self) -> Option<&mut Sheet> {
         self.get_current_document_mut().map(|d| d.get_sheet_mut())
+    }
+
+    fn get_current_sheet(&mut self) -> Option<&Sheet> {
+        self.get_current_document().map(|d| d.get_sheet())
     }
 
     fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
@@ -341,6 +356,64 @@ impl State {
         for document in &mut self.documents {
             document.save()?;
         }
+        Ok(())
+    }
+
+    fn begin_export_as(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.export_settings = Some(ExportSettings::new());
+        Ok(())
+    }
+
+    fn update_export_as_destination(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let export_settings = &mut document.export_settings.as_mut().ok_or(StateError::NotExporting)?;
+        match nfd::open_save_dialog(None, None)? {
+            nfd::Response::Okay(path_string) => {
+                export_settings.destination = std::path::PathBuf::from(path_string);
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn update_export_as_format(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let export_settings = &mut document.export_settings.as_mut().ok_or(StateError::NotExporting)?;
+        match nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)? {
+            nfd::Response::Okay(path_string) => {
+                export_settings.format = ExportFormat::Template(std::path::PathBuf::from(path_string));
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn cancel_export_as(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.export_settings = None;
+        Ok(())
+    }
+
+    fn end_export_as(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let export_settings = document
+            .export_settings
+            .take()
+            .ok_or(StateError::NotExporting)?;
+        let exported_data = export::export_sheet(document.get_sheet(), &export_settings.format)?;
+        let mut file = File::create(&export_settings.destination)?;
+        file.write_all(&exported_data.into_bytes())?;
         Ok(())
     }
 
@@ -702,6 +775,11 @@ impl State {
             Command::SaveCurrentDocument => self.save_current_document()?,
             Command::SaveCurrentDocumentAs => self.save_current_document_as()?,
             Command::SaveAllDocuments => self.save_all_documents()?,
+            Command::BeginExportAs => self.begin_export_as()?,
+            Command::CancelExportAs => self.cancel_export_as()?,
+            Command::UpdateExportAsDestination => self.update_export_as_destination()?,
+            Command::UpdateExportAsFormat => self.update_export_as_format()?,
+            Command::EndExportAs => self.end_export_as()?,
             Command::SwitchToContentTab(tab) => self.switch_to_content_tab(*tab)?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,

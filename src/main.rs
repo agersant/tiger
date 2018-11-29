@@ -9,6 +9,7 @@ use gfx_window_glutin;
 use glutin;
 use imgui_gfx_renderer;
 use imgui_glutin_support;
+use liquid;
 #[macro_use]
 extern crate serde_derive;
 
@@ -18,6 +19,7 @@ use std::sync::*;
 use std::time::Instant;
 
 mod command;
+mod export;
 mod sheet;
 mod state;
 mod streamer;
@@ -67,6 +69,9 @@ fn is_async_command(command: &command::Command) -> bool {
         Command::OpenDocument => true,
         Command::SaveCurrentDocument => true,
         Command::SaveCurrentDocumentAs => true,
+        Command::UpdateExportAsDestination => true,
+        Command::UpdateExportAsFormat => true,
+        Command::EndExportAs => true,
         _ => false,
     }
 }
