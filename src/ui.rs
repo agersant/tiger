@@ -86,8 +86,7 @@ pub fn run<'a>(
 
     let content_width = 0.12 * window_width;
 
-    let (_, mut menu_height) = draw_main_menu(ui, &mut commands); // TODO this comes back as 0
-    menu_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+    let (_, menu_height) = draw_main_menu(ui, &mut commands);
 
     {
         // TODO Don't overlap other windows
@@ -98,17 +97,15 @@ pub fn run<'a>(
         workbench_window::draw(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 
-    let documents_height: f32;
     {
         let documents_rect = Rect {
             position: (content_width, menu_height),
             size: (window_width, 0.0),
         };
-        let (_, _h) = draw_documents_window(ui, &documents_rect, state, &mut commands); // TODO this comes back as 0
-        documents_height = 20.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+        draw_documents_window(ui, &documents_rect, state, &mut commands);
     }
 
-    let panels_height = window_height - menu_height - documents_height;
+    let panels_height = window_height - menu_height;
     let content_height = 0.80 * panels_height;
 
     {

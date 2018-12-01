@@ -12,11 +12,9 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
     if let Some(name) = frame.get_source().file_name() {
         ui.text(&ImString::new(name.to_string_lossy()));
         if let Some(texture) = texture_cache.get(frame.get_source()) {
-            let mut space = ui.get_content_region_avail();
-            space = (200.0, 200.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+            let space = ui.get_content_region_avail();
             if let Some(fill) = utils::fill(space, texture.size) {
-                let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
-                cursor_pos = (0.0, 50.0);
+                let cursor_pos = ui.get_cursor_pos();
                 let x = cursor_pos.0 + fill.position.0;
                 let y = cursor_pos.1 + fill.position.1;
                 ui.set_cursor_pos((x, y));
@@ -35,12 +33,10 @@ fn draw_animation<'a>(
     ui.text(&ImString::new(animation.get_name().to_owned()));
     match utils::get_bounding_box(animation, texture_cache) {
         Ok(bbox) => {
-            let mut space = ui.get_content_region_avail();
-            space = (200.0, 200.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+            let space = ui.get_content_region_avail();
             let bbox_size = (bbox.size.0 as f32, bbox.size.1 as f32);
             if let Some(fill) = utils::fill(space, bbox_size) {
-                let mut cursor_pos = ui.get_cursor_pos(); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
-                cursor_pos = (0.0, 50.0);
+                let cursor_pos = ui.get_cursor_pos();
                 let duration = animation.get_duration().unwrap(); // TODO no unwrap
                 let time = Duration::new(
                     0,

@@ -26,7 +26,6 @@ fn draw_animation_frame<'a>(
 
     let draw_list = ui.get_window_draw_list();
     let mut cursor_pos = ui.get_cursor_screen_pos();
-    cursor_pos = (240.0, 880.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
     cursor_pos.0 += frame_starts_at.as_millis() as f32 * zoom;
 
     let top_left = cursor_pos;
@@ -99,10 +98,8 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, anima
     let draw_list = ui.get_window_draw_list();
 
     let mut cursor_pos = ui.get_cursor_screen_pos();
-    cursor_pos = (240.0, 880.0); // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
     cursor_pos.0 += now_ms as f32 * zoom;
-    let mut space = ui.get_content_region_avail();
-    space.1 = 100.0; // TMP TODO https://github.com/Gekkio/imgui-rs/issues/175
+    let space = ui.get_content_region_avail();
 
     let fill_color = [255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0]; // TODO constants
 

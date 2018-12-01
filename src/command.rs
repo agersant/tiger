@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use crate::export::ExportSettings;
 use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
 
