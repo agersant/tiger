@@ -436,6 +436,7 @@ impl State {
         Ok(())
     }
 
+    // TODO texture export performance is awful
     fn end_export_as(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
