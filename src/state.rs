@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::command::Command;
-use crate::export::{self, ExportFormat, ExportSettings};
+use crate::export;
 use crate::pack;
-use crate::sheet::Sheet;
+use crate::sheet::{ExportFormat, ExportSettings, Sheet};
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
 const TEMPLATE_FILE_EXTENSION: &str = "liquid";
@@ -365,7 +365,14 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        document.export_settings = Some(ExportSettings::new());
+
+        document.export_settings = document
+            .get_sheet()
+            .get_export_settings()
+            .as_ref()
+            .cloned()
+            .or(Some(ExportSettings::new()));
+
         Ok(())
     }
 
@@ -437,6 +444,8 @@ impl State {
             .export_settings
             .take()
             .ok_or(StateError::NotExporting)?;
+
+        document.get_sheet_mut().set_export_settings(export_settings.clone());
 
         let packed_sheet = pack::pack_sheet(document.get_sheet())?;
         let exported_data = export::export_sheet(document.get_sheet(), &export_settings.format)?;

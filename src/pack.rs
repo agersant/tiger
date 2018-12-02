@@ -6,7 +6,7 @@ use texture_packer::exporter::ImageExporter;
 use texture_packer::importer::ImageImporter;
 use texture_packer::{TexturePacker, TexturePackerConfig};
 
-use crate::sheet::{Frame, Sheet};
+use crate::sheet::Sheet;
 
 #[derive(Fail, Debug)]
 pub enum PackError {

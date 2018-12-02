@@ -2,33 +2,10 @@ use failure::Error;
 use liquid::value::{Scalar, Value};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
-use crate::sheet::{Animation, AnimationFrame, Frame, Sheet};
+use crate::sheet::{Animation, AnimationFrame, ExportFormat, Frame, Sheet};
 
 type LiquidData = HashMap<Cow<'static, str>, Value>;
-
-#[derive(Clone, Debug)]
-pub enum ExportFormat {
-    Template(PathBuf),
-}
-
-#[derive(Clone, Debug)]
-pub struct ExportSettings {
-    pub format: ExportFormat,
-    pub texture_destination: PathBuf,
-    pub metadata_destination: PathBuf,
-}
-
-impl ExportSettings {
-    pub fn new() -> ExportSettings {
-        ExportSettings {
-            format: ExportFormat::Template(PathBuf::new()),
-            texture_destination: PathBuf::new(),
-            metadata_destination: PathBuf::new(),
-        }
-    }
-}
 
 #[derive(Fail, Debug)]
 pub enum ExportError {

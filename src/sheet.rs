@@ -157,9 +157,32 @@ impl Animation {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ExportFormat {
+    Template(PathBuf),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ExportSettings {
+    pub format: ExportFormat,
+    pub texture_destination: PathBuf,
+    pub metadata_destination: PathBuf,
+}
+
+impl ExportSettings {
+    pub fn new() -> ExportSettings {
+        ExportSettings {
+            format: ExportFormat::Template(PathBuf::new()),
+            texture_destination: PathBuf::new(),
+            metadata_destination: PathBuf::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Sheet {
     frames: Vec<Frame>,
     animations: Vec<Animation>,
+    export_settings: Option<ExportSettings>,
 }
 
 impl Sheet {
@@ -167,6 +190,7 @@ impl Sheet {
         Sheet {
             frames: vec![],
             animations: vec![],
+            export_settings: None,
         }
     }
 
@@ -234,6 +258,14 @@ impl Sheet {
         self.animations
             .iter_mut()
             .find(|a| &a.name == name.as_ref())
+    }
+
+    pub fn get_export_settings(&self) -> &Option<ExportSettings> {
+        &self.export_settings
+    }
+
+    pub fn set_export_settings(&mut self, export_settings: ExportSettings) {
+        self.export_settings = Some(export_settings);
     }
 
     pub fn rename_animation<T: AsRef<str>, U: AsRef<str>>(
