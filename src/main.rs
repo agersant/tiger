@@ -12,6 +12,7 @@ use imgui_glutin_support;
 use liquid;
 #[macro_use]
 extern crate serde_derive;
+use texture_packer;
 
 use gfx::Device;
 use std::ops::{Deref, DerefMut};
@@ -20,6 +21,7 @@ use std::time::Instant;
 
 mod command;
 mod export;
+mod pack;
 mod sheet;
 mod state;
 mod streamer;
@@ -62,6 +64,7 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
     }
 }
 
+// TODO move to command enum impl
 fn is_async_command(command: &command::Command) -> bool {
     use crate::command::Command;
     match &command {
@@ -69,7 +72,8 @@ fn is_async_command(command: &command::Command) -> bool {
         Command::OpenDocument => true,
         Command::SaveCurrentDocument => true,
         Command::SaveCurrentDocumentAs => true,
-        Command::UpdateExportAsDestination => true,
+        Command::UpdateExportAsTextureDestination => true,
+        Command::UpdateExportAsMetadataDestination => true,
         Command::UpdateExportAsFormat => true,
         Command::EndExportAs => true,
         _ => false,
@@ -83,7 +87,8 @@ struct AsyncCommandWork {
 
 #[derive(Debug)]
 struct AsyncCommandResult {
-    state: Result<state::State, failure::Error>,
+    outcome: Result<(), failure::Error>,
+    new_state: state::State,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -191,11 +196,9 @@ fn main() -> Result<(), failure::Error> {
 
                         let mut result_mutex = async_command_result_for_worker.lock().unwrap();
                         let result = result_mutex.deref_mut().take().unwrap();
-                        match &result.state {
-                            Ok(s) => {
-                                state = s.clone();
-                                break 'async_command;
-                            }
+                        state = result.new_state.clone();
+                        match &result.outcome {
+                            Ok(_) => break 'async_command,
                             _ => break 'commands, // TODO log error
                         };
                     }
@@ -232,7 +235,8 @@ fn main() -> Result<(), failure::Error> {
         {
             let mut result_mutex = async_command_result_for_async_worker.lock().unwrap();
             *result_mutex = Some(AsyncCommandResult {
-                state: process_result.map(|_| state),
+                outcome: process_result,
+                new_state: state,
             });
         }
     });

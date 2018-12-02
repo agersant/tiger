@@ -16,14 +16,16 @@ pub enum ExportFormat {
 #[derive(Clone, Debug)]
 pub struct ExportSettings {
     pub format: ExportFormat,
-    pub destination: PathBuf,
+    pub texture_destination: PathBuf,
+    pub metadata_destination: PathBuf,
 }
 
 impl ExportSettings {
     pub fn new() -> ExportSettings {
         ExportSettings {
             format: ExportFormat::Template(PathBuf::new()),
-            destination: PathBuf::new(),
+            texture_destination: PathBuf::new(),
+            metadata_destination: PathBuf::new(),
         }
     }
 }

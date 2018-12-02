@@ -277,29 +277,51 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                 .resizable(true)
                 .always_auto_resize(true)
                 .build(|| {
-                    ui.label_text(
-                        &ImString::new(settings.destination.to_string_lossy().borrow()),
-                        im_str!("Destination:"),
-                    );
-                    ui.same_line(0.0);
-                    if ui.small_button(im_str!("Browse…")) {
-                        commands.update_export_as_destination();
+                    {
+                        ui.push_id(0);
+                        ui.label_text(
+                            &ImString::new(settings.texture_destination.to_string_lossy().borrow()),
+                            im_str!("Texture atlas destination:"),
+                        );
+                        ui.same_line(0.0);
+
+                        if ui.small_button(im_str!("Browse…")) {
+                            commands.update_export_as_texture_destination();
+                        }
+                        ui.pop_id();
                     }
 
-                    match &settings.format {
-                        ExportFormat::Template(p) => {
-                            ui.label_text(
-                                &ImString::new(p.to_string_lossy().borrow()),
-                                im_str!("Data Format:"),
-                            );
-                            ui.same_line(0.0);
-                            ui.push_id(0);
-                            if ui.small_button(im_str!("Browse…")) {
-                                commands.update_export_as_format();
-                            }
-                            ui.pop_id();
+                    {
+                        ui.push_id(1);
+                        ui.label_text(
+                            &ImString::new(
+                                settings.metadata_destination.to_string_lossy().borrow(),
+                            ),
+                            im_str!("Metadata destination:"),
+                        );
+                        ui.same_line(0.0);
+                        if ui.small_button(im_str!("Browse…")) {
+                            commands.update_export_as_metadata_destination();
                         }
-                    };
+                        ui.pop_id();
+                    }
+
+                    {
+                        ui.push_id(2);
+                        match &settings.format {
+                            ExportFormat::Template(p) => {
+                                ui.label_text(
+                                    &ImString::new(p.to_string_lossy().borrow()),
+                                    im_str!("Data Format:"),
+                                );
+                                ui.same_line(0.0);
+                                if ui.small_button(im_str!("Browse…")) {
+                                    commands.update_export_as_format();
+                                }
+                            }
+                        };
+                        ui.pop_id();
+                    }
 
                     // TODO grey out and disable if bad settings
                     if ui.small_button(im_str!("Ok")) {

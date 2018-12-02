@@ -7,11 +7,13 @@ use std::time::Duration;
 
 use crate::command::Command;
 use crate::export::{self, ExportFormat, ExportSettings};
+use crate::pack;
 use crate::sheet::Sheet;
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
 const TEMPLATE_FILE_EXTENSION: &str = "liquid";
-const IMAGE_FILE_EXTENSIONS: &str = "png;tga;bmp";
+const IMAGE_IMPORT_FILE_EXTENSIONS: &str = "png;tga;bmp";
+const IMAGE_EXPORT_FILE_EXTENSIONS: &str = "png";
 
 #[derive(Fail, Debug)]
 pub enum StateError {
@@ -367,14 +369,34 @@ impl State {
         Ok(())
     }
 
-    fn update_export_as_destination(&mut self) -> Result<(), Error> {
+    fn update_export_as_texture_destination(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        let export_settings = &mut document.export_settings.as_mut().ok_or(StateError::NotExporting)?;
+        let export_settings = &mut document
+            .export_settings
+            .as_mut()
+            .ok_or(StateError::NotExporting)?;
+        match nfd::open_save_dialog(Some(IMAGE_EXPORT_FILE_EXTENSIONS), None)? {
+            nfd::Response::Okay(path_string) => {
+                export_settings.texture_destination = std::path::PathBuf::from(path_string);
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn update_export_as_metadata_destination(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let export_settings = &mut document
+            .export_settings
+            .as_mut()
+            .ok_or(StateError::NotExporting)?;
         match nfd::open_save_dialog(None, None)? {
             nfd::Response::Okay(path_string) => {
-                export_settings.destination = std::path::PathBuf::from(path_string);
+                export_settings.metadata_destination = std::path::PathBuf::from(path_string);
             }
             _ => (),
         };
@@ -385,10 +407,14 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        let export_settings = &mut document.export_settings.as_mut().ok_or(StateError::NotExporting)?;
+        let export_settings = &mut document
+            .export_settings
+            .as_mut()
+            .ok_or(StateError::NotExporting)?;
         match nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)? {
             nfd::Response::Okay(path_string) => {
-                export_settings.format = ExportFormat::Template(std::path::PathBuf::from(path_string));
+                export_settings.format =
+                    ExportFormat::Template(std::path::PathBuf::from(path_string));
             }
             _ => (),
         };
@@ -411,9 +437,19 @@ impl State {
             .export_settings
             .take()
             .ok_or(StateError::NotExporting)?;
+
+        let packed_sheet = pack::pack_sheet(document.get_sheet())?;
         let exported_data = export::export_sheet(document.get_sheet(), &export_settings.format)?;
-        let mut file = File::create(&export_settings.destination)?;
-        file.write_all(&exported_data.into_bytes())?;
+
+        {
+            let mut file = File::create(&export_settings.metadata_destination)?;
+            file.write_all(&exported_data.into_bytes())?;
+        }
+        {
+            let mut file = File::create(&export_settings.texture_destination)?;
+            packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
+        }
+
         Ok(())
     }
 
@@ -429,7 +465,7 @@ impl State {
         let sheet = self
             .get_current_sheet_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        match nfd::open_file_multiple_dialog(Some(IMAGE_FILE_EXTENSIONS), None)? {
+        match nfd::open_file_multiple_dialog(Some(IMAGE_IMPORT_FILE_EXTENSIONS), None)? {
             nfd::Response::Okay(path_string) => {
                 let path = std::path::PathBuf::from(path_string);
                 sheet.add_frame(&path);
@@ -777,7 +813,12 @@ impl State {
             Command::SaveAllDocuments => self.save_all_documents()?,
             Command::BeginExportAs => self.begin_export_as()?,
             Command::CancelExportAs => self.cancel_export_as()?,
-            Command::UpdateExportAsDestination => self.update_export_as_destination()?,
+            Command::UpdateExportAsTextureDestination => {
+                self.update_export_as_texture_destination()?
+            }
+            Command::UpdateExportAsMetadataDestination => {
+                self.update_export_as_metadata_destination()?
+            }
             Command::UpdateExportAsFormat => self.update_export_as_format()?,
             Command::EndExportAs => self.end_export_as()?,
             Command::SwitchToContentTab(tab) => self.switch_to_content_tab(*tab)?,

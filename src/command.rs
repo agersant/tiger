@@ -14,7 +14,8 @@ pub enum Command {
     SaveCurrentDocumentAs,
     SaveAllDocuments,
     BeginExportAs,
-    UpdateExportAsDestination,
+    UpdateExportAsTextureDestination,
+    UpdateExportAsMetadataDestination,
     UpdateExportAsFormat,
     CancelExportAs,
     EndExportAs,
@@ -96,8 +97,12 @@ impl CommandBuffer {
         self.queue.push(Command::BeginExportAs);
     }
 
-    pub fn update_export_as_destination(&mut self) {
-        self.queue.push(Command::UpdateExportAsDestination);
+    pub fn update_export_as_texture_destination(&mut self) {
+        self.queue.push(Command::UpdateExportAsTextureDestination);
+    }
+
+    pub fn update_export_as_metadata_destination(&mut self) {
+        self.queue.push(Command::UpdateExportAsMetadataDestination);
     }
 
     pub fn update_export_as_format(&mut self) {
