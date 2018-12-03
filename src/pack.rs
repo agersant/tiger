@@ -17,8 +17,8 @@ pub enum PackError {
 }
 
 pub struct PackedFrame {
-    position_in_sheet: (u32, u32),
-    size_in_sheet: (u32, u32),
+    pub position_in_sheet: (u32, u32),
+    pub size_in_sheet: (u32, u32),
 }
 
 pub struct PackedSheet {
@@ -37,13 +37,14 @@ impl PackedSheet {
 }
 
 pub fn pack_sheet(sheet: &Sheet) -> Result<PackedSheet, Error> {
+
     let config = TexturePackerConfig {
-        max_width: 2048, // TODO configurable?
+        max_width: 4096, // TODO configurable / dynamic based on widest frame?
         max_height: std::u32::MAX,
         allow_rotation: false,
-        border_padding: 1,
-        texture_padding: 0,
-        trim: false, // TODO support trimming
+        border_padding: 0, // TODO configurable?
+        texture_padding: 0, // TODO configurable?
+        trim: false, // TODO support trimming?
         texture_outlines: false,
     };
 

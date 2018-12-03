@@ -2,10 +2,13 @@ use failure::Error;
 use liquid::value::{Scalar, Value};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
+use crate::pack::PackedFrame;
 use crate::sheet::{Animation, AnimationFrame, ExportFormat, Frame, Sheet};
 
 type LiquidData = HashMap<Cow<'static, str>, Value>;
+type TextureLayout = HashMap<PathBuf, PackedFrame>;
 
 #[derive(Fail, Debug)]
 pub enum ExportError {
@@ -15,19 +18,55 @@ pub enum ExportError {
     TemplateRenderingError,
     #[fail(display = "An animation references a frame which is not part of the sheet")]
     InvalidFrameReference,
+    #[fail(display = "The sheet contains a frame which was not packed into the texture atlas")]
+    FrameWasNotPacked,
 }
 
-impl Into<LiquidData> for &Frame {
-    fn into(self) -> LiquidData {
-        let mut frame = LiquidData::new();
-        frame.insert(
-            Cow::from("source"),
-            Value::Scalar(Scalar::new(
-                self.get_source().to_string_lossy().into_owned(),
-            )),
-        );
-        frame
-    }
+fn liquid_data_from_frame(
+    frame: &Frame,
+    texture_layout: &TextureLayout,
+) -> Result<LiquidData, Error> {
+    let mut frame_data = LiquidData::new();
+    frame_data.insert(
+        Cow::from("source"),
+        Value::Scalar(Scalar::new(
+            frame.get_source().to_string_lossy().into_owned(),
+        )),
+    );
+
+    let frame_layout = texture_layout
+        .get(frame.get_source().into())
+        .ok_or(ExportError::FrameWasNotPacked)?;
+
+    frame_data.insert(
+        Cow::from("x"),
+        Value::Scalar(Scalar::new(
+            frame_layout.position_in_sheet.0 as i32,
+        )),
+    );
+
+    frame_data.insert(
+        Cow::from("y"),
+        Value::Scalar(Scalar::new(
+            frame_layout.position_in_sheet.1 as i32,
+        )),
+    );
+
+    frame_data.insert(
+        Cow::from("width"),
+        Value::Scalar(Scalar::new(
+            frame_layout.size_in_sheet.0 as i32,
+        )),
+    );
+
+    frame_data.insert(
+        Cow::from("height"),
+        Value::Scalar(Scalar::new(
+            frame_layout.size_in_sheet.1 as i32,
+        )),
+    );
+
+    Ok(frame_data)
 }
 
 fn liquid_data_from_animation_frame(
@@ -78,13 +117,19 @@ fn liquid_data_from_animation(sheet: &Sheet, animation: &Animation) -> Result<Li
     Ok(map)
 }
 
-fn liquid_data_from_sheet(sheet: &Sheet) -> Result<LiquidData, Error> {
+fn liquid_data_from_sheet(
+    sheet: &Sheet,
+    texture_layout: &TextureLayout,
+) -> Result<LiquidData, Error> {
     let mut map = LiquidData::new();
 
     {
         let mut frames = Vec::new();
         for frame in sheet.frames_iter() {
-            frames.push(Value::Object(frame.into()));
+            frames.push(Value::Object(liquid_data_from_frame(
+                frame,
+                texture_layout,
+            )?));
         }
         let frames_value = Value::Array(frames);
         map.insert(Cow::from("frames"), frames_value);
@@ -103,7 +148,11 @@ fn liquid_data_from_sheet(sheet: &Sheet) -> Result<LiquidData, Error> {
     Ok(map)
 }
 
-pub fn export_sheet(sheet: &Sheet, format: &ExportFormat) -> Result<String, Error> {
+pub fn export_sheet(
+    sheet: &Sheet,
+    format: &ExportFormat,
+    texture_layout: &TextureLayout,
+) -> Result<String, Error> {
     let template;
     match format {
         ExportFormat::Template(p) => {
@@ -114,7 +163,7 @@ pub fn export_sheet(sheet: &Sheet, format: &ExportFormat) -> Result<String, Erro
         }
     }
 
-    let globals: LiquidData = liquid_data_from_sheet(sheet)?;
+    let globals: LiquidData = liquid_data_from_sheet(sheet, texture_layout)?;
     let output = template
         .render(&globals)
         .map_err(|_| ExportError::TemplateRenderingError)?;

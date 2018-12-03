@@ -446,10 +446,16 @@ impl State {
             .take()
             .ok_or(StateError::NotExporting)?;
 
-        document.get_sheet_mut().set_export_settings(export_settings.clone());
+        document
+            .get_sheet_mut()
+            .set_export_settings(export_settings.clone());
 
         let packed_sheet = pack::pack_sheet(document.get_sheet())?;
-        let exported_data = export::export_sheet(document.get_sheet(), &export_settings.format)?;
+        let exported_data = export::export_sheet(
+            document.get_sheet(),
+            &export_settings.format,
+            &packed_sheet.get_layout(),
+        )?;
 
         {
             let mut file = File::create(&export_settings.metadata_destination)?;

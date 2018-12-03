@@ -158,8 +158,9 @@ fn main() -> Result<(), failure::Error> {
             'commands: for command in &new_commands {
                 if !is_async_command(command) {
                     // Process command
-                    if let Err(_e) = state.process_command(&command) {
-                        // TODO log error
+                    if let Err(e) = state.process_command(&command) {
+                        // TODO surface to user
+                        println!("Error: {}", e);
                         break 'commands;
                     }
                 } else {
@@ -199,7 +200,11 @@ fn main() -> Result<(), failure::Error> {
                         state = result.new_state.clone();
                         match &result.outcome {
                             Ok(_) => break 'async_command,
-                            _ => break 'commands, // TODO log error
+                            Err(e) => {
+                                // TODO surface to user
+                                println!("Error: {}", e);
+                                break 'commands
+                            },
                         };
                     }
                 }
