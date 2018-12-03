@@ -37,14 +37,13 @@ impl PackedSheet {
 }
 
 pub fn pack_sheet(sheet: &Sheet) -> Result<PackedSheet, Error> {
-
     let config = TexturePackerConfig {
         max_width: 4096, // TODO configurable / dynamic based on widest frame?
         max_height: std::u32::MAX,
         allow_rotation: false,
-        border_padding: 0, // TODO configurable?
+        border_padding: 0,  // TODO configurable?
         texture_padding: 0, // TODO configurable?
-        trim: false, // TODO support trimming?
+        trim: false,        // TODO support trimming?
         texture_outlines: false,
     };
 
