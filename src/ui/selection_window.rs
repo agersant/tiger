@@ -45,13 +45,11 @@ fn draw_animation<'a>(
 
                 let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
-                    let x = cursor_pos.0
-                        + fill.position.0
+                    let x = cursor_pos.0 + fill.position.0
                         - fill.zoom * bbox.left as f32
                         - fill.zoom * texture.size.0 as f32 / 2.0
                         + fill.zoom * animation_frame.get_offset().0 as f32;
-                    let y = cursor_pos.1
-                        + fill.position.1
+                    let y = cursor_pos.1 + fill.position.1
                         - fill.zoom * bbox.top as f32
                         - fill.zoom * texture.size.1 as f32 / 2.0
                         + fill.zoom * animation_frame.get_offset().1 as f32;

@@ -872,7 +872,7 @@ impl State {
         Ok(if document.workbench_zoom_level >= 0 {
             document.workbench_zoom_level as f32
         } else {
-            1.0 / document.workbench_zoom_level as f32
+            -1.0 / document.workbench_zoom_level as f32
         })
     }
 
@@ -883,7 +883,7 @@ impl State {
         Ok(if document.timeline_zoom_level >= 0 {
             document.timeline_zoom_level as f32
         } else {
-            1.0 / document.timeline_zoom_level as f32
+            -1.0 / document.timeline_zoom_level as f32
         })
     }
 
