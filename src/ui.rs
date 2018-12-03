@@ -178,6 +178,14 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                     commands.close_all_documents();
                 }
             });
+            ui.menu(im_str!("Edit")).build(|| {
+                if ui.menu_item(im_str!("Undo")).build() {
+                    // TODO
+                }
+                if ui.menu_item(im_str!("Redo")).build() {
+                    // TODO
+                }
+            });
             ui.menu(im_str!("View")).build(|| {
                 if ui.menu_item(im_str!("Zoom In")).build() {
                     commands.zoom_in();
