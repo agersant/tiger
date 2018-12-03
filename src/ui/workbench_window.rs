@@ -53,6 +53,42 @@ fn draw_animation<'a>(
     }
 }
 
+fn draw_origin<'a>(ui: &Ui<'a>, state: &State) {
+    if let Ok(offset) = state.get_workbench_offset() {
+        let size = 10.0;
+        let thickness = 1.0;
+
+        let draw_list = ui.get_window_draw_list();
+
+        let fill_color = [0.0 / 255.0, 200.0 / 255.0, 200.0 / 255.0]; // TODO.style
+        ui.set_cursor_pos((0.0, 0.0));
+
+        let top_left = ui.get_cursor_screen_pos();
+        let space = ui.get_window_size();
+        let mut center = (top_left.0 + space.0 / 2.0, top_left.1 + space.1 / 2.0);
+        center.0 += offset.0;
+        center.1 += offset.1;
+
+        draw_list.add_rect_filled_multicolor(
+            (center.0 - thickness, center.1 - size),
+            (center.0 + thickness, center.1 + size),
+            fill_color,
+            fill_color,
+            fill_color,
+            fill_color,
+        );
+
+        draw_list.add_rect_filled_multicolor(
+            (center.0 - size, center.1 - thickness),
+            (center.0 + size, center.1 + thickness),
+            fill_color,
+            fill_color,
+            fill_color,
+            fill_color,
+        );
+    }
+}
+
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect,
@@ -103,6 +139,8 @@ pub fn draw<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                         }
                     }
+
+                    draw_origin(ui, state);
                 }
             });
     });
