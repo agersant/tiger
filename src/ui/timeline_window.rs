@@ -147,12 +147,12 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                 commands.toggle_looping();
                             }
 
-                            let initial_cursor_position = ui.get_cursor_screen_pos();
+                            let initial_cursor_position = ui.get_cursor_pos();
                             let mut cursor = Duration::new(0, 0);
                             for (frame_index, animation_frame) in
                                 animation.frames_iter().enumerate()
                             {
-                                ui.set_cursor_screen_pos(initial_cursor_position);
+                                ui.set_cursor_pos(initial_cursor_position);
                                 draw_animation_frame(
                                     ui,
                                     state,
@@ -166,6 +166,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     Duration::new(0, 1_000_000 * animation_frame.get_duration());
                             }
 
+                            ui.set_cursor_pos(initial_cursor_position);
                             draw_playback_head(ui, state, document, animation);
                         }
                     }
