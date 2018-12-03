@@ -30,7 +30,7 @@ fn draw_animation_frame<'a>(
 
     let top_left = cursor_pos;
     let bottom_right = (top_left.0 + w, top_left.1 + h);
-    let outline_color = [25.0 / 255.0, 15.0 / 255.0, 0.0 / 255.0]; // TODO constants
+    let outline_color = [25.0 / 255.0, 15.0 / 255.0, 0.0 / 255.0]; // TODO.style
     draw_list.add_rect_filled_multicolor(
         top_left,
         bottom_right,
@@ -46,7 +46,7 @@ fn draw_animation_frame<'a>(
     fill_top_left.1 += outline_size;
     fill_bottom_right.0 -= outline_size;
     fill_bottom_right.1 -= outline_size;
-    let fill_color = [249.0 / 255.0, 212.0 / 255.0, 35.0 / 255.0]; // TODO constants
+    let fill_color = [249.0 / 255.0, 212.0 / 255.0, 35.0 / 255.0]; // TODO.style
     draw_list.add_rect_filled_multicolor(
         fill_top_left,
         fill_bottom_right,
