@@ -75,6 +75,10 @@ impl AnimationFrame {
     pub fn set_duration(&mut self, new_duration: u32) {
         self.duration = new_duration;
     }
+
+    pub fn set_offset(&mut self, new_offset: (i32, i32)) {
+        self.offset = new_offset;
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -130,7 +134,7 @@ impl Animation {
         return Some(&mut self.timeline[index]);
     }
 
-    pub fn get_frame_at(&self, time: Duration) -> Option<&AnimationFrame> {
+    pub fn get_frame_at(&self, time: Duration) -> Option<(usize, &AnimationFrame)> {
         let duration = match self.get_duration() {
             None => return None,
             Some(0) => return None,
@@ -142,13 +146,16 @@ impl Animation {
             time
         };
         let mut cursor = Duration::new(0, 0);
-        for frame in &self.timeline {
+        for (index, frame) in self.timeline.iter().enumerate() {
             cursor = cursor + Duration::new(0, frame.duration * 1_000_000);
             if time < cursor {
-                return Some(frame);
+                return Some((index, frame));
             }
         }
-        self.timeline.iter().last()
+        Some((
+            self.timeline.len() - 1,
+            self.timeline.iter().last().unwrap(),
+        )) // TODO no unwrap
     }
 
     pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {

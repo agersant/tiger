@@ -34,7 +34,10 @@ pub enum Command {
     CreateAnimationFrame(PathBuf),
     BeginAnimationFrameDurationDrag(usize),
     UpdateAnimationFrameDurationDrag(u32),
-    EndAnimationFrameDurationDrag(),
+    EndAnimationFrameDurationDrag,
+    BeginAnimationFrameOffsetDrag((usize, (f32, f32))),
+    UpdateAnimationFrameOffsetDrag((f32, f32)),
+    EndAnimationFrameOffsetDrag,
     ZoomIn,
     ZoomOut,
     ResetZoom,
@@ -190,7 +193,27 @@ impl CommandBuffer {
     }
 
     pub fn end_animation_frame_duration_drag(&mut self) {
-        self.queue.push(Command::EndAnimationFrameDurationDrag());
+        self.queue.push(Command::EndAnimationFrameDurationDrag);
+    }
+
+    pub fn begin_animation_frame_offset_drag(
+        &mut self,
+        frame_index: usize,
+        mouse_position: (f32, f32),
+    ) {
+        self.queue.push(Command::BeginAnimationFrameOffsetDrag((
+            frame_index,
+            mouse_position,
+        )));
+    }
+
+    pub fn update_animation_frame_offset_drag(&mut self, mouse_position: (f32, f32)) {
+        self.queue
+            .push(Command::UpdateAnimationFrameOffsetDrag(mouse_position));
+    }
+
+    pub fn end_animation_frame_offset_drag(&mut self) {
+        self.queue.push(Command::EndAnimationFrameOffsetDrag);
     }
 
     pub fn zoom_in(&mut self) {

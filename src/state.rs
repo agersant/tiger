@@ -49,6 +49,9 @@ pub struct Document {
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
+    workbench_animation_frame_being_dragged: Option<usize>,
+    workbench_animation_frame_drag_initial_mouse_position: (f32, f32),
+    workbench_animation_frame_drag_initial_offset: (i32, i32),
     timeline_zoom_level: i32,
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
@@ -69,6 +72,9 @@ impl Document {
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
+            workbench_animation_frame_being_dragged: None,
+            workbench_animation_frame_drag_initial_mouse_position: (0.0, 0.0),
+            workbench_animation_frame_drag_initial_offset: (0, 0),
             timeline_zoom_level: 1,
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
@@ -159,6 +165,10 @@ impl Document {
 
     pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
         &self.timeline_frame_being_dragged
+    }
+
+    pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
+        &self.workbench_animation_frame_being_dragged
     }
 
     pub fn get_timeline_clock(&self) -> Duration {
@@ -688,6 +698,81 @@ impl State {
         Ok(())
     }
 
+    fn begin_animation_frame_offset_drag(
+        &mut self,
+        animation_index: usize,
+        mouse_position: (f32, f32),
+    ) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        {
+            let animation = document
+                .get_sheet_mut()
+                .get_animation_mut(animation_name)
+                .ok_or(StateError::AnimationNotInDocument)?;
+
+            let animation_frame = animation
+                .get_frame(animation_index)
+                .ok_or(StateError::InvalidAnimationFrameIndex)?;
+            document.workbench_animation_frame_drag_initial_offset = animation_frame.get_offset();
+        }
+
+        document.workbench_animation_frame_being_dragged = Some(animation_index);
+        document.workbench_animation_frame_drag_initial_mouse_position = mouse_position;
+        Ok(())
+    }
+
+    fn update_animation_frame_offset_drag(
+        &mut self,
+        mouse_position: (f32, f32),
+    ) -> Result<(), Error> {
+        let zoom = self.get_workbench_zoom_factor().unwrap(); // TODO no unwrap
+
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        let animation_index = document
+            .workbench_animation_frame_being_dragged
+            .ok_or(StateError::NotDraggingATimelineFrame)?;
+
+        let old_offset = document.workbench_animation_frame_drag_initial_offset;
+        let old_mouse_position = document.workbench_animation_frame_drag_initial_mouse_position;
+        let new_offset = (
+            (old_offset.0 as f32 + (mouse_position.0 - old_mouse_position.0) / zoom).floor() as i32,
+            (old_offset.1 as f32 + (mouse_position.1 - old_mouse_position.1) / zoom).floor() as i32,
+        );
+
+        let animation_frame = document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?
+            .get_frame_mut(animation_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        animation_frame.set_offset(new_offset);
+        Ok(())
+    }
+
+    fn end_animation_frame_offset_drag(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.workbench_animation_frame_being_dragged = None;
+        Ok(())
+    }
+
     fn zoom_in(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -856,7 +941,14 @@ impl State {
             Command::UpdateAnimationFrameDurationDrag(d) => {
                 self.update_animation_frame_duration_drag(*d)?
             }
-            Command::EndAnimationFrameDurationDrag() => self.end_animation_frame_duration_drag()?,
+            Command::EndAnimationFrameDurationDrag => self.end_animation_frame_duration_drag()?,
+            Command::BeginAnimationFrameOffsetDrag((a, m)) => {
+                self.begin_animation_frame_offset_drag(*a, *m)?
+            }
+            Command::UpdateAnimationFrameOffsetDrag(o) => {
+                self.update_animation_frame_offset_drag(*o)?
+            }
+            Command::EndAnimationFrameOffsetDrag => self.end_animation_frame_offset_drag()?,
             Command::ZoomIn => self.zoom_in()?,
             Command::ZoomOut => self.zoom_out()?,
             Command::ResetZoom => self.reset_zoom()?,
