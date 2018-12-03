@@ -181,6 +181,8 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                 commands.toggle_looping();
                             }
 
+                            // TODO autoscroll during playback
+
                             let ticks_cursor_position = ui.get_cursor_pos();
                             draw_timeline_ticks(ui, state);
 
