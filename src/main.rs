@@ -203,8 +203,8 @@ fn main() -> Result<(), failure::Error> {
                             Err(e) => {
                                 // TODO surface to user
                                 println!("Error: {}", e);
-                                break 'commands
-                            },
+                                break 'commands;
+                            }
                         };
                     }
                 }
