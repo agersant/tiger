@@ -138,6 +138,9 @@ pub fn draw<'a>(
             .no_bring_to_front_on_focus(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
+
+                    // TODO draw grid
+
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
