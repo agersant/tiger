@@ -188,13 +188,13 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
             });
             ui.menu(im_str!("View")).build(|| {
                 if ui.menu_item(im_str!("Zoom In")).build() {
-                    commands.zoom_in();
+                    commands.workbench_zoom_in();
                 }
                 if ui.menu_item(im_str!("Zoom Out")).build() {
-                    commands.zoom_out();
+                    commands.workbench_zoom_out();
                 }
                 if ui.menu_item(im_str!("Reset Zoom")).build() {
-                    commands.reset_zoom();
+                    commands.workbench_reset_zoom();
                 }
                 ui.separator();
                 ui.menu_item(im_str!("Grid")).build(); // TODO

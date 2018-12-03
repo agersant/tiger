@@ -138,7 +138,6 @@ pub fn draw<'a>(
             .no_bring_to_front_on_focus(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-
                     // TODO draw grid
 
                     match document.get_workbench_item() {
@@ -163,16 +162,15 @@ pub fn draw<'a>(
                         None => (),
                     }
 
-                    if ui.imgui().key_ctrl() {
-                        let mouse_wheel = ui.imgui().mouse_wheel();
-                        if mouse_wheel > 0.0 {
-                            commands.zoom_in();
-                        } else if mouse_wheel < 0.0 {
-                            commands.zoom_out();
-                        }
-                    }
-
                     if ui.is_window_hovered() {
+                        if ui.imgui().key_ctrl() {
+                            let mouse_wheel = ui.imgui().mouse_wheel();
+                            if mouse_wheel > 0.0 {
+                                commands.workbench_zoom_in();
+                            } else if mouse_wheel < 0.0 {
+                                commands.workbench_zoom_out();
+                            }
+                        }
                         if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
                             commands.pan(ui.imgui().mouse_delta());
                         }

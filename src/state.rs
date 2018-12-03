@@ -773,7 +773,7 @@ impl State {
         Ok(())
     }
 
-    fn zoom_in(&mut self) -> Result<(), Error> {
+    fn workbench_zoom_in(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -788,7 +788,7 @@ impl State {
         Ok(())
     }
 
-    fn zoom_out(&mut self) -> Result<(), Error> {
+    fn workbench_zoom_out(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -803,7 +803,7 @@ impl State {
         Ok(())
     }
 
-    fn reset_zoom(&mut self) -> Result<(), Error> {
+    fn workbench_reset_zoom(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -862,6 +862,44 @@ impl State {
             .ok_or(StateError::AnimationNotInDocument)?;
 
         animation.set_is_looping(!animation.is_looping());
+        Ok(())
+    }
+
+    fn timeline_zoom_in(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        if document.timeline_zoom_level >= 1 {
+            document.timeline_zoom_level *= 2;
+        } else if document.timeline_zoom_level == -2 {
+            document.timeline_zoom_level = 1;
+        } else {
+            document.timeline_zoom_level /= 2;
+        }
+        document.timeline_zoom_level = std::cmp::min(document.timeline_zoom_level, 4);
+        Ok(())
+    }
+
+    fn timeline_zoom_out(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        if document.timeline_zoom_level > 1 {
+            document.timeline_zoom_level /= 2;
+        } else if document.timeline_zoom_level == 1 {
+            document.timeline_zoom_level = -2;
+        } else {
+            document.timeline_zoom_level *= 2;
+        }
+        document.timeline_zoom_level = std::cmp::max(document.timeline_zoom_level, -4);
+        Ok(())
+    }
+
+    fn timeline_reset_zoom(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_zoom_level = 1;
         Ok(())
     }
 
@@ -949,12 +987,15 @@ impl State {
                 self.update_animation_frame_offset_drag(*o)?
             }
             Command::EndAnimationFrameOffsetDrag => self.end_animation_frame_offset_drag()?,
-            Command::ZoomIn => self.zoom_in()?,
-            Command::ZoomOut => self.zoom_out()?,
-            Command::ResetZoom => self.reset_zoom()?,
+            Command::WorkbenchZoomIn => self.workbench_zoom_in()?,
+            Command::WorkbenchZoomOut => self.workbench_zoom_out()?,
+            Command::WorkbenchResetZoom => self.workbench_reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
             Command::TogglePlayback => self.toggle_playback()?,
             Command::ToggleLooping => self.toggle_looping()?,
+            Command::TimelineZoomIn => self.timeline_zoom_in()?,
+            Command::TimelineZoomOut => self.timeline_zoom_out()?,
+            Command::TimelineResetZoom => self.timeline_reset_zoom()?,
         };
         Ok(())
     }

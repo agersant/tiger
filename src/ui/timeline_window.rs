@@ -7,6 +7,40 @@ use crate::sheet::{Animation, AnimationFrame};
 use crate::state::{self, Document, State};
 use crate::ui::Rect;
 
+fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State) {
+    if let Ok(zoom) = state.get_timeline_zoom_factor() {
+        let h = 8.0; // TODO DPI?
+        let padding = 4.0; // TODO DPI?
+
+        let draw_list = ui.get_window_draw_list();
+        let cursor_start = ui.get_cursor_screen_pos();
+        let space = ui.get_content_region_avail(); // TODO - this doesn't work when window has enough content for scrolling
+        let mut x = cursor_start.0;
+        let mut delta_t = 0;
+        while x < cursor_start.0 + space.0 {
+            let (color, tick_height) = if delta_t % 100 == 0 {
+                ([70.0 / 255.0, 70.0 / 255.0, 70.0 / 255.0], h) // TODO.style
+            } else {
+                ([20.0 / 255.0, 20.0 / 255.0, 20.0 / 255.0], h / 2.0) // TODO.style
+            };
+
+            draw_list.add_rect_filled_multicolor(
+                (x, cursor_start.1),
+                (x + 1.0, cursor_start.1 + tick_height),
+                color,
+                color,
+                color,
+                color,
+            );
+
+            delta_t += 10;
+            x = cursor_start.0 + delta_t as f32 * zoom;
+        }
+
+        ui.set_cursor_screen_pos((cursor_start.0, cursor_start.1 + h + padding));
+    }
+}
+
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
     state: &State,
@@ -147,12 +181,15 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                 commands.toggle_looping();
                             }
 
-                            let initial_cursor_position = ui.get_cursor_pos();
+                            let ticks_cursor_position = ui.get_cursor_pos();
+                            draw_timeline_ticks(ui, state);
+
+                            let frames_cursor_position = ui.get_cursor_pos();
                             let mut cursor = Duration::new(0, 0);
                             for (frame_index, animation_frame) in
                                 animation.frames_iter().enumerate()
                             {
-                                ui.set_cursor_pos(initial_cursor_position);
+                                ui.set_cursor_pos(frames_cursor_position);
                                 draw_animation_frame(
                                     ui,
                                     state,
@@ -166,8 +203,19 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     Duration::new(0, 1_000_000 * animation_frame.get_duration());
                             }
 
-                            ui.set_cursor_pos(initial_cursor_position);
+                            ui.set_cursor_pos(ticks_cursor_position);
                             draw_playback_head(ui, state, document, animation);
+
+                            if ui.is_window_hovered() {
+                                if ui.imgui().key_ctrl() {
+                                    let mouse_wheel = ui.imgui().mouse_wheel();
+                                    if mouse_wheel > 0.0 {
+                                        commands.timeline_zoom_in();
+                                    } else if mouse_wheel < 0.0 {
+                                        commands.timeline_zoom_out();
+                                    }
+                                }
+                            }
                         }
                     }
                 }

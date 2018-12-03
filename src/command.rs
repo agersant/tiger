@@ -38,12 +38,15 @@ pub enum Command {
     BeginAnimationFrameOffsetDrag((usize, (f32, f32))),
     UpdateAnimationFrameOffsetDrag((f32, f32)),
     EndAnimationFrameOffsetDrag,
-    ZoomIn,
-    ZoomOut,
-    ResetZoom,
+    WorkbenchZoomIn,
+    WorkbenchZoomOut,
+    WorkbenchResetZoom,
     Pan((f32, f32)),
     TogglePlayback,
     ToggleLooping,
+    TimelineZoomIn,
+    TimelineZoomOut,
+    TimelineResetZoom,
 }
 
 pub struct CommandBuffer {
@@ -216,16 +219,16 @@ impl CommandBuffer {
         self.queue.push(Command::EndAnimationFrameOffsetDrag);
     }
 
-    pub fn zoom_in(&mut self) {
-        self.queue.push(Command::ZoomIn);
+    pub fn workbench_zoom_in(&mut self) {
+        self.queue.push(Command::WorkbenchZoomIn);
     }
 
-    pub fn zoom_out(&mut self) {
-        self.queue.push(Command::ZoomOut);
+    pub fn workbench_zoom_out(&mut self) {
+        self.queue.push(Command::WorkbenchZoomOut);
     }
 
-    pub fn reset_zoom(&mut self) {
-        self.queue.push(Command::ResetZoom);
+    pub fn workbench_reset_zoom(&mut self) {
+        self.queue.push(Command::WorkbenchResetZoom);
     }
 
     pub fn pan(&mut self, delta: (f32, f32)) {
@@ -238,5 +241,17 @@ impl CommandBuffer {
 
     pub fn toggle_looping(&mut self) {
         self.queue.push(Command::ToggleLooping);
+    }
+
+    pub fn timeline_zoom_in(&mut self) {
+        self.queue.push(Command::TimelineZoomIn);
+    }
+
+    pub fn timeline_zoom_out(&mut self) {
+        self.queue.push(Command::TimelineZoomOut);
+    }
+
+    pub fn timeline_reset_zoom(&mut self) {
+        self.queue.push(Command::TimelineResetZoom);
     }
 }
