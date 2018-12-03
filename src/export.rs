@@ -40,30 +40,22 @@ fn liquid_data_from_frame(
 
     frame_data.insert(
         Cow::from("x"),
-        Value::Scalar(Scalar::new(
-            frame_layout.position_in_sheet.0 as i32,
-        )),
+        Value::Scalar(Scalar::new(frame_layout.position_in_sheet.0 as i32)),
     );
 
     frame_data.insert(
         Cow::from("y"),
-        Value::Scalar(Scalar::new(
-            frame_layout.position_in_sheet.1 as i32,
-        )),
+        Value::Scalar(Scalar::new(frame_layout.position_in_sheet.1 as i32)),
     );
 
     frame_data.insert(
         Cow::from("width"),
-        Value::Scalar(Scalar::new(
-            frame_layout.size_in_sheet.0 as i32,
-        )),
+        Value::Scalar(Scalar::new(frame_layout.size_in_sheet.0 as i32)),
     );
 
     frame_data.insert(
         Cow::from("height"),
-        Value::Scalar(Scalar::new(
-            frame_layout.size_in_sheet.1 as i32,
-        )),
+        Value::Scalar(Scalar::new(frame_layout.size_in_sheet.1 as i32)),
     );
 
     Ok(frame_data)
