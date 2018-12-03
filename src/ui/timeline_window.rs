@@ -200,7 +200,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     cursor,
                                 );
                                 cursor +=
-                                    Duration::new(0, 1_000_000 * animation_frame.get_duration());
+                                    Duration::from_millis(animation_frame.get_duration() as u64);
                             }
 
                             ui.set_cursor_pos(ticks_cursor_position);

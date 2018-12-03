@@ -141,13 +141,13 @@ impl Animation {
             Some(d) => d,
         };
         let time = if self.is_looping {
-            Duration::new(0, 1_000_000 * (time.as_millis() as u32 % duration))
+            Duration::from_millis(time.as_millis() as u64 % duration as u64)
         } else {
             time
         };
         let mut cursor = Duration::new(0, 0);
         for (index, frame) in self.timeline.iter().enumerate() {
-            cursor = cursor + Duration::new(0, frame.duration * 1_000_000);
+            cursor = cursor + Duration::from_millis(frame.duration as u64);
             if time < cursor {
                 return Some((index, frame));
             }

@@ -95,12 +95,12 @@ impl Document {
                             // Loop animation
                             if animation.is_looping() {
                                 self.timeline_clock =
-                                    Duration::new(0, (clock_ms % d as u128) as u32 * 1_000_000)
+                                    Duration::from_millis((clock_ms % d as u128) as u64)
 
                             // Stop playhead at the end of animation
                             } else if clock_ms >= d as u128 {
                                 self.timeline_playing = false;
-                                self.timeline_clock = Duration::new(0, d * 1_000_000)
+                                self.timeline_clock = Duration::from_millis(d as u64)
                             }
                         }
 

@@ -38,10 +38,8 @@ fn draw_animation<'a>(
             if let Some(fill) = utils::fill(space, bbox_size) {
                 let cursor_pos = ui.get_cursor_pos();
                 let duration = animation.get_duration().unwrap(); // TODO no unwrap
-                let time = Duration::new(
-                    0,
-                    1_000_000 * (state.get_clock().as_millis() as u32 % duration),
-                ); // TODO pause on first and last frame for non looping animation?
+                let time =
+                    Duration::from_millis(state.get_clock().as_millis() as u64 % duration as u64); // TODO pause on first and last frame for non looping animation?
 
                 let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
