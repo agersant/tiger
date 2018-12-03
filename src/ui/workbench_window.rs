@@ -105,6 +105,8 @@ pub fn draw<'a>(
             .title_bar(false)
             .menu_bar(false)
             .movable(false)
+            .scrollable(false)
+            .scroll_bar(false)
             .no_bring_to_front_on_focus(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
