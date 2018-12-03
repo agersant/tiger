@@ -50,6 +50,7 @@ pub enum BoundingBoxError {
     FrameDataNotLoaded,
 }
 
+#[derive(Debug)]
 pub struct BoundingBox {
     pub left: i32,
     pub right: i32,
@@ -65,10 +66,10 @@ pub fn get_bounding_box(
     if animation.get_num_frames() == 0 {
         return Err(BoundingBoxError::EmptyAnimation);
     }
-    let mut left = i32::min_value();
-    let mut right = i32::max_value();
-    let mut top = i32::min_value();
-    let mut bottom = i32::max_value();
+    let mut left = i32::max_value();
+    let mut right = i32::min_value();
+    let mut top = i32::max_value();
+    let mut bottom = i32::min_value();
     for frame in animation.frames_iter() {
         let texture = texture_cache
             .get(frame.get_frame())
@@ -78,10 +79,10 @@ pub fn get_bounding_box(
         let frame_right = offset.0 + (texture.size.0 / 2.0).floor() as i32;
         let frame_top = offset.1 - (texture.size.1 / 2.0).ceil() as i32;
         let frame_bottom = offset.1 + (texture.size.1 / 2.0).floor() as i32;
-        left = std::cmp::max(left, frame_left);
-        right = std::cmp::min(right, frame_right);
-        top = std::cmp::max(top, frame_top);
-        bottom = std::cmp::min(bottom, frame_bottom);
+        left = std::cmp::min(left, frame_left);
+        right = std::cmp::max(right, frame_right);
+        top = std::cmp::min(top, frame_top);
+        bottom = std::cmp::max(bottom, frame_bottom);
     }
     Ok(BoundingBox {
         left,
