@@ -47,6 +47,7 @@ pub enum Command {
     TimelineZoomIn,
     TimelineZoomOut,
     TimelineResetZoom,
+    DeleteSelection,
 }
 
 pub struct CommandBuffer {
@@ -253,5 +254,9 @@ impl CommandBuffer {
 
     pub fn timeline_reset_zoom(&mut self) {
         self.queue.push(Command::TimelineResetZoom);
+    }
+
+    pub fn delete_selection(&mut self) {
+        self.queue.push(Command::DeleteSelection);
     }
 }

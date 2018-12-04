@@ -56,6 +56,7 @@ pub struct Document {
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
+    global_selection: Option<GlobalSelection>,
     export_settings: Option<ExportSettings>,
 }
 
@@ -79,6 +80,7 @@ impl Document {
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
+            global_selection: None,
             export_settings: None,
         }
     }
@@ -182,9 +184,42 @@ impl Document {
     pub fn get_export_settings(&self) -> &Option<ExportSettings> {
         &self.export_settings
     }
+
+    fn delete_selection(&mut self) {
+        match &self.global_selection {
+            Some(GlobalSelection::Animation(a)) => {
+                self.sheet.delete_animation(&a);
+                if self.content_selection == Some(ContentSelection::Animation(a.clone())) {
+                    self.content_selection = None;
+                }
+                if self.content_rename_animation_target == Some(a.clone()) {
+                    self.content_rename_animation_target = None;
+                    self.content_rename_animation_buffer = None;
+                }
+            }
+            Some(GlobalSelection::Frame(f)) => {
+                self.sheet.delete_frame(&f);
+                if self.content_selection == Some(ContentSelection::Frame(f.clone())) {
+                    self.content_selection = None;
+                }
+                if self.content_frame_being_dragged == Some(f.clone()) {
+                    self.content_frame_being_dragged = None;
+                }
+            }
+            _ => {}
+        };
+        self.global_selection = None;
+    }
 }
 
 #[derive(Clone, Debug)]
+pub enum GlobalSelection {
+    Frame(PathBuf),
+    Animation(String),
+    AnimationFrame(String, usize),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum ContentSelection {
     Frame(PathBuf),
     Animation(String),
@@ -516,6 +551,7 @@ impl State {
             return Err(StateError::FrameNotInDocument.into());
         }
         document.content_selection = Some(ContentSelection::Frame(path.as_ref().to_owned()));
+        document.global_selection = Some(GlobalSelection::Frame(path.as_ref().to_owned()));
         Ok(())
     }
 
@@ -528,6 +564,7 @@ impl State {
             return Err(StateError::AnimationNotInDocument.into());
         }
         document.content_selection = Some(ContentSelection::Animation(name.as_ref().to_owned()));
+        document.global_selection = Some(GlobalSelection::Animation(name.as_ref().to_owned()));
         Ok(())
     }
 
@@ -903,6 +940,14 @@ impl State {
         Ok(())
     }
 
+    fn delete_selection(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.delete_selection();
+        Ok(())
+    }
+
     pub fn get_workbench_zoom_factor(&self) -> Result<f32, Error> {
         let document = self
             .get_current_document()
@@ -996,6 +1041,7 @@ impl State {
             Command::TimelineZoomIn => self.timeline_zoom_in()?,
             Command::TimelineZoomOut => self.timeline_zoom_out()?,
             Command::TimelineResetZoom => self.timeline_reset_zoom()?,
+            Command::DeleteSelection => self.delete_selection()?,
         };
         Ok(())
     }

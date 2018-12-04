@@ -141,6 +141,7 @@ pub fn run<'a>(
 
     update_drag_and_drop(ui, state, &mut commands);
     draw_drag_and_drop(ui, state, texture_cache);
+    process_shortcuts(ui, &mut commands);
 
     Ok(commands)
 }
@@ -346,5 +347,12 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                 });
             ui.open_popup(&popup_id);
         }
+    }
+}
+
+fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
+    let delete_key_index = ui.imgui().get_key_index(ImGuiKey::Delete);
+    if ui.imgui().is_key_released(delete_key_index) {
+        commands.delete_selection();
     }
 }

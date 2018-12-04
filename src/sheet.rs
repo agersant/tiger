@@ -289,4 +289,15 @@ impl Sheet {
         animation.name = new_name.as_ref().to_owned();
         Ok(())
     }
+
+    pub fn delete_frame<T: AsRef<Path>>(&mut self, path: T) {
+        self.frames.retain(|f| &f.source != path.as_ref());
+        for animation in self.animations.iter_mut() {
+            animation.timeline.retain(|af| &af.frame != path.as_ref())
+        }
+    }
+
+    pub fn delete_animation<T: AsRef<str>>(&mut self, name: T) {
+        self.animations.retain(|a| &a.name != name.as_ref());
+    }
 }
