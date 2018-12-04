@@ -188,14 +188,24 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 }
             });
             ui.menu(im_str!("View")).build(|| {
-                if ui.menu_item(im_str!("Zoom In")).build() {
+                if ui.menu_item(im_str!("Zoom In (Workbench)")).build() {
                     commands.workbench_zoom_in();
                 }
-                if ui.menu_item(im_str!("Zoom Out")).build() {
+                if ui.menu_item(im_str!("Zoom Out (Workbench)")).build() {
                     commands.workbench_zoom_out();
                 }
-                if ui.menu_item(im_str!("Reset Zoom")).build() {
+                if ui.menu_item(im_str!("Reset Zoom (Workbench)")).build() {
                     commands.workbench_reset_zoom();
+                }
+                ui.separator();
+                if ui.menu_item(im_str!("Zoom In (Timeline)")).build() {
+                    commands.timeline_zoom_in();
+                }
+                if ui.menu_item(im_str!("Zoom Out (Timeline)")).build() {
+                    commands.timeline_zoom_out();
+                }
+                if ui.menu_item(im_str!("Reset Zoom (Timeline)")).build() {
+                    commands.timeline_reset_zoom();
                 }
                 ui.separator();
                 ui.menu_item(im_str!("Grid")).build(); // TODO

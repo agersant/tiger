@@ -282,10 +282,6 @@ impl State {
         self.get_current_document_mut().map(|d| d.get_sheet_mut())
     }
 
-    fn get_current_sheet(&mut self) -> Option<&Sheet> {
-        self.get_current_document().map(|d| d.get_sheet())
-    }
-
     fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
         self.documents
             .iter_mut()
