@@ -41,7 +41,6 @@ pub enum StateError {
 pub struct Document {
     source: PathBuf,
     sheet: Sheet,
-    content_selection: Option<ContentSelection>,
     content_current_tab: ContentTab,
     content_rename_animation_target: Option<String>,
     content_rename_animation_buffer: Option<String>,
@@ -56,7 +55,7 @@ pub struct Document {
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
-    global_selection: Option<GlobalSelection>,
+    selection: Option<Selection>,
     export_settings: Option<ExportSettings>,
 }
 
@@ -65,7 +64,6 @@ impl Document {
         Document {
             source: path.as_ref().to_owned(),
             sheet: Sheet::new(),
-            content_selection: None,
             content_current_tab: ContentTab::Frames,
             content_rename_animation_target: None,
             content_rename_animation_buffer: None,
@@ -80,7 +78,7 @@ impl Document {
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
-            global_selection: None,
+            selection: None,
             export_settings: None,
         }
     }
@@ -149,8 +147,8 @@ impl Document {
         &self.content_current_tab
     }
 
-    pub fn get_content_selection(&self) -> &Option<ContentSelection> {
-        &self.content_selection
+    pub fn get_selection(&self) -> &Option<Selection> {
+        &self.selection
     }
 
     pub fn get_content_frame_being_dragged(&self) -> &Option<PathBuf> {
@@ -186,43 +184,37 @@ impl Document {
     }
 
     fn delete_selection(&mut self) {
-        match &self.global_selection {
-            Some(GlobalSelection::Animation(a)) => {
+        match &self.selection {
+            Some(Selection::Animation(a)) => {
                 self.sheet.delete_animation(&a);
-                if self.content_selection == Some(ContentSelection::Animation(a.clone())) {
-                    self.content_selection = None;
-                }
                 if self.content_rename_animation_target == Some(a.clone()) {
                     self.content_rename_animation_target = None;
                     self.content_rename_animation_buffer = None;
                 }
             }
-            Some(GlobalSelection::Frame(f)) => {
+            Some(Selection::Frame(f)) => {
                 self.sheet.delete_frame(&f);
-                if self.content_selection == Some(ContentSelection::Frame(f.clone())) {
-                    self.content_selection = None;
-                }
                 if self.content_frame_being_dragged == Some(f.clone()) {
                     self.content_frame_being_dragged = None;
                 }
             }
-            _ => {}
+            Some(Selection::AnimationFrame(a, af)) => {
+                self.sheet.delete_animation_frame(a, *af);
+                if self.workbench_animation_frame_being_dragged == Some(*af) {
+                    self.workbench_animation_frame_being_dragged = None;
+                }
+            }
+            None => {}
         };
-        self.global_selection = None;
+        self.selection = None;
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum GlobalSelection {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Selection {
     Frame(PathBuf),
     Animation(String),
     AnimationFrame(String, usize),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ContentSelection {
-    Frame(PathBuf),
-    Animation(String),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -550,8 +542,7 @@ impl State {
         if !sheet.has_frame(&path) {
             return Err(StateError::FrameNotInDocument.into());
         }
-        document.content_selection = Some(ContentSelection::Frame(path.as_ref().to_owned()));
-        document.global_selection = Some(GlobalSelection::Frame(path.as_ref().to_owned()));
+        document.selection = Some(Selection::Frame(path.as_ref().to_owned()));
         Ok(())
     }
 
@@ -563,8 +554,27 @@ impl State {
         if !sheet.has_animation(&name) {
             return Err(StateError::AnimationNotInDocument.into());
         }
-        document.content_selection = Some(ContentSelection::Animation(name.as_ref().to_owned()));
-        document.global_selection = Some(GlobalSelection::Animation(name.as_ref().to_owned()));
+        document.selection = Some(Selection::Animation(name.as_ref().to_owned()));
+        Ok(())
+    }
+
+    fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        let animation = document
+            .get_sheet()
+            .get_animation(&animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+        let _animation_frame = animation
+            .get_frame(frame_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        document.selection = Some(Selection::AnimationFrame(animation_name, frame_index));
         Ok(())
     }
 
@@ -1009,6 +1019,7 @@ impl State {
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::SelectAnimation(a) => self.select_animation(&a)?,
+            Command::SelectAnimationFrame(af) => self.select_animation_frame(*af)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
             Command::EditAnimation(a) => self.edit_animation(&a)?,
             Command::CreateAnimation => self.create_animation()?,

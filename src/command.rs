@@ -23,6 +23,7 @@ pub enum Command {
     Import,
     SelectFrame(PathBuf),
     SelectAnimation(String),
+    SelectAnimationFrame(usize),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
@@ -140,6 +141,11 @@ impl CommandBuffer {
     pub fn select_animation(&mut self, animation: &Animation) {
         self.queue
             .push(Command::SelectAnimation(animation.get_name().to_owned()));
+    }
+
+    pub fn select_animation_frame(&mut self, animation_frame_index: usize) {
+        self.queue
+            .push(Command::SelectAnimationFrame(animation_frame_index));
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {

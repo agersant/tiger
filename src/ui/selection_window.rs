@@ -73,13 +73,13 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &Texture
             .movable(false)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-                    match document.get_content_selection() {
-                        Some(state::ContentSelection::Frame(path)) => {
+                    match document.get_selection() {
+                        Some(state::Selection::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
-                        Some(state::ContentSelection::Animation(name)) => {
+                        Some(state::Selection::Animation(name)) => {
                             if let Some(animation) = document.get_sheet().get_animation(name) {
                                 draw_animation(ui, state, texture_cache, animation);
                             }

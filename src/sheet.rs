@@ -120,7 +120,7 @@ impl Animation {
         Some(self.timeline.iter().map(|f| f.duration).sum())
     }
 
-    pub fn get_frame(&mut self, index: usize) -> Option<&AnimationFrame> {
+    pub fn get_frame(&self, index: usize) -> Option<&AnimationFrame> {
         if index >= self.timeline.len() {
             return None;
         }
@@ -299,5 +299,13 @@ impl Sheet {
 
     pub fn delete_animation<T: AsRef<str>>(&mut self, name: T) {
         self.animations.retain(|a| &a.name != name.as_ref());
+    }
+
+    pub fn delete_animation_frame<T: AsRef<str>>(&mut self, animation_name: T, frame_index: usize) {
+        if let Some(animation) = self.get_animation_mut(animation_name) {
+            if frame_index < animation.timeline.len() {
+                animation.timeline.remove(frame_index);
+            }
+        }
     }
 }

@@ -3,7 +3,7 @@ use imgui::*;
 
 use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
-use crate::state::{ContentSelection, ContentTab, Document, State};
+use crate::state::{ContentTab, Document, Selection, State};
 use crate::ui::Rect;
 
 fn draw_tabs<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
@@ -22,8 +22,8 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
     }
     for frame in document.get_sheet().frames_iter() {
         if let Some(name) = frame.get_source().file_name() {
-            let is_selected = match document.get_content_selection() {
-                Some(ContentSelection::Frame(p)) => p == frame.get_source(),
+            let is_selected = match document.get_selection() {
+                Some(Selection::Frame(p)) => p == frame.get_source(),
                 _ => false,
             };
 
@@ -81,8 +81,8 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
             ui.open_popup(&popup_id);
         }
 
-        let is_selected = match document.get_content_selection() {
-            Some(ContentSelection::Animation(a)) => a == animation.get_name(),
+        let is_selected = match document.get_selection() {
+            Some(Selection::Animation(a)) => a == animation.get_name(),
             _ => false,
         };
         let mut flags = ImGuiSelectableFlags::empty();
