@@ -7,14 +7,21 @@ use crate::sheet::{Animation, AnimationFrame};
 use crate::state::{self, Document, Selection, State};
 use crate::ui::Rect;
 
-fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer, document: &Document) {
+fn draw_timeline_ticks<'a>(
+    ui: &Ui<'a>,
+    state: &State,
+    commands: &mut CommandBuffer,
+    document: &Document,
+) {
     if let Ok(zoom) = state.get_timeline_zoom_factor() {
         let h = 8.0; // TODO DPI?
         let padding = 4.0; // TODO DPI?
 
         let draw_list = ui.get_window_draw_list();
         let cursor_start = ui.get_cursor_screen_pos();
-        let max_draw_x = cursor_start.0 + ui.get_content_region_avail().0 - ui.get_window_content_region_min().0 + 2.0 * ui.get_cursor_pos().0;
+        let max_draw_x = cursor_start.0 + ui.get_content_region_avail().0
+            - ui.get_window_content_region_min().0
+            + 2.0 * ui.get_cursor_pos().0;
 
         let mut x = cursor_start.0;
         let mut delta_t = 0;
@@ -38,7 +45,10 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuf
             x = cursor_start.0 + delta_t as f32 * zoom;
         }
 
-        let clicked = ui.invisible_button(im_str!("timeline_ticks"), (max_draw_x - cursor_start.0, h + padding));
+        let clicked = ui.invisible_button(
+            im_str!("timeline_ticks"),
+            (max_draw_x - cursor_start.0, h + padding),
+        );
         if ui.is_item_hovered()
             && ui.imgui().is_mouse_down(ImMouseButton::Left)
             && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
