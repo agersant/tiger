@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document};
@@ -48,6 +49,9 @@ pub enum Command {
     TimelineZoomIn,
     TimelineZoomOut,
     TimelineResetZoom,
+    BeginScrub,
+    UpdateScrub(Duration),
+    EndScrub,
     DeleteSelection,
 }
 
@@ -260,6 +264,18 @@ impl CommandBuffer {
 
     pub fn timeline_reset_zoom(&mut self) {
         self.queue.push(Command::TimelineResetZoom);
+    }
+
+    pub fn begin_scrub(&mut self) {
+        self.queue.push(Command::BeginScrub);
+    }
+
+    pub fn update_scrub(&mut self, new_time: Duration) {
+        self.queue.push(Command::UpdateScrub(new_time));
+    }
+
+    pub fn end_scrub(&mut self) {
+        self.queue.push(Command::EndScrub);
     }
 
     pub fn delete_selection(&mut self) {

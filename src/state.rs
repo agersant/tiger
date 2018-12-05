@@ -55,6 +55,7 @@ pub struct Document {
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
+    timeline_scrubbing: bool,
     selection: Option<Selection>,
     export_settings: Option<ExportSettings>,
 }
@@ -78,6 +79,7 @@ impl Document {
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
+            timeline_scrubbing: false,
             selection: None,
             export_settings: None,
         }
@@ -173,6 +175,10 @@ impl Document {
 
     pub fn get_timeline_clock(&self) -> Duration {
         self.timeline_clock
+    }
+
+    pub fn is_scrubbing(&self) -> bool {
+        self.timeline_scrubbing
     }
 
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
@@ -946,6 +952,30 @@ impl State {
         Ok(())
     }
 
+    fn begin_scrub(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_scrubbing = true;
+        Ok(())
+    }
+
+    fn update_scrub(&mut self, new_time: &Duration) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_clock = new_time.clone();
+        Ok(())
+    }
+
+    fn end_scrub(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_scrubbing = false;
+        Ok(())
+    }
+
     fn delete_selection(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -1048,6 +1078,9 @@ impl State {
             Command::TimelineZoomIn => self.timeline_zoom_in()?,
             Command::TimelineZoomOut => self.timeline_zoom_out()?,
             Command::TimelineResetZoom => self.timeline_reset_zoom()?,
+            Command::BeginScrub => self.begin_scrub()?,
+            Command::UpdateScrub(t) => self.update_scrub(t)?,
+            Command::EndScrub => self.end_scrub()?,
             Command::DeleteSelection => self.delete_selection()?,
         };
         Ok(())

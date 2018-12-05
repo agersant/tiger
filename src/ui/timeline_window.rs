@@ -7,7 +7,7 @@ use crate::sheet::{Animation, AnimationFrame};
 use crate::state::{self, Document, Selection, State};
 use crate::ui::Rect;
 
-fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State) {
+fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer, document: &Document) {
     if let Ok(zoom) = state.get_timeline_zoom_factor() {
         let h = 8.0; // TODO DPI?
         let padding = 4.0; // TODO DPI?
@@ -36,6 +36,21 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State) {
 
             delta_t += 10;
             x = cursor_start.0 + delta_t as f32 * zoom;
+        }
+
+        let clicked = ui.invisible_button(im_str!("timeline_ticks"), (max_draw_x - cursor_start.0, h + padding));
+        if ui.is_item_hovered()
+            && ui.imgui().is_mouse_down(ImMouseButton::Left)
+            && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+        {
+            commands.begin_scrub();
+        }
+        let is_scrubbing = document.is_scrubbing();
+        if clicked || is_scrubbing {
+            let mouse_pos = ui.imgui().mouse_pos();
+            let delta = mouse_pos.0 - cursor_start.0;
+            let new_t = delta / zoom;
+            commands.update_scrub(Duration::from_millis(std::cmp::max(0, new_t as i64) as u64));
         }
 
         ui.set_cursor_screen_pos((cursor_start.0, cursor_start.1 + h + padding));
@@ -214,7 +229,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                             // TODO autoscroll during playback
 
                             let ticks_cursor_position = ui.get_cursor_pos();
-                            draw_timeline_ticks(ui, state);
+                            draw_timeline_ticks(ui, state, commands, document);
 
                             let frames_cursor_position = ui.get_cursor_pos();
                             let mut cursor = Duration::new(0, 0);
