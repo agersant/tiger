@@ -16,6 +16,7 @@ imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs", branch = "t
 imgui-glutin-support = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
 liquid = "0.17"
 nfd = "0.0.4"
+pathdiff = "0.1.0"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"

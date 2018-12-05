@@ -1,4 +1,5 @@
 use failure::Error;
+use pathdiff::diff_paths;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -14,6 +15,8 @@ pub enum SheetError {
     AnimationNotFound,
     #[fail(display = "Animation name too long")]
     AnimationNameTooLong,
+    #[fail(display = "Error converting an absolute path to a relative path")]
+    AbsoluteToRelativePath,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -161,11 +164,34 @@ impl Animation {
     pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {
         self.timeline.iter()
     }
+
+    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<AnimationFrame> {
+        self.timeline.iter_mut()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ExportFormat {
     Template(PathBuf),
+}
+
+impl ExportFormat {
+    pub fn with_relative_paths<T: AsRef<Path>>(
+        &self,
+        relative_to: T,
+    ) -> Result<ExportFormat, Error> {
+        match self {
+            ExportFormat::Template(p) => Ok(ExportFormat::Template(
+                diff_paths(&p, relative_to.as_ref()).ok_or(SheetError::AbsoluteToRelativePath)?,
+            )),
+        }
+    }
+
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> ExportFormat {
+        match self {
+            ExportFormat::Template(p) => ExportFormat::Template(relative_to.as_ref().join(&p)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -181,6 +207,27 @@ impl ExportSettings {
             format: ExportFormat::Template(PathBuf::new()),
             texture_destination: PathBuf::new(),
             metadata_destination: PathBuf::new(),
+        }
+    }
+
+    pub fn with_relative_paths<T: AsRef<Path>>(
+        &self,
+        relative_to: T,
+    ) -> Result<ExportSettings, Error> {
+        Ok(ExportSettings {
+            format: self.format.with_relative_paths(&relative_to)?,
+            texture_destination: diff_paths(&self.texture_destination, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?,
+            metadata_destination: diff_paths(&self.metadata_destination, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?,
+        })
+    }
+
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> ExportSettings {
+        ExportSettings {
+            format: self.format.with_absolute_paths(&relative_to),
+            texture_destination: relative_to.as_ref().join(&self.texture_destination),
+            metadata_destination: relative_to.as_ref().join(&self.metadata_destination),
         }
     }
 }
@@ -201,8 +248,46 @@ impl Sheet {
         }
     }
 
+    pub fn with_relative_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<Sheet, Error> {
+        let mut sheet = self.clone();
+        for frame in sheet.frames_iter_mut() {
+            frame.source = diff_paths(&frame.source, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?;
+        }
+        for animation in sheet.animations.iter_mut() {
+            for animation_frame in animation.frames_iter_mut() {
+                animation_frame.frame = diff_paths(&animation_frame.frame, relative_to.as_ref())
+                    .ok_or(SheetError::AbsoluteToRelativePath)?;
+            }
+        }
+        if let Some(e) = sheet.export_settings {
+            sheet.export_settings = e.with_relative_paths(relative_to).ok();
+        }
+        Ok(sheet)
+    }
+
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> Sheet {
+        let mut sheet = self.clone();
+        for frame in sheet.frames_iter_mut() {
+            frame.source = relative_to.as_ref().join(&frame.source);
+        }
+        for animation in sheet.animations.iter_mut() {
+            for animation_frame in animation.frames_iter_mut() {
+                animation_frame.frame = relative_to.as_ref().join(&&animation_frame.frame);
+            }
+        }
+        if let Some(e) = sheet.export_settings {
+            sheet.export_settings = Some(e.with_absolute_paths(relative_to));
+        }
+        sheet
+    }
+
     pub fn frames_iter(&self) -> std::slice::Iter<Frame> {
         self.frames.iter()
+    }
+
+    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<Frame> {
+        self.frames.iter_mut()
     }
 
     pub fn animations_iter(&self) -> std::slice::Iter<Animation> {

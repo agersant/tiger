@@ -118,16 +118,25 @@ impl Document {
     }
 
     pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
-        let file = BufReader::new(File::open(path.as_ref())?);
+        let mut directory = path.as_ref().to_path_buf();
+        directory.pop();
+
         // TODO support old versions!!!
-        let sheet = serde_json::from_reader(file)?;
+        let file = BufReader::new(File::open(path.as_ref())?);
+        let sheet: Sheet = serde_json::from_reader(file)?;
+        let sheet = sheet.with_absolute_paths(&directory);
+
         let mut document = Document::new(&path);
         document.sheet = sheet;
         Ok(document)
     }
 
     fn save(&mut self) -> Result<(), Error> {
-        let sheet = self.get_sheet();
+        let mut directory = self.source.to_path_buf();
+        directory.pop();
+
+        let sheet = self.get_sheet().with_relative_paths(directory)?;
+
         let file = BufWriter::new(File::create(&self.source)?);
         serde_json::to_writer_pretty(file, &sheet)?;
         Ok(())
