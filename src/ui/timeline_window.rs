@@ -14,10 +14,11 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, state: &State) {
 
         let draw_list = ui.get_window_draw_list();
         let cursor_start = ui.get_cursor_screen_pos();
-        let space = ui.get_content_region_avail(); // TODO - this doesn't work when window has enough content for scrolling
+        let max_draw_x = cursor_start.0 + ui.get_content_region_avail().0 - ui.get_window_content_region_min().0 + 2.0 * ui.get_cursor_pos().0;
+
         let mut x = cursor_start.0;
         let mut delta_t = 0;
-        while x < cursor_start.0 + space.0 {
+        while x < max_draw_x {
             let (color, tick_height) = if delta_t % 100 == 0 {
                 ([70.0 / 255.0, 70.0 / 255.0, 70.0 / 255.0], h) // TODO.style
             } else {

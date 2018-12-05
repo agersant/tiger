@@ -11,9 +11,9 @@ gfx_core = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 gfx_device_gl = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 gfx_window_glutin = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 image = "0.20"
-imgui = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
-imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
-imgui-glutin-support = { git = "https://github.com/agersant/imgui-rs", branch = "glutin19" }
+imgui = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
+imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
+imgui-glutin-support = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
 liquid = "0.17"
 nfd = "0.0.4"
 serde = "1.0"
