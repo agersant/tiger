@@ -487,23 +487,15 @@ impl State {
     }
 
     // TODO texture export performance is awful
-    fn end_export_as(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        let export_settings = document
-            .export_settings
-            .take()
-            .ok_or(StateError::NotExporting)?;
-
-        document
-            .get_sheet_mut()
-            .set_export_settings(export_settings.clone());
-
+    fn export_internal(
+        &self,
+        document: &Document,
+        export_settings: &ExportSettings,
+    ) -> Result<(), Error> {
         let packed_sheet = pack::pack_sheet(document.get_sheet())?;
         let exported_data = export::export_sheet(
             document.get_sheet(),
-            &export_settings.format,
+            &export_settings,
             &packed_sheet.get_layout(),
         )?;
 
@@ -519,6 +511,29 @@ impl State {
         Ok(())
     }
 
+    fn end_export_as(&mut self) -> Result<(), Error> {
+        let export_settings;
+        {
+            let document = self
+                .get_current_document_mut()
+                .ok_or(StateError::NoDocumentOpen)?;
+
+            export_settings = document
+                .export_settings
+                .take()
+                .ok_or(StateError::NotExporting)?;
+
+            document
+                .get_sheet_mut()
+                .set_export_settings(export_settings.clone());
+        }
+
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+        self.export_internal(document, &export_settings)
+    }
+
     fn export(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document()
@@ -530,23 +545,7 @@ impl State {
             .as_ref()
             .ok_or(StateError::NoExistingExportSettings)?;
 
-        let packed_sheet = pack::pack_sheet(document.get_sheet())?;
-        let exported_data = export::export_sheet(
-            document.get_sheet(),
-            &export_settings.format,
-            &packed_sheet.get_layout(),
-        )?;
-
-        {
-            let mut file = File::create(&export_settings.metadata_destination)?;
-            file.write_all(&exported_data.into_bytes())?;
-        }
-        {
-            let mut file = File::create(&export_settings.texture_destination)?;
-            packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
-        }
-
-        Ok(())
+        self.export_internal(document, export_settings)
     }
 
     fn switch_to_content_tab(&mut self, tab: ContentTab) -> Result<(), Error> {

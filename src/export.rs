@@ -1,11 +1,12 @@
 use failure::Error;
 use liquid::value::{Scalar, Value};
+use pathdiff::diff_paths;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::pack::PackedFrame;
-use crate::sheet::{Animation, AnimationFrame, ExportFormat, Frame, Sheet};
+use crate::sheet::{Animation, AnimationFrame, ExportFormat, ExportSettings, Frame, Sheet};
 
 type LiquidData = HashMap<Cow<'static, str>, Value>;
 type TextureLayout = HashMap<PathBuf, PackedFrame>;
@@ -20,6 +21,8 @@ pub enum ExportError {
     InvalidFrameReference,
     #[fail(display = "The sheet contains a frame which was not packed into the texture atlas")]
     FrameWasNotPacked,
+    #[fail(display = "Error converting an absolute path to a relative path")]
+    AbsoluteToRelativePath,
 }
 
 fn liquid_data_from_frame(
@@ -111,6 +114,7 @@ fn liquid_data_from_animation(sheet: &Sheet, animation: &Animation) -> Result<Li
 
 fn liquid_data_from_sheet(
     sheet: &Sheet,
+    export_settings: &ExportSettings,
     texture_layout: &TextureLayout,
 ) -> Result<LiquidData, Error> {
     let mut map = LiquidData::new();
@@ -137,16 +141,30 @@ fn liquid_data_from_sheet(
         map.insert(Cow::from("animations"), animations_value);
     }
 
+    {
+        let mut relative_to = export_settings.metadata_destination.clone();
+        relative_to.pop();
+        let image_path = diff_paths(
+            &export_settings.texture_destination,
+            &relative_to,
+        )
+        .ok_or(ExportError::AbsoluteToRelativePath)?;
+        map.insert(
+            Cow::from("sheet_image"),
+            Value::Scalar(Scalar::new(image_path.to_string_lossy().into_owned())),
+        );
+    }
+
     Ok(map)
 }
 
 pub fn export_sheet(
     sheet: &Sheet,
-    format: &ExportFormat,
+    export_settings: &ExportSettings,
     texture_layout: &TextureLayout,
 ) -> Result<String, Error> {
     let template;
-    match format {
+    match &export_settings.format {
         ExportFormat::Template(p) => {
             template = liquid::ParserBuilder::with_liquid()
                 .build()
@@ -155,7 +173,7 @@ pub fn export_sheet(
         }
     }
 
-    let globals: LiquidData = liquid_data_from_sheet(sheet, texture_layout)?;
+    let globals: LiquidData = liquid_data_from_sheet(sheet, export_settings, texture_layout)?;
     let output = template
         .render(&globals)
         .map_err(|_| ExportError::TemplateRenderingError)?;
