@@ -182,14 +182,6 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                     commands.close_all_documents();
                 }
             });
-            ui.menu(im_str!("Edit")).build(|| {
-                if ui.menu_item(im_str!("Undo")).build() {
-                    // TODO
-                }
-                if ui.menu_item(im_str!("Redo")).build() {
-                    // TODO
-                }
-            });
             ui.menu(im_str!("View")).build(|| {
                 if ui.menu_item(im_str!("Zoom In (Workbench)")).build() {
                     commands.workbench_zoom_in();
@@ -210,12 +202,6 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 if ui.menu_item(im_str!("Reset Zoom (Timeline)")).build() {
                     commands.timeline_reset_zoom();
                 }
-                ui.separator();
-                ui.menu_item(im_str!("Grid")).build(); // TODO
-                ui.menu_item(im_str!("Hitboxes")).build(); // TODO
-            });
-            ui.menu(im_str!("Help")).build(|| {
-                ui.menu_item(im_str!("About")).build(); // TODO
             });
 
             *size = ui.get_window_size();
