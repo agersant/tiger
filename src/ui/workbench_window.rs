@@ -47,9 +47,11 @@ fn draw_animation<'a>(
                 let frame_offset = animation_frame.get_offset();
                 let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
                 let cursor_x =
-                    offset.0 + zoom * frame_offset.0 as f32 + (rect.size.0 - draw_size.0) / 2.0;
+                    offset.0 + zoom * frame_offset.0 as f32 + (rect.size.0 / 2.0).floor()
+                        - (draw_size.0 / 2.0).floor();
                 let cursor_y =
-                    offset.1 + zoom * frame_offset.1 as f32 + (rect.size.1 - draw_size.1) / 2.0;
+                    offset.1 + zoom * frame_offset.1 as f32 + (rect.size.1 / 2.0).floor()
+                        - (draw_size.1 / 2.0).floor();
                 ui.set_cursor_pos((cursor_x, cursor_y));
                 ui.image(texture.id, draw_size).build();
 

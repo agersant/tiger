@@ -67,29 +67,51 @@ fn liquid_data_from_frame(
 fn liquid_data_from_animation_frame(
     sheet: &Sheet,
     animation_frame: &AnimationFrame,
+    packed_frame: &PackedFrame,
 ) -> Result<LiquidData, Error> {
     let mut map = LiquidData::new();
     map.insert(
         Cow::from("duration"),
         Value::Scalar(Scalar::new(animation_frame.get_duration() as i32)),
     );
+
+    let center_offset = animation_frame.get_offset();
     map.insert(
-        Cow::from("offset_x"),
-        Value::Scalar(Scalar::new(animation_frame.get_offset().0)),
+        Cow::from("center_offset_x"),
+        Value::Scalar(Scalar::new(center_offset.0)),
     );
     map.insert(
-        Cow::from("offset_y"),
-        Value::Scalar(Scalar::new(animation_frame.get_offset().1)),
+        Cow::from("center_offset_y"),
+        Value::Scalar(Scalar::new(center_offset.1)),
     );
+
+    let top_left_offset = (
+        center_offset.0 - (packed_frame.size_in_sheet.0 as f32 / 2.0).floor() as i32,
+        center_offset.1 - (packed_frame.size_in_sheet.1 as f32 / 2.0).floor() as i32,
+    );
+    map.insert(
+        Cow::from("top_left_offset_x"),
+        Value::Scalar(Scalar::new(top_left_offset.0)),
+    );
+    map.insert(
+        Cow::from("top_left_offset_y"),
+        Value::Scalar(Scalar::new(top_left_offset.1)),
+    );
+
     let index = sheet
         .frames_iter()
         .position(|f| f.get_source() == animation_frame.get_frame())
         .ok_or(ExportError::InvalidFrameReference)?;
     map.insert(Cow::from("index"), Value::Scalar(Scalar::new(index as i32)));
+
     Ok(map)
 }
 
-fn liquid_data_from_animation(sheet: &Sheet, animation: &Animation) -> Result<LiquidData, Error> {
+fn liquid_data_from_animation(
+    sheet: &Sheet,
+    animation: &Animation,
+    texture_layout: &TextureLayout,
+) -> Result<LiquidData, Error> {
     let mut map = LiquidData::new();
 
     map.insert(
@@ -104,7 +126,10 @@ fn liquid_data_from_animation(sheet: &Sheet, animation: &Animation) -> Result<Li
 
     let mut frames = Vec::new();
     for animation_frame in animation.frames_iter() {
-        let frame = liquid_data_from_animation_frame(sheet, animation_frame)?;
+        let packed_frame = texture_layout
+            .get(animation_frame.get_frame().into())
+            .ok_or(ExportError::FrameWasNotPacked)?;
+        let frame = liquid_data_from_animation_frame(sheet, animation_frame, packed_frame)?;
         frames.push(Value::Object(frame));
     }
     map.insert(Cow::from("frames"), Value::Array(frames));
@@ -134,7 +159,7 @@ fn liquid_data_from_sheet(
     {
         let mut animations = Vec::new();
         for animation in sheet.animations_iter() {
-            let animation_data = liquid_data_from_animation(sheet, animation)?;
+            let animation_data = liquid_data_from_animation(sheet, animation, texture_layout)?;
             animations.push(Value::Object(animation_data));
         }
         let animations_value = Value::Array(animations);
@@ -144,11 +169,8 @@ fn liquid_data_from_sheet(
     {
         let mut relative_to = export_settings.metadata_destination.clone();
         relative_to.pop();
-        let image_path = diff_paths(
-            &export_settings.texture_destination,
-            &relative_to,
-        )
-        .ok_or(ExportError::AbsoluteToRelativePath)?;
+        let image_path = diff_paths(&export_settings.texture_destination, &relative_to)
+            .ok_or(ExportError::AbsoluteToRelativePath)?;
         map.insert(
             Cow::from("sheet_image"),
             Value::Scalar(Scalar::new(image_path.to_string_lossy().into_owned())),
