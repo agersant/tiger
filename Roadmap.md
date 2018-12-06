@@ -2,7 +2,7 @@
 
 ## For v0.1
 	✓ Don't store absolute paths in tiger files
-	· Show frame names in timeline
+	✓ Show frame names in timeline
 	· Solution(s) to edit/order/insert frames in timeline
 	· Full compat with crystal sheets:
 		· Hitboxes
@@ -11,7 +11,7 @@
 	· Tiger backwards compat
 	· Release pipeline
 	· No placeholder menu options
-	· Export (using last known settings)
+	✓ Export (using last known settings)
 
 ## For v0.2
 	· Undo/Redo
