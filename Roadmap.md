@@ -11,7 +11,7 @@
 		· Top left coords available in template
 	· Tiger backwards compat
 	· Release pipeline
-	· No placeholder menu options
+	✓ No placeholder menu options
 	✓ Export (using last known settings)
 
 ## For v0.2
