@@ -64,23 +64,6 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
     }
 }
 
-// TODO move to command enum impl
-fn is_async_command(command: &command::Command) -> bool {
-    use crate::command::Command;
-    match &command {
-        Command::NewDocument => true,
-        Command::OpenDocument => true,
-        Command::SaveCurrentDocument => true,
-        Command::SaveCurrentDocumentAs => true,
-        Command::UpdateExportAsTextureDestination => true,
-        Command::UpdateExportAsMetadataDestination => true,
-        Command::UpdateExportAsFormat => true,
-        Command::EndExportAs => true,
-        Command::Export => true,
-        _ => false,
-    }
-}
-
 struct AsyncCommandWork {
     state: state::State,
     command: command::Command,
@@ -157,7 +140,7 @@ fn main() -> Result<(), failure::Error> {
             }
 
             'commands: for command in &new_commands {
-                if !is_async_command(command) {
+                if !command.is_async_command() {
                     // Process command
                     if let Err(e) = state.process_command(&command) {
                         // TODO surface to user

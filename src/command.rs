@@ -56,6 +56,23 @@ pub enum Command {
     DeleteSelection,
 }
 
+impl Command {
+    pub fn is_async_command(&self) -> bool {
+        match self {
+            Command::NewDocument => true,
+            Command::OpenDocument => true,
+            Command::SaveCurrentDocument => true,
+            Command::SaveCurrentDocumentAs => true,
+            Command::UpdateExportAsTextureDestination => true,
+            Command::UpdateExportAsMetadataDestination => true,
+            Command::UpdateExportAsFormat => true,
+            Command::EndExportAs => true,
+            Command::Export => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct CommandBuffer {
     queue: Vec<Command>,
 }
