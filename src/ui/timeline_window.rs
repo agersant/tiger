@@ -133,11 +133,7 @@ fn draw_animation_frame<'a>(
     if let Some(name) = frame.get_frame().file_name() {
         let text_color = outline_color; // TODO.style
         let text_position = (fill_top_left.0 + text_padding, fill_top_left.1);
-        draw_list.add_text(
-            text_position,
-            text_color,
-            name.to_string_lossy(),
-        );
+        draw_list.add_text(text_position, text_color, name.to_string_lossy());
     }
 
     // Click interactions
