@@ -81,6 +81,7 @@ fn draw_animation_frame<'a>(
     let w = frame.get_duration() as f32 * zoom;
     let h = 20.0; // TODO DPI?
     let outline_size = 1.0; // TODO DPI?
+    let text_padding = 4.0; // TODO DPI?
     let resize_handle_size = 16.0; // TODO DPI?
     let is_selected = document.get_selection()
         == &Some(Selection::AnimationFrame(
@@ -127,6 +128,17 @@ fn draw_animation_frame<'a>(
         fill_color,
         fill_color,
     );
+
+    // Draw name
+    if let Some(name) = frame.get_frame().file_name() {
+        let text_color = outline_color; // TODO.style
+        let text_position = (fill_top_left.0 + text_padding, fill_top_left.1);
+        draw_list.add_text(
+            text_position,
+            text_color,
+            name.to_string_lossy(),
+        );
+    }
 
     // Click interactions
     {
