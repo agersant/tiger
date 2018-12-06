@@ -7,7 +7,7 @@
 	· Add, position, tag, delete hitboxes
 	· Full compat with crystal sheets:
 		· Hitboxes
-		· Sheet path in export
+		✓ Sheet path in export
 		· Top left coords available in template
 	· Tiger backwards compat
 	· Release pipeline
