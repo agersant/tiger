@@ -20,6 +20,7 @@ pub enum Command {
     UpdateExportAsFormat,
     CancelExportAs,
     EndExportAs,
+    Export,
     SwitchToContentTab(ContentTab),
     Import,
     SelectFrame(PathBuf),
@@ -127,6 +128,10 @@ impl CommandBuffer {
 
     pub fn end_export_as(&mut self) {
         self.queue.push(Command::EndExportAs);
+    }
+
+    pub fn export(&mut self) {
+        self.queue.push(Command::Export);
     }
 
     pub fn switch_to_content_tab(&mut self, tab: ContentTab) {

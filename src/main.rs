@@ -76,6 +76,7 @@ fn is_async_command(command: &command::Command) -> bool {
         Command::UpdateExportAsMetadataDestination => true,
         Command::UpdateExportAsFormat => true,
         Command::EndExportAs => true,
+        Command::Export => true,
         _ => false,
     }
 }

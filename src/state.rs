@@ -35,6 +35,8 @@ pub enum StateError {
     NotDraggingATimelineFrame,
     #[fail(display = "Currently not exporting")]
     NotExporting,
+    #[fail(display = "Sheet has no export settings")]
+    NoExistingExportSettings,
 }
 
 #[derive(Clone, Debug)]
@@ -497,6 +499,36 @@ impl State {
         document
             .get_sheet_mut()
             .set_export_settings(export_settings.clone());
+
+        let packed_sheet = pack::pack_sheet(document.get_sheet())?;
+        let exported_data = export::export_sheet(
+            document.get_sheet(),
+            &export_settings.format,
+            &packed_sheet.get_layout(),
+        )?;
+
+        {
+            let mut file = File::create(&export_settings.metadata_destination)?;
+            file.write_all(&exported_data.into_bytes())?;
+        }
+        {
+            let mut file = File::create(&export_settings.texture_destination)?;
+            packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
+        }
+
+        Ok(())
+    }
+
+    fn export(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let export_settings = document
+            .get_sheet()
+            .get_export_settings()
+            .as_ref()
+            .ok_or(StateError::NoExistingExportSettings)?;
 
         let packed_sheet = pack::pack_sheet(document.get_sheet())?;
         let exported_data = export::export_sheet(
@@ -1050,6 +1082,7 @@ impl State {
             }
             Command::UpdateExportAsFormat => self.update_export_as_format()?,
             Command::EndExportAs => self.end_export_as()?,
+            Command::Export => self.export()?,
             Command::SwitchToContentTab(tab) => self.switch_to_content_tab(*tab)?,
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,

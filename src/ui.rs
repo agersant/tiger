@@ -168,6 +168,9 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                 if ui.menu_item(im_str!("Save All")).build() {
                     commands.save_all();
                 }
+                if ui.menu_item(im_str!("Export")).build() {
+                    commands.export();
+                }
                 if ui.menu_item(im_str!("Export As…")).build() {
                     commands.begin_export_as();
                 }
