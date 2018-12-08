@@ -45,6 +45,9 @@ pub enum Command {
     WorkbenchZoomOut,
     WorkbenchResetZoom,
     Pan((f32, f32)),
+    BeginCreateHitbox((f32, f32)),
+    UpdateCreateHitbox((f32, f32)),
+    EndCreateHitbox,
     TogglePlayback,
     ToggleLooping,
     TimelineZoomIn,
@@ -266,6 +269,18 @@ impl CommandBuffer {
 
     pub fn pan(&mut self, delta: (f32, f32)) {
         self.queue.push(Command::Pan(delta));
+    }
+
+    pub fn begin_create_hitbox(&mut self, mouse_position: (f32, f32)) {
+        self.queue.push(Command::BeginCreateHitbox(mouse_position));
+    }
+
+    pub fn update_create_hitbox(&mut self, mouse_position: (f32, f32)) {
+        self.queue.push(Command::UpdateCreateHitbox(mouse_position));
+    }
+
+    pub fn end_create_hitbox(&mut self) {
+        self.queue.push(Command::EndCreateHitbox);
     }
 
     pub fn toggle_playback(&mut self) {

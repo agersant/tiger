@@ -257,6 +257,9 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBu
             {
                 commands.end_animation_frame_offset_drag();
             }
+            if document.get_workbench_hitbox_being_dragged().is_some() {
+                commands.end_create_hitbox();
+            }
             if document.is_scrubbing() {
                 commands.end_scrub();
             }

@@ -11,7 +11,9 @@ fn draw_frame<'a>(
     ui: &Ui<'a>,
     rect: &Rect,
     state: &State,
+    commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
+    document: &Document,
     frame: &Frame,
 ) {
     if let Some(texture) = texture_cache.get(&frame.get_source()) {
@@ -19,11 +21,53 @@ fn draw_frame<'a>(
             state.get_workbench_zoom_factor(),
             state.get_workbench_offset(),
         ) {
-            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-            let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
-            let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
-            ui.set_cursor_pos((cursor_x, cursor_y));
-            ui.image(texture.id, draw_size).build();
+            {
+                let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+                let cursor_x = offset.0 + (rect.size.0 - draw_size.0) / 2.0;
+                let cursor_y = offset.1 + (rect.size.1 - draw_size.1) / 2.0;
+                ui.set_cursor_pos((cursor_x, cursor_y));
+                ui.image(texture.id, draw_size).build();
+            }
+
+            for hitbox in frame.hitboxes_iter() {
+                let rectangle = hitbox.get_rectangle();
+                let cursor_x = offset.0 + rect.size.0 / 2.0 + zoom * rectangle.top_left.0 as f32;
+                let cursor_y = offset.1 + rect.size.1 / 2.0 + zoom * rectangle.top_left.1 as f32;
+                ui.set_cursor_pos((cursor_x, cursor_y));
+
+                let top_left = ui.get_cursor_screen_pos();
+                let bottom_right = (
+                    top_left.0 + zoom * rectangle.size.0 as f32,
+                    top_left.1 + zoom * rectangle.size.1 as f32,
+                );
+                let draw_list = ui.get_window_draw_list();
+                let outline_color = [255.0 / 255.0, 255.0 / 255.0, 200.0 / 255.0]; // TODO.style
+                draw_list
+                    .add_rect(top_left, bottom_right, outline_color)
+                    .build();
+            }
+
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+            let mouse_pos = ui.imgui().mouse_pos();
+            let mouse_position_in_workbench = (
+                (mouse_pos.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
+                (mouse_pos.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
+            );
+            match document.get_workbench_hitbox_being_dragged() {
+                None => {
+                    if ui.is_window_hovered() {
+                        if is_mouse_down && !is_mouse_dragging {
+                            commands.begin_create_hitbox(mouse_position_in_workbench);
+                        }
+                    }
+                }
+                Some(_) => {
+                    if is_mouse_dragging {
+                        commands.update_create_hitbox(mouse_position_in_workbench);
+                    }
+                }
+            };
         }
     }
 }
@@ -145,7 +189,15 @@ pub fn draw<'a>(
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
-                                draw_frame(ui, rect, state, texture_cache, frame);
+                                draw_frame(
+                                    ui,
+                                    rect,
+                                    state,
+                                    commands,
+                                    texture_cache,
+                                    document,
+                                    frame,
+                                );
                             }
                         }
                         Some(state::WorkbenchItem::Animation(name)) => {

@@ -20,12 +20,56 @@ pub enum SheetError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Rectangle {
+    pub top_left: (i32, i32),
+    pub size: (u32, u32),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum Shape {
+    Rectangle(Rectangle),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Hitbox {
     name: String,
-    top: u32,
-    left: u32,
-    right: u32,
-    bottom: u32,
+    geometry: Shape,
+}
+
+impl Hitbox {
+    pub fn get_rectangle(&self) -> &Rectangle {
+        match &self.geometry {
+            Shape::Rectangle(r) => &r,
+        }
+    }
+
+    pub fn get_position(&self) -> (i32, i32) {
+        match &self.geometry {
+            Shape::Rectangle(r) => r.top_left,
+        }
+    }
+
+    pub fn get_size(&self) -> (u32, u32) {
+        match &self.geometry {
+            Shape::Rectangle(r) => r.size,
+        }
+    }
+
+    pub fn set_position(&mut self, new_position: (i32, i32)) {
+        match &mut self.geometry {
+            Shape::Rectangle(r) => {
+                r.top_left = new_position;
+            }
+        }
+    }
+
+    pub fn set_size(&mut self, new_size: (u32, u32)) {
+        match &mut self.geometry {
+            Shape::Rectangle(r) => {
+                r.size = new_size;
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,6 +88,28 @@ impl Frame {
 
     pub fn get_source(&self) -> &Path {
         &self.source
+    }
+
+    pub fn hitboxes_iter(&self) -> std::slice::Iter<Hitbox> {
+        self.hitboxes.iter()
+    }
+
+    pub fn get_hitbox_mut(&mut self, index: usize) -> Option<&mut Hitbox> {
+        if index >= self.hitboxes.len() {
+            return None;
+        }
+        Some(&mut self.hitboxes[index])
+    }
+
+    pub fn add_hitbox(&mut self) -> usize {
+        self.hitboxes.push(Hitbox {
+            name: "Hitbox".to_owned(),
+            geometry: Shape::Rectangle(Rectangle {
+                top_left: (0, 0),
+                size: (0, 0),
+            }),
+        });
+        self.hitboxes.len() - 1
     }
 }
 
@@ -340,6 +406,10 @@ impl Sheet {
 
     pub fn get_frame<T: AsRef<Path>>(&self, path: T) -> Option<&Frame> {
         self.frames.iter().find(|f| &f.source == path.as_ref())
+    }
+
+    pub fn get_frame_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Frame> {
+        self.frames.iter_mut().find(|f| &f.source == path.as_ref())
     }
 
     pub fn get_animation<T: AsRef<str>>(&self, name: T) -> Option<&Animation> {

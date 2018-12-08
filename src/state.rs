@@ -1,4 +1,5 @@
 use failure::Error;
+use std::cmp::min;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
@@ -27,8 +28,14 @@ pub enum StateError {
     AnimationNotInDocument,
     #[fail(display = "An animation with this name already exists")]
     AnimationAlreadyExists,
+    #[fail(display = "Not currently editing any frame")]
+    NotEditingAnyFrame,
     #[fail(display = "Not currently editing any animation")]
     NotEditingAnyAnimation,
+    #[fail(display = "Currently not adjusting a hitbox")]
+    NotDraggingAHitbox,
+    #[fail(display = "Frame does not have a hitbox at the requested index")]
+    InvalidHitboxIndex,
     #[fail(display = "Animation does not have a frame at the requested index")]
     InvalidAnimationFrameIndex,
     #[fail(display = "Currently not adjusting the duration of an animation frame")]
@@ -50,6 +57,10 @@ pub struct Document {
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
+    workbench_hitbox_being_dragged: Option<usize>,
+    workbench_hitbox_drag_initial_mouse_position: (f32, f32),
+    workbench_hitbox_drag_initial_position: (i32, i32),
+    workbench_hitbox_drag_initial_size: (u32, u32),
     workbench_animation_frame_being_dragged: Option<usize>,
     workbench_animation_frame_drag_initial_mouse_position: (f32, f32),
     workbench_animation_frame_drag_initial_offset: (i32, i32),
@@ -74,6 +85,10 @@ impl Document {
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
+            workbench_hitbox_being_dragged: None,
+            workbench_hitbox_drag_initial_mouse_position: (0.0, 0.0),
+            workbench_hitbox_drag_initial_position: (0, 0),
+            workbench_hitbox_drag_initial_size: (0, 0),
             workbench_animation_frame_being_dragged: None,
             workbench_animation_frame_drag_initial_mouse_position: (0.0, 0.0),
             workbench_animation_frame_drag_initial_offset: (0, 0),
@@ -182,6 +197,10 @@ impl Document {
 
     pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
         &self.workbench_animation_frame_being_dragged
+    }
+
+    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<usize> {
+        &self.workbench_hitbox_being_dragged
     }
 
     pub fn get_timeline_clock(&self) -> Duration {
@@ -909,6 +928,100 @@ impl State {
         Ok(())
     }
 
+    fn begin_create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_index;
+        let hitbox;
+        let position;
+        let size;
+        {
+            let frame = document
+                .get_sheet_mut()
+                .get_frame_mut(frame_path)
+                .ok_or(StateError::FrameNotInDocument)?;
+
+            hitbox_index = frame.add_hitbox();
+            hitbox = frame
+                .get_hitbox_mut(hitbox_index)
+                .ok_or(StateError::InvalidHitboxIndex)?;
+            hitbox.set_position((
+                mouse_position.0.round() as i32,
+                mouse_position.1.round() as i32,
+            ));
+            position = hitbox.get_position();
+            size = hitbox.get_size();
+        }
+
+        document.workbench_hitbox_being_dragged = Some(hitbox_index);
+        document.workbench_hitbox_drag_initial_mouse_position = mouse_position;
+        document.workbench_hitbox_drag_initial_position = position;
+        document.workbench_hitbox_drag_initial_size = size;
+
+        Ok(())
+    }
+
+    fn update_create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_index = document
+            .workbench_hitbox_being_dragged
+            .ok_or(StateError::NotDraggingAHitbox)?;
+
+        let initial_position = document.workbench_hitbox_drag_initial_position;
+        let initial_size = document.workbench_hitbox_drag_initial_size;
+        let initial_mouse_position = document.workbench_hitbox_drag_initial_mouse_position;
+
+        let hitbox = document
+            .get_sheet_mut()
+            .get_frame_mut(frame_path)
+            .ok_or(StateError::FrameNotInDocument)?
+            .get_hitbox_mut(hitbox_index)
+            .ok_or(StateError::InvalidHitboxIndex)?;
+
+        let raw_new_size = (
+            (initial_size.0 as f32 + mouse_position.0 - initial_mouse_position.0),
+            (initial_size.1 as f32 + mouse_position.1 - initial_mouse_position.1),
+        );
+
+        let new_position = (
+            initial_position.0 + min(0, raw_new_size.0.round() as i32),
+            initial_position.1 + min(0, raw_new_size.1.round() as i32),
+        );
+
+        let new_size = (
+            raw_new_size.0.round().abs() as u32,
+            raw_new_size.1.round().abs() as u32,
+        );
+
+        hitbox.set_position(new_position);
+        hitbox.set_size(new_size);
+
+        Ok(())
+    }
+
+    fn end_create_hitbox(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.workbench_hitbox_being_dragged = None;
+        Ok(())
+    }
+
     fn toggle_playback(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -1114,6 +1227,9 @@ impl State {
             Command::WorkbenchZoomOut => self.workbench_zoom_out()?,
             Command::WorkbenchResetZoom => self.workbench_reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
+            Command::BeginCreateHitbox(position) => self.begin_create_hitbox(*position)?,
+            Command::UpdateCreateHitbox(delta) => self.update_create_hitbox(*delta)?,
+            Command::EndCreateHitbox => self.end_create_hitbox()?,
             Command::TogglePlayback => self.toggle_playback()?,
             Command::ToggleLooping => self.toggle_looping()?,
             Command::TimelineZoomIn => self.timeline_zoom_in()?,
