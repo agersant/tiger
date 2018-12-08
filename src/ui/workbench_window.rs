@@ -54,7 +54,7 @@ fn draw_frame<'a>(
                 (mouse_pos.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
                 (mouse_pos.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
             );
-            match document.get_workbench_hitbox_being_dragged() {
+            match document.get_workbench_hitbox_being_scaled() {
                 None => {
                     if ui.is_window_hovered() {
                         if is_mouse_down && !is_mouse_dragging {

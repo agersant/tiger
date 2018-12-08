@@ -57,10 +57,10 @@ pub struct Document {
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
-    workbench_hitbox_being_dragged: Option<usize>,
-    workbench_hitbox_drag_initial_mouse_position: (f32, f32),
-    workbench_hitbox_drag_initial_position: (i32, i32),
-    workbench_hitbox_drag_initial_size: (u32, u32),
+    workbench_hitbox_being_scaled: Option<usize>,
+    workbench_hitbox_scale_initial_mouse_position: (f32, f32),
+    workbench_hitbox_scale_initial_position: (i32, i32),
+    workbench_hitbox_scale_initial_size: (u32, u32),
     workbench_animation_frame_being_dragged: Option<usize>,
     workbench_animation_frame_drag_initial_mouse_position: (f32, f32),
     workbench_animation_frame_drag_initial_offset: (i32, i32),
@@ -85,10 +85,10 @@ impl Document {
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
-            workbench_hitbox_being_dragged: None,
-            workbench_hitbox_drag_initial_mouse_position: (0.0, 0.0),
-            workbench_hitbox_drag_initial_position: (0, 0),
-            workbench_hitbox_drag_initial_size: (0, 0),
+            workbench_hitbox_being_scaled: None,
+            workbench_hitbox_scale_initial_mouse_position: (0.0, 0.0),
+            workbench_hitbox_scale_initial_position: (0, 0),
+            workbench_hitbox_scale_initial_size: (0, 0),
             workbench_animation_frame_being_dragged: None,
             workbench_animation_frame_drag_initial_mouse_position: (0.0, 0.0),
             workbench_animation_frame_drag_initial_offset: (0, 0),
@@ -199,8 +199,8 @@ impl Document {
         &self.workbench_animation_frame_being_dragged
     }
 
-    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<usize> {
-        &self.workbench_hitbox_being_dragged
+    pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<usize> {
+        &self.workbench_hitbox_being_scaled
     }
 
     pub fn get_timeline_clock(&self) -> Duration {
@@ -960,10 +960,10 @@ impl State {
             size = hitbox.get_size();
         }
 
-        document.workbench_hitbox_being_dragged = Some(hitbox_index);
-        document.workbench_hitbox_drag_initial_mouse_position = mouse_position;
-        document.workbench_hitbox_drag_initial_position = position;
-        document.workbench_hitbox_drag_initial_size = size;
+        document.workbench_hitbox_being_scaled = Some(hitbox_index);
+        document.workbench_hitbox_scale_initial_mouse_position = mouse_position;
+        document.workbench_hitbox_scale_initial_position = position;
+        document.workbench_hitbox_scale_initial_size = size;
 
         Ok(())
     }
@@ -979,12 +979,12 @@ impl State {
         .ok_or(StateError::NotEditingAnyFrame)?;
 
         let hitbox_index = document
-            .workbench_hitbox_being_dragged
+            .workbench_hitbox_being_scaled
             .ok_or(StateError::NotDraggingAHitbox)?;
 
-        let initial_position = document.workbench_hitbox_drag_initial_position;
-        let initial_size = document.workbench_hitbox_drag_initial_size;
-        let initial_mouse_position = document.workbench_hitbox_drag_initial_mouse_position;
+        let initial_position = document.workbench_hitbox_scale_initial_position;
+        let initial_size = document.workbench_hitbox_scale_initial_size;
+        let initial_mouse_position = document.workbench_hitbox_scale_initial_mouse_position;
 
         let hitbox = document
             .get_sheet_mut()
@@ -1018,7 +1018,7 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        document.workbench_hitbox_being_dragged = None;
+        document.workbench_hitbox_being_scaled = None;
         Ok(())
     }
 
