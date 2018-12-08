@@ -29,7 +29,16 @@ fn draw_frame<'a>(
                 ui.image(texture.id, draw_size).build();
             }
 
-            for hitbox in frame.hitboxes_iter() {
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+            let is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
+            let mouse_pos = ui.imgui().mouse_pos();
+            let mouse_position_in_workbench = (
+                (mouse_pos.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
+                (mouse_pos.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
+            );
+
+            for (hitbox_index, hitbox) in frame.hitboxes_iter().enumerate() {
                 let rectangle = hitbox.get_rectangle();
                 let cursor_x = offset.0 + rect.size.0 / 2.0 + zoom * rectangle.top_left.0 as f32;
                 let cursor_y = offset.1 + rect.size.1 / 2.0 + zoom * rectangle.top_left.1 as f32;
@@ -45,15 +54,34 @@ fn draw_frame<'a>(
                 draw_list
                     .add_rect(top_left, bottom_right, outline_color)
                     .build();
+
+                let button_size = (bottom_right.0 - top_left.0, bottom_right.1 - top_left.1);
+                if !is_scaling_hitbox && button_size.0 >= 1.0 && button_size.1 >= 1.0 {
+                    let id = format!("hitbox_handle_{}", hitbox_index);
+                    ui.invisible_button(&ImString::new(id), button_size);
+
+                    match document.get_workbench_hitbox_being_dragged() {
+                        None => {
+                            if ui.is_item_hovered() {
+                                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                                if is_mouse_down && !is_mouse_dragging {
+                                    let mouse_pos = ui.imgui().mouse_pos();
+                                    commands.begin_hitbox_drag(hitbox_index, mouse_pos);
+                                }
+                            }
+                        }
+                        Some(i) if *i == hitbox_index => {
+                            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                            if is_mouse_dragging {
+                                let mouse_pos = ui.imgui().mouse_pos();
+                                commands.update_hitbox_drag(mouse_pos);
+                            }
+                        }
+                        _ => (),
+                    };
+                }
             }
 
-            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-            let mouse_pos = ui.imgui().mouse_pos();
-            let mouse_position_in_workbench = (
-                (mouse_pos.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
-                (mouse_pos.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
-            );
             match document.get_workbench_hitbox_being_scaled() {
                 None => {
                     if ui.is_window_hovered() {

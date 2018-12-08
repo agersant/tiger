@@ -57,6 +57,9 @@ pub struct Document {
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
+    workbench_hitbox_being_dragged: Option<usize>,
+    workbench_hitbox_drag_initial_mouse_position: (f32, f32),
+    workbench_hitbox_drag_initial_offset: (i32, i32),
     workbench_hitbox_being_scaled: Option<usize>,
     workbench_hitbox_scale_initial_mouse_position: (f32, f32),
     workbench_hitbox_scale_initial_position: (i32, i32),
@@ -85,6 +88,9 @@ impl Document {
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
             workbench_zoom_level: 1,
+            workbench_hitbox_being_dragged: None,
+            workbench_hitbox_drag_initial_mouse_position: (0.0, 0.0),
+            workbench_hitbox_drag_initial_offset: (0, 0),
             workbench_hitbox_being_scaled: None,
             workbench_hitbox_scale_initial_mouse_position: (0.0, 0.0),
             workbench_hitbox_scale_initial_position: (0, 0),
@@ -197,6 +203,10 @@ impl Document {
 
     pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
         &self.workbench_animation_frame_being_dragged
+    }
+
+    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<usize> {
+        &self.workbench_hitbox_being_dragged
     }
 
     pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<usize> {
@@ -1047,6 +1057,83 @@ impl State {
         Ok(())
     }
 
+    fn begin_hitbox_drag(
+        &mut self,
+        hitbox_index: usize,
+        mouse_position: (f32, f32),
+    ) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_position;
+        {
+            let frame = document
+                .get_sheet()
+                .get_frame(frame_path)
+                .ok_or(StateError::FrameNotInDocument)?;
+            let hitbox = frame
+                .get_hitbox(hitbox_index)
+                .ok_or(StateError::InvalidHitboxIndex)?;
+            hitbox_position = hitbox.get_position();
+        }
+
+        document.workbench_hitbox_being_dragged = Some(hitbox_index);
+        document.workbench_hitbox_drag_initial_mouse_position = mouse_position;
+        document.workbench_hitbox_drag_initial_offset = hitbox_position;
+
+        Ok(())
+    }
+
+    fn update_hitbox_drag(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+        let zoom = self.get_workbench_zoom_factor().unwrap(); // TODO no unwrap
+
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_index = document
+            .workbench_hitbox_being_dragged
+            .ok_or(StateError::NotDraggingAHitbox)?;
+
+        let old_offset = document.workbench_hitbox_drag_initial_offset;
+        let old_mouse_position = document.workbench_hitbox_drag_initial_mouse_position;
+        let new_offset = (
+            (old_offset.0 as f32 + (mouse_position.0 - old_mouse_position.0) / zoom).floor() as i32,
+            (old_offset.1 as f32 + (mouse_position.1 - old_mouse_position.1) / zoom).floor() as i32,
+        );
+
+        let hitbox = document
+            .get_sheet_mut()
+            .get_frame_mut(frame_path)
+            .ok_or(StateError::FrameNotInDocument)?
+            .get_hitbox_mut(hitbox_index)
+            .ok_or(StateError::InvalidHitboxIndex)?;
+        hitbox.set_position(new_offset);
+
+        Ok(())
+    }
+
+    fn end_hitbox_drag(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.workbench_hitbox_being_dragged = None;
+        Ok(())
+    }
+
     fn toggle_looping(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -1216,7 +1303,7 @@ impl State {
                 self.update_animation_frame_duration_drag(*d)?
             }
             Command::EndAnimationFrameDurationDrag => self.end_animation_frame_duration_drag()?,
-            Command::BeginAnimationFrameOffsetDrag((a, m)) => {
+            Command::BeginAnimationFrameOffsetDrag(a, m) => {
                 self.begin_animation_frame_offset_drag(*a, *m)?
             }
             Command::UpdateAnimationFrameOffsetDrag(o) => {
@@ -1230,6 +1317,9 @@ impl State {
             Command::BeginCreateHitbox(position) => self.begin_create_hitbox(*position)?,
             Command::UpdateCreateHitbox(delta) => self.update_create_hitbox(*delta)?,
             Command::EndCreateHitbox => self.end_create_hitbox()?,
+            Command::BeginHitboxDrag(a, m) => self.begin_hitbox_drag(*a, *m)?,
+            Command::UpdateHitboxDrag(o) => self.update_hitbox_drag(*o)?,
+            Command::EndHitboxDrag => self.end_hitbox_drag()?,
             Command::TogglePlayback => self.toggle_playback()?,
             Command::ToggleLooping => self.toggle_looping()?,
             Command::TimelineZoomIn => self.timeline_zoom_in()?,

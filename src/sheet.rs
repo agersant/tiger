@@ -94,6 +94,13 @@ impl Frame {
         self.hitboxes.iter()
     }
 
+    pub fn get_hitbox(&self, index: usize) -> Option<&Hitbox> {
+        if index >= self.hitboxes.len() {
+            return None;
+        }
+        Some(&self.hitboxes[index])
+    }
+
     pub fn get_hitbox_mut(&mut self, index: usize) -> Option<&mut Hitbox> {
         if index >= self.hitboxes.len() {
             return None;
