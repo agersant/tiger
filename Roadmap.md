@@ -13,6 +13,7 @@
 	· Release pipeline
 	✓ No placeholder menu options
 	✓ Export (using last known settings)
+	· Draw frame being dragged even during animation
 
 ## For v0.2
 	· Undo/Redo
