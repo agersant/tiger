@@ -17,7 +17,7 @@
 	· Animation renames
 
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
-	· Fix bug where renaming an animation(/hitbox) unselects and unedits it
+	✓ Fix bug where renaming an animation(/hitbox) unselects and unedits it
 
 ## For v0.2
 	· Undo/Redo
