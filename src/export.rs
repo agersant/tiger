@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::pack::PackedFrame;
-use crate::sheet::{Animation, AnimationFrame, ExportFormat, ExportSettings, Frame, Sheet};
+use crate::sheet::{Animation, AnimationFrame, ExportFormat, ExportSettings, Frame, Hitbox, Sheet};
 
 type LiquidData = HashMap<Cow<'static, str>, Value>;
 type TextureLayout = HashMap<PathBuf, PackedFrame>;
@@ -23,6 +23,53 @@ pub enum ExportError {
     FrameWasNotPacked,
     #[fail(display = "Error converting an absolute path to a relative path")]
     AbsoluteToRelativePath,
+}
+
+fn liquid_data_from_hitbox(
+    hitbox: &Hitbox,
+    packed_frame: &PackedFrame,
+) -> Result<LiquidData, Error> {
+    let mut map = LiquidData::new();
+
+    map.insert(
+        "name".into(),
+        Value::Scalar(Scalar::new(hitbox.get_name().to_owned())),
+    );
+
+    map.insert(
+        "left_from_frame_center".into(),
+        Value::Scalar(Scalar::new(hitbox.get_position().0)),
+    );
+
+    map.insert(
+        "top_from_frame_center".into(),
+        Value::Scalar(Scalar::new(hitbox.get_position().1)),
+    );
+
+    let hitbox_top_left_from_frame_top_left = (
+        hitbox.get_position().0 + (packed_frame.size_in_sheet.0 as f32 / 2.0).floor() as i32,
+        hitbox.get_position().1 + (packed_frame.size_in_sheet.1 as f32 / 2.0).floor() as i32,
+    );
+    map.insert(
+        "left_from_frame_left".into(),
+        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.0)),
+    );
+    map.insert(
+        "top_from_frame_top".into(),
+        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.1)),
+    );
+
+    map.insert(
+        "width".into(),
+        Value::Scalar(Scalar::new(hitbox.get_size().0 as i32)),
+    );
+
+    map.insert(
+        "height".into(),
+        Value::Scalar(Scalar::new(hitbox.get_size().1 as i32)),
+    );
+
+    Ok(map)
 }
 
 fn liquid_data_from_frame(
@@ -60,6 +107,16 @@ fn liquid_data_from_frame(
         "height".into(),
         Value::Scalar(Scalar::new(frame_layout.size_in_sheet.1 as i32)),
     );
+
+    let mut hitboxes = Vec::new();
+    for hitbox in frame.hitboxes_iter() {
+        let packed_frame = texture_layout
+            .get(frame.get_source())
+            .ok_or(ExportError::FrameWasNotPacked)?;
+        let hitbox_data = liquid_data_from_hitbox(hitbox, packed_frame)?;
+        hitboxes.push(Value::Object(hitbox_data));
+    }
+    frame_data.insert("hitboxes".into(), Value::Array(hitboxes));
 
     Ok(frame_data)
 }
