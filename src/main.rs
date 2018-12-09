@@ -32,6 +32,8 @@ const WINDOW_TITLE: &str = "Tiger";
 
 #[derive(Fail, Debug)]
 pub enum MainError {
+    #[fail(display = "Could not initialize window")]
+    WindowInitError,
     #[fail(display = "Could not initialize renderer")]
     RendererInitError,
     #[fail(display = "Draw error")]
@@ -85,7 +87,8 @@ fn main() -> Result<(), failure::Error> {
             window,
             context,
             &events_loop,
-        );
+        )
+        .or(Err(MainError::WindowInitError))?;
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
     let mut imgui_instance = ui::init(&window);
