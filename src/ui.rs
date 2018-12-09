@@ -7,7 +7,7 @@ use std::borrow::Borrow;
 use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
-use crate::state::{ RenameItem, State};
+use crate::state::{RenameItem, State};
 use crate::streamer::TextureCache;
 use crate::utils;
 
@@ -374,7 +374,6 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
 
 fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
-
         let max_length = match document.get_item_being_renamed() {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
             Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
@@ -404,6 +403,10 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
 }
 
 fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
+    if ui.want_capture_keyboard() {
+        return;
+    }
+
     let delete_key_index = ui.imgui().get_key_index(ImGuiKey::Delete);
     if ui.imgui().is_key_released(delete_key_index) {
         commands.delete_selection();
