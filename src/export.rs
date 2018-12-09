@@ -31,7 +31,7 @@ fn liquid_data_from_frame(
 ) -> Result<LiquidData, Error> {
     let mut frame_data = LiquidData::new();
     frame_data.insert(
-        Cow::from("source"),
+        "source".into(),
         Value::Scalar(Scalar::new(
             frame.get_source().to_string_lossy().into_owned(),
         )),
@@ -42,22 +42,22 @@ fn liquid_data_from_frame(
         .ok_or(ExportError::FrameWasNotPacked)?;
 
     frame_data.insert(
-        Cow::from("x"),
+        "x".into(),
         Value::Scalar(Scalar::new(frame_layout.position_in_sheet.0 as i32)),
     );
 
     frame_data.insert(
-        Cow::from("y"),
+        "y".into(),
         Value::Scalar(Scalar::new(frame_layout.position_in_sheet.1 as i32)),
     );
 
     frame_data.insert(
-        Cow::from("width"),
+        "width".into(),
         Value::Scalar(Scalar::new(frame_layout.size_in_sheet.0 as i32)),
     );
 
     frame_data.insert(
-        Cow::from("height"),
+        "height".into(),
         Value::Scalar(Scalar::new(frame_layout.size_in_sheet.1 as i32)),
     );
 
@@ -71,17 +71,17 @@ fn liquid_data_from_animation_frame(
 ) -> Result<LiquidData, Error> {
     let mut map = LiquidData::new();
     map.insert(
-        Cow::from("duration"),
+        "duration".into(),
         Value::Scalar(Scalar::new(animation_frame.get_duration() as i32)),
     );
 
     let center_offset = animation_frame.get_offset();
     map.insert(
-        Cow::from("center_offset_x"),
+        "center_offset_x".into(),
         Value::Scalar(Scalar::new(center_offset.0)),
     );
     map.insert(
-        Cow::from("center_offset_y"),
+        "center_offset_y".into(),
         Value::Scalar(Scalar::new(center_offset.1)),
     );
 
@@ -90,11 +90,11 @@ fn liquid_data_from_animation_frame(
         center_offset.1 - (packed_frame.size_in_sheet.1 as f32 / 2.0).floor() as i32,
     );
     map.insert(
-        Cow::from("top_left_offset_x"),
+        "top_left_offset_x".into(),
         Value::Scalar(Scalar::new(top_left_offset.0)),
     );
     map.insert(
-        Cow::from("top_left_offset_y"),
+        "top_left_offset_y".into(),
         Value::Scalar(Scalar::new(top_left_offset.1)),
     );
 
@@ -102,7 +102,7 @@ fn liquid_data_from_animation_frame(
         .frames_iter()
         .position(|f| f.get_source() == animation_frame.get_frame())
         .ok_or(ExportError::InvalidFrameReference)?;
-    map.insert(Cow::from("index"), Value::Scalar(Scalar::new(index as i32)));
+    map.insert("index".into(), Value::Scalar(Scalar::new(index as i32)));
 
     Ok(map)
 }
@@ -115,12 +115,12 @@ fn liquid_data_from_animation(
     let mut map = LiquidData::new();
 
     map.insert(
-        Cow::from("name"),
+        "name".into(),
         Value::Scalar(Scalar::new(animation.get_name().to_owned())),
     );
 
     map.insert(
-        Cow::from("is_looping"),
+        "is_looping".into(),
         Value::Scalar(Scalar::new(animation.is_looping())),
     );
 
@@ -132,7 +132,7 @@ fn liquid_data_from_animation(
         let frame = liquid_data_from_animation_frame(sheet, animation_frame, packed_frame)?;
         frames.push(Value::Object(frame));
     }
-    map.insert(Cow::from("frames"), Value::Array(frames));
+    map.insert("frames".into(), Value::Array(frames));
 
     Ok(map)
 }
@@ -153,7 +153,7 @@ fn liquid_data_from_sheet(
             )?));
         }
         let frames_value = Value::Array(frames);
-        map.insert(Cow::from("frames"), frames_value);
+        map.insert("frames".into(), frames_value);
     }
 
     {
@@ -163,7 +163,7 @@ fn liquid_data_from_sheet(
             animations.push(Value::Object(animation_data));
         }
         let animations_value = Value::Array(animations);
-        map.insert(Cow::from("animations"), animations_value);
+        map.insert("animations".into(), animations_value);
     }
 
     {
@@ -172,7 +172,7 @@ fn liquid_data_from_sheet(
         let image_path = diff_paths(&export_settings.texture_destination, &relative_to)
             .ok_or(ExportError::AbsoluteToRelativePath)?;
         map.insert(
-            Cow::from("sheet_image"),
+            "sheet_image".into(),
             Value::Scalar(Scalar::new(image_path.to_string_lossy().into_owned())),
         );
     }
