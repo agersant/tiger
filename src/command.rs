@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::{Animation, Frame};
-use crate::state::{ContentTab, Document};
+use crate::state::{ContentTab, Document, ResizeAxis};
 
 #[derive(Clone)]
 pub enum Command {
@@ -45,9 +45,10 @@ pub enum Command {
     WorkbenchZoomOut,
     WorkbenchResetZoom,
     Pan((f32, f32)),
-    BeginCreateHitbox((f32, f32)),
-    UpdateCreateHitbox((f32, f32)),
-    EndCreateHitbox,
+    CreateHitbox((f32, f32)),
+    BeginHitboxScale(usize, ResizeAxis, (f32, f32)),
+    UpdateHitboxScale((f32, f32)),
+    EndHitboxScale,
     BeginHitboxDrag(usize, (f32, f32)),
     UpdateHitboxDrag((f32, f32)),
     EndHitboxDrag,
@@ -274,16 +275,29 @@ impl CommandBuffer {
         self.queue.push(Command::Pan(delta));
     }
 
-    pub fn begin_create_hitbox(&mut self, mouse_position: (f32, f32)) {
-        self.queue.push(Command::BeginCreateHitbox(mouse_position));
+    pub fn create_hitbox(&mut self, mouse_position: (f32, f32)) {
+        self.queue.push(Command::CreateHitbox(mouse_position));
     }
 
-    pub fn update_create_hitbox(&mut self, mouse_position: (f32, f32)) {
-        self.queue.push(Command::UpdateCreateHitbox(mouse_position));
+    pub fn begin_hitbox_scale(
+        &mut self,
+        hitbox_index: usize,
+        axis: ResizeAxis,
+        mouse_position: (f32, f32),
+    ) {
+        self.queue.push(Command::BeginHitboxScale(
+            hitbox_index,
+            axis,
+            mouse_position,
+        ));
     }
 
-    pub fn end_create_hitbox(&mut self) {
-        self.queue.push(Command::EndCreateHitbox);
+    pub fn update_hitbox_scale(&mut self, mouse_position: (f32, f32)) {
+        self.queue.push(Command::UpdateHitboxScale(mouse_position));
+    }
+
+    pub fn end_hitbox_scale(&mut self) {
+        self.queue.push(Command::EndHitboxScale);
     }
 
     pub fn begin_hitbox_drag(&mut self, hitbox_index: usize, mouse_position: (f32, f32)) {

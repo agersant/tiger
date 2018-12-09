@@ -261,7 +261,7 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBu
                 commands.end_hitbox_drag();
             }
             if document.get_workbench_hitbox_being_scaled().is_some() {
-                commands.end_create_hitbox();
+                commands.end_hitbox_scale();
             }
             if document.is_scrubbing() {
                 commands.end_scrub();

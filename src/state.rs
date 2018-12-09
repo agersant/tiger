@@ -46,6 +46,18 @@ pub enum StateError {
     NoExistingExportSettings,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ResizeAxis {
+    N,
+    S,
+    W,
+    E,
+    NW,
+    NE,
+    SE,
+    SW,
+}
+
 #[derive(Clone, Debug)]
 pub struct Document {
     source: PathBuf,
@@ -61,6 +73,7 @@ pub struct Document {
     workbench_hitbox_drag_initial_mouse_position: (f32, f32),
     workbench_hitbox_drag_initial_offset: (i32, i32),
     workbench_hitbox_being_scaled: Option<usize>,
+    workbench_hitbox_scale_axis: ResizeAxis,
     workbench_hitbox_scale_initial_mouse_position: (f32, f32),
     workbench_hitbox_scale_initial_position: (i32, i32),
     workbench_hitbox_scale_initial_size: (u32, u32),
@@ -92,6 +105,7 @@ impl Document {
             workbench_hitbox_drag_initial_mouse_position: (0.0, 0.0),
             workbench_hitbox_drag_initial_offset: (0, 0),
             workbench_hitbox_being_scaled: None,
+            workbench_hitbox_scale_axis: ResizeAxis::N,
             workbench_hitbox_scale_initial_mouse_position: (0.0, 0.0),
             workbench_hitbox_scale_initial_position: (0, 0),
             workbench_hitbox_scale_initial_size: (0, 0),
@@ -211,6 +225,10 @@ impl Document {
 
     pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<usize> {
         &self.workbench_hitbox_being_scaled
+    }
+
+    pub fn get_workbench_hitbox_axis_being_scaled(&self) -> ResizeAxis {
+        self.workbench_hitbox_scale_axis
     }
 
     pub fn get_timeline_clock(&self) -> Duration {
@@ -938,7 +956,7 @@ impl State {
         Ok(())
     }
 
-    fn begin_create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+    fn create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -950,8 +968,6 @@ impl State {
 
         let hitbox_index;
         let hitbox;
-        let position;
-        let size;
         {
             let frame = document
                 .get_sheet_mut()
@@ -966,11 +982,44 @@ impl State {
                 mouse_position.0.round() as i32,
                 mouse_position.1.round() as i32,
             ));
+        }
+
+        self.begin_hitbox_scale(hitbox_index, ResizeAxis::SE, mouse_position)
+    }
+
+    fn begin_hitbox_scale(
+        &mut self,
+        hitbox_index: usize,
+        axis: ResizeAxis,
+        mouse_position: (f32, f32),
+    ) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox;
+        let position;
+        let size;
+        {
+            let frame = document
+                .get_sheet_mut()
+                .get_frame_mut(frame_path)
+                .ok_or(StateError::FrameNotInDocument)?;
+            hitbox = frame
+                .get_hitbox_mut(hitbox_index)
+                .ok_or(StateError::InvalidHitboxIndex)?;
             position = hitbox.get_position();
             size = hitbox.get_size();
         }
 
         document.workbench_hitbox_being_scaled = Some(hitbox_index);
+        document.workbench_hitbox_scale_axis = axis;
         document.workbench_hitbox_scale_initial_mouse_position = mouse_position;
         document.workbench_hitbox_scale_initial_position = position;
         document.workbench_hitbox_scale_initial_size = size;
@@ -978,7 +1027,7 @@ impl State {
         Ok(())
     }
 
-    fn update_create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+    fn update_hitbox_scale(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -994,7 +1043,12 @@ impl State {
 
         let initial_position = document.workbench_hitbox_scale_initial_position;
         let initial_size = document.workbench_hitbox_scale_initial_size;
+        let axis = document.workbench_hitbox_scale_axis;
         let initial_mouse_position = document.workbench_hitbox_scale_initial_mouse_position;
+        let mouse_delta = (
+            (mouse_position.0 - initial_mouse_position.0).round() as i32,
+            (mouse_position.1 - initial_mouse_position.1).round() as i32,
+        );
 
         let hitbox = document
             .get_sheet_mut()
@@ -1003,19 +1057,46 @@ impl State {
             .get_hitbox_mut(hitbox_index)
             .ok_or(StateError::InvalidHitboxIndex)?;
 
-        let raw_new_size = (
-            (initial_size.0 as f32 + mouse_position.0 - initial_mouse_position.0),
-            (initial_size.1 as f32 + mouse_position.1 - initial_mouse_position.1),
+        let new_size = (
+            match axis {
+                ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
+                    (initial_size.0 as i32 + mouse_delta.0).abs() as u32
+                }
+                ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
+                    (initial_size.0 as i32 - mouse_delta.0).abs() as u32
+                }
+                _ => initial_size.0,
+            } as u32,
+            match axis {
+                ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
+                    (initial_size.1 as i32 + mouse_delta.1).abs() as u32
+                }
+                ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
+                    (initial_size.1 as i32 - mouse_delta.1).abs() as u32
+                }
+                _ => initial_size.1,
+            } as u32,
         );
 
         let new_position = (
-            initial_position.0 + min(0, raw_new_size.0.round() as i32),
-            initial_position.1 + min(0, raw_new_size.1.round() as i32),
-        );
-
-        let new_size = (
-            raw_new_size.0.round().abs() as u32,
-            raw_new_size.1.round().abs() as u32,
+            match axis {
+                ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
+                    initial_position.0 + min(0, initial_size.0 as i32 + mouse_delta.0)
+                }
+                ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
+                    initial_position.0 + min(mouse_delta.0, initial_size.0 as i32)
+                }
+                _ => initial_position.0,
+            } as i32,
+            match axis {
+                ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
+                    initial_position.1 + min(0, initial_size.1 as i32 + mouse_delta.1)
+                }
+                ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
+                    initial_position.1 + min(mouse_delta.1, initial_size.1 as i32)
+                }
+                _ => initial_position.1,
+            } as i32,
         );
 
         hitbox.set_position(new_position);
@@ -1024,7 +1105,7 @@ impl State {
         Ok(())
     }
 
-    fn end_create_hitbox(&mut self) -> Result<(), Error> {
+    fn end_hitbox_scale(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -1314,9 +1395,10 @@ impl State {
             Command::WorkbenchZoomOut => self.workbench_zoom_out()?,
             Command::WorkbenchResetZoom => self.workbench_reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
-            Command::BeginCreateHitbox(position) => self.begin_create_hitbox(*position)?,
-            Command::UpdateCreateHitbox(delta) => self.update_create_hitbox(*delta)?,
-            Command::EndCreateHitbox => self.end_create_hitbox()?,
+            Command::CreateHitbox(p) => self.create_hitbox(*p)?,
+            Command::BeginHitboxScale(i, a, p) => self.begin_hitbox_scale(*i, *a, *p)?,
+            Command::UpdateHitboxScale(p) => self.update_hitbox_scale(*p)?,
+            Command::EndHitboxScale => self.end_hitbox_scale()?,
             Command::BeginHitboxDrag(a, m) => self.begin_hitbox_drag(*a, *m)?,
             Command::UpdateHitboxDrag(o) => self.update_hitbox_drag(*o)?,
             Command::EndHitboxDrag => self.end_hitbox_drag()?,
