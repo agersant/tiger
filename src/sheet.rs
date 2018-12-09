@@ -411,7 +411,7 @@ impl Sheet {
         self.frames.push(frame);
     }
 
-    pub fn add_animation(&mut self) -> String {
+    pub fn add_animation(&mut self) -> &mut Animation {
         let mut name = "New Animation".to_owned();
         let mut index = 2;
         while self.has_animation(&name) {
@@ -420,7 +420,7 @@ impl Sheet {
         }
         let animation = Animation::new(&name);
         self.animations.push(animation);
-        name
+        self.animations.last_mut().unwrap()
     }
 
     pub fn add_animation_frame<T: AsRef<str>, U: AsRef<Path>>(
