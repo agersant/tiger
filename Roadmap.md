@@ -14,12 +14,15 @@
 	✓ No placeholder menu options
 	✓ Export (using last known settings)
 	· Draw frame being dragged even during animation
+	· Animation renames
+
+	· Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
+	· Fix bug where renaming an animation(/hitbox) unselects and unedits it
 
 ## For v0.2
 	· Undo/Redo
 	· Error dialogs
 	· Keyboard shortcuts
-	· Animation renames
 	· Loading spinners
 	· Duplicate animation / animation frame
 	· In-place tutorials instead of blank data
