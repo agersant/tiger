@@ -6,7 +6,7 @@
 	· Solution(s) to edit/order/insert frames in timeline
 	✓ Add, position, tag, delete hitboxes
 	· Full compat with crystal sheets:
-		· Hitboxes
+		✓ Hitboxes
 		✓ Sheet path in export
 		✓ Top left coords available in template
 	· Tiger backwards compat
@@ -14,7 +14,8 @@
 	✓ No placeholder menu options
 	✓ Export (using last known settings)
 	· Draw frame being dragged even during animation
-	· Animation renames
+	· Draw hitboxes during animation
+	✓ Animation renames
 
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
 	✓ Fix bug where renaming an animation(/hitbox) unselects and unedits it
@@ -24,7 +25,7 @@
 	· Error dialogs
 	· Keyboard shortcuts
 	· Loading spinners
-	· Duplicate animation / animation frame
+	· Duplicate animation / animation frame (within same sheet)
 	· In-place tutorials instead of blank data
 	· Grid
 	· Grid snapping
@@ -32,11 +33,11 @@
 ## For v0.3
 	· Multiple selections
 	· Prettier UI
+	· Timeline follows playback
 	· Export perf fixes
 	· Handle missing frame files
 	· Auto reload on frame edit
 	· Timeline snapping
-	· Copy/paste animation / animation frame (between sheets)
 
 ## For v1.0
 	· Review all TODO
@@ -48,3 +49,4 @@
 ## Future work
 	· Tiger CLI
 	· Sheet splitter tool
+	· Copy/paste animation or animation frame (between sheets)
