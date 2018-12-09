@@ -22,7 +22,9 @@
 	· Animation renames
 	· Loading spinners
 	· Duplicate animation / animation frame
+	· In-place tutorials instead of blank data
 	· Grid
+	· Grid snapping
 
 ## For v0.3
 	· Multiple selections
@@ -30,6 +32,7 @@
 	· Export perf fixes
 	· Handle missing frame files
 	· Auto reload on frame edit
+	· Timeline snapping
 	· Copy/paste animation / animation frame (between sheets)
 
 ## For v1.0
