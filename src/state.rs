@@ -63,6 +63,8 @@ pub enum ResizeAxis {
 }
 
 #[derive(Clone, Debug)]
+// TODO consider replacing the various path, names and indices within this struct (and commands) with Arc to Frame/Animation/AnimationFrame/Hitbox
+// Implications for undo/redo system?
 pub struct Document {
     source: PathBuf,
     sheet: Sheet,
