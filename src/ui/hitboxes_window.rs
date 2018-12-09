@@ -12,23 +12,21 @@ fn draw_hitboxes<'a>(
     document: &Document,
     frame: &Frame,
 ) {
-    for (hitbox_index, hitbox) in frame.hitboxes_iter().enumerate() {
+    for hitbox in frame.hitboxes_iter() {
         let is_selected = match document.get_selection() {
-            Some(Selection::Hitbox(p, i)) => p == frame.get_source() && i == &hitbox_index,
+            Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == &hitbox.get_name(),
             _ => false,
         };
 
         let flags = ImGuiSelectableFlags::empty();
-        ui.push_id(hitbox_index as i32);
         if ui.selectable(
             &ImString::new(hitbox.get_name()),
             is_selected,
             flags,
             ImVec2::new(0.0, 0.0),
         ) {
-            commands.select_hitbox(hitbox_index);
+            commands.select_hitbox(hitbox);
         }
-        ui.pop_id();
     }
 }
 

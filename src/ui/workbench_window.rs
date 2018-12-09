@@ -61,7 +61,7 @@ fn draw_frame<'a>(
 
                 if is_scaling_hitbox {
                     match document.get_workbench_hitbox_being_scaled() {
-                        Some(i) if *i == hitbox_index => {
+                        Some(n) if n == hitbox.get_name() => {
                             commands.update_hitbox_scale(mouse_position_in_workbench);
                             let axis = document.get_workbench_hitbox_axis_being_scaled();
                             ui.imgui().set_mouse_cursor(match axis {
@@ -79,7 +79,7 @@ fn draw_frame<'a>(
                     };
                 } else if is_dragging_hitbox {
                     match document.get_workbench_hitbox_being_dragged() {
-                        Some(i) if *i == hitbox_index => {
+                        Some(n) if n == hitbox.get_name() => {
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                             if is_mouse_dragging {
                                 let mouse_pos = ui.imgui().mouse_pos();
@@ -112,7 +112,7 @@ fn draw_frame<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                             if is_mouse_down {
                                 let mouse_pos = ui.imgui().mouse_pos();
-                                commands.begin_hitbox_drag(hitbox_index, mouse_pos);
+                                commands.begin_hitbox_drag(hitbox, mouse_pos);
                                 is_dragging_hitbox = true;
                             }
                         }
@@ -131,7 +131,7 @@ fn draw_frame<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNS);
                             if is_mouse_down {
                                 commands.begin_hitbox_scale(
-                                    hitbox_index,
+                                    hitbox,
                                     ResizeAxis::N,
                                     mouse_position_in_workbench,
                                 );
@@ -153,7 +153,7 @@ fn draw_frame<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNS);
                             if is_mouse_down {
                                 commands.begin_hitbox_scale(
-                                    hitbox_index,
+                                    hitbox,
                                     ResizeAxis::S,
                                     mouse_position_in_workbench,
                                 );
@@ -175,7 +175,7 @@ fn draw_frame<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                             if is_mouse_down {
                                 commands.begin_hitbox_scale(
-                                    hitbox_index,
+                                    hitbox,
                                     ResizeAxis::W,
                                     mouse_position_in_workbench,
                                 );
@@ -197,7 +197,7 @@ fn draw_frame<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                             if is_mouse_down {
                                 commands.begin_hitbox_scale(
-                                    hitbox_index,
+                                    hitbox,
                                     ResizeAxis::E,
                                     mouse_position_in_workbench,
                                 );
@@ -220,7 +220,7 @@ fn draw_frame<'a>(
                         ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNWSE);
                         if is_mouse_down {
                             commands.begin_hitbox_scale(
-                                hitbox_index,
+                                hitbox,
                                 ResizeAxis::NW,
                                 mouse_position_in_workbench,
                             );
@@ -242,7 +242,7 @@ fn draw_frame<'a>(
                         ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNESW);
                         if is_mouse_down {
                             commands.begin_hitbox_scale(
-                                hitbox_index,
+                                hitbox,
                                 ResizeAxis::NE,
                                 mouse_position_in_workbench,
                             );
@@ -263,7 +263,7 @@ fn draw_frame<'a>(
                         ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNWSE);
                         if is_mouse_down {
                             commands.begin_hitbox_scale(
-                                hitbox_index,
+                                hitbox,
                                 ResizeAxis::SE,
                                 mouse_position_in_workbench,
                             );
@@ -284,7 +284,7 @@ fn draw_frame<'a>(
                         ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNESW);
                         if is_mouse_down {
                             commands.begin_hitbox_scale(
-                                hitbox_index,
+                                hitbox,
                                 ResizeAxis::SW,
                                 mouse_position_in_workbench,
                             );

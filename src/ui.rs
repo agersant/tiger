@@ -1,11 +1,13 @@
 use failure::Error;
+use glutin::VirtualKeyCode;
 use imgui::StyleVar::*;
 use imgui::*;
 use std::borrow::Borrow;
 
 use crate::command::CommandBuffer;
+use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
-use crate::state::State;
+use crate::state::{ RenameItem, State};
 use crate::streamer::TextureCache;
 use crate::utils;
 
@@ -149,6 +151,7 @@ pub fn run<'a>(
     }
 
     draw_export_popup(ui, state, &mut commands);
+    draw_rename_popup(ui, state, &mut commands);
 
     update_drag_and_drop(ui, state, &mut commands);
     draw_drag_and_drop(ui, state, texture_cache);
@@ -369,9 +372,43 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
     }
 }
 
+fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+    if let Some(document) = state.get_current_document() {
+
+        let max_length = match document.get_item_being_renamed() {
+            Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
+            Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
+            None => return,
+        };
+
+        let popup_id = im_str!("Rename");
+        // TODO position modal where selectable is
+        ui.popup_modal(&popup_id)
+            .title_bar(false)
+            .resizable(false)
+            .always_auto_resize(true)
+            .build(|| {
+                let mut s = ImString::with_capacity(max_length);
+                s.push_str(&document.get_rename_buffer());
+                let end_rename = ui
+                    .input_text(im_str!(""), &mut s)
+                    .enter_returns_true(true)
+                    .build();
+                commands.update_rename_selection(s.to_str());
+                if end_rename {
+                    commands.end_rename_selection();
+                }
+            });
+        ui.open_popup(&popup_id);
+    }
+}
+
 fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     let delete_key_index = ui.imgui().get_key_index(ImGuiKey::Delete);
     if ui.imgui().is_key_released(delete_key_index) {
         commands.delete_selection();
+    }
+    if ui.imgui().is_key_released(VirtualKeyCode::F2 as _) {
+        commands.begin_rename_selection();
     }
 }

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::sheet::{Animation, Frame};
+use crate::sheet::{Animation, Frame, Hitbox};
 use crate::state::{ContentTab, Document, ResizeAxis};
 
 #[derive(Clone)]
@@ -25,14 +25,11 @@ pub enum Command {
     Import,
     SelectFrame(PathBuf),
     SelectAnimation(String),
-    SelectHitbox(usize),
+    SelectHitbox(String),
     SelectAnimationFrame(usize),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
-    BeginAnimationRename(String),
-    UpdateAnimationRename(String),
-    EndAnimationRename,
     BeginFrameDrag(PathBuf),
     EndFrameDrag,
     CreateAnimationFrame(PathBuf),
@@ -47,10 +44,10 @@ pub enum Command {
     WorkbenchResetZoom,
     Pan((f32, f32)),
     CreateHitbox((f32, f32)),
-    BeginHitboxScale(usize, ResizeAxis, (f32, f32)),
+    BeginHitboxScale(String, ResizeAxis, (f32, f32)),
     UpdateHitboxScale((f32, f32)),
     EndHitboxScale,
-    BeginHitboxDrag(usize, (f32, f32)),
+    BeginHitboxDrag(String, (f32, f32)),
     UpdateHitboxDrag((f32, f32)),
     EndHitboxDrag,
     TogglePlayback,
@@ -62,6 +59,9 @@ pub enum Command {
     UpdateScrub(Duration),
     EndScrub,
     DeleteSelection,
+    BeginRenameSelection,
+    UpdateRenameSelection(String),
+    EndRenameSelection,
 }
 
 impl Command {
@@ -177,8 +177,9 @@ impl CommandBuffer {
             .push(Command::SelectAnimation(animation.get_name().to_owned()));
     }
 
-    pub fn select_hitbox(&mut self, hitbox_index: usize) {
-        self.queue.push(Command::SelectHitbox(hitbox_index));
+    pub fn select_hitbox(&mut self, hitbox: &Hitbox) {
+        self.queue
+            .push(Command::SelectHitbox(hitbox.get_name().to_owned()));
     }
 
     pub fn select_animation_frame(&mut self, animation_frame_index: usize) {
@@ -198,21 +199,6 @@ impl CommandBuffer {
 
     pub fn create_animation(&mut self) {
         self.queue.push(Command::CreateAnimation);
-    }
-
-    pub fn begin_animation_rename(&mut self, animation: &Animation) {
-        self.queue.push(Command::BeginAnimationRename(
-            animation.get_name().to_owned(),
-        ));
-    }
-
-    pub fn update_animation_rename<T: AsRef<str>>(&mut self, new_name: T) {
-        self.queue
-            .push(Command::UpdateAnimationRename(new_name.as_ref().to_owned()));
-    }
-
-    pub fn end_animation_rename(&mut self) {
-        self.queue.push(Command::EndAnimationRename);
     }
 
     pub fn begin_frame_drag(&mut self, frame: &Frame) {
@@ -286,12 +272,12 @@ impl CommandBuffer {
 
     pub fn begin_hitbox_scale(
         &mut self,
-        hitbox_index: usize,
+        hitbox: &Hitbox,
         axis: ResizeAxis,
         mouse_position: (f32, f32),
     ) {
         self.queue.push(Command::BeginHitboxScale(
-            hitbox_index,
+            hitbox.get_name().to_owned(),
             axis,
             mouse_position,
         ));
@@ -305,9 +291,11 @@ impl CommandBuffer {
         self.queue.push(Command::EndHitboxScale);
     }
 
-    pub fn begin_hitbox_drag(&mut self, hitbox_index: usize, mouse_position: (f32, f32)) {
-        self.queue
-            .push(Command::BeginHitboxDrag(hitbox_index, mouse_position));
+    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox, mouse_position: (f32, f32)) {
+        self.queue.push(Command::BeginHitboxDrag(
+            hitbox.get_name().to_owned(),
+            mouse_position,
+        ));
     }
 
     pub fn update_hitbox_drag(&mut self, mouse_position: (f32, f32)) {
@@ -352,5 +340,18 @@ impl CommandBuffer {
 
     pub fn delete_selection(&mut self) {
         self.queue.push(Command::DeleteSelection);
+    }
+
+    pub fn begin_rename_selection(&mut self) {
+        self.queue.push(Command::BeginRenameSelection);
+    }
+
+    pub fn update_rename_selection<T: AsRef<str>>(&mut self, new_name: T) {
+        self.queue
+            .push(Command::UpdateRenameSelection(new_name.as_ref().to_owned()));
+    }
+
+    pub fn end_rename_selection(&mut self) {
+        self.queue.push(Command::EndRenameSelection);
     }
 }

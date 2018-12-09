@@ -26,6 +26,10 @@ pub enum StateError {
     FrameNotInDocument,
     #[fail(display = "Requested animation is not in document")]
     AnimationNotInDocument,
+    #[fail(display = "Requested hitbox is not in frame")]
+    HitboxNotInFrame,
+    #[fail(display = "A hitbox with this name already exists")]
+    HitboxAlreadyExists,
     #[fail(display = "An animation with this name already exists")]
     AnimationAlreadyExists,
     #[fail(display = "Not currently editing any frame")]
@@ -63,16 +67,16 @@ pub struct Document {
     source: PathBuf,
     sheet: Sheet,
     content_current_tab: ContentTab,
-    content_rename_animation_target: Option<String>,
-    content_rename_animation_buffer: Option<String>,
+    item_being_renamed: Option<RenameItem>,
+    rename_buffer: String,
     content_frame_being_dragged: Option<PathBuf>,
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: (f32, f32),
     workbench_zoom_level: i32,
-    workbench_hitbox_being_dragged: Option<usize>,
+    workbench_hitbox_being_dragged: Option<String>,
     workbench_hitbox_drag_initial_mouse_position: (f32, f32),
     workbench_hitbox_drag_initial_offset: (i32, i32),
-    workbench_hitbox_being_scaled: Option<usize>,
+    workbench_hitbox_being_scaled: Option<String>,
     workbench_hitbox_scale_axis: ResizeAxis,
     workbench_hitbox_scale_initial_mouse_position: (f32, f32),
     workbench_hitbox_scale_initial_position: (i32, i32),
@@ -95,8 +99,8 @@ impl Document {
             source: path.as_ref().to_owned(),
             sheet: Sheet::new(),
             content_current_tab: ContentTab::Frames,
-            content_rename_animation_target: None,
-            content_rename_animation_buffer: None,
+            item_being_renamed: None,
+            rename_buffer: "".to_owned(),
             content_frame_being_dragged: None,
             workbench_item: None,
             workbench_offset: (0.0, 0.0),
@@ -203,12 +207,12 @@ impl Document {
         &self.content_frame_being_dragged
     }
 
-    pub fn get_animation_rename_target(&self) -> &Option<String> {
-        &self.content_rename_animation_target
+    pub fn get_item_being_renamed(&self) -> &Option<RenameItem> {
+        &self.item_being_renamed
     }
 
-    pub fn get_animation_rename_buffer(&self) -> &Option<String> {
-        &self.content_rename_animation_buffer
+    pub fn get_rename_buffer(&self) -> &str {
+        &self.rename_buffer
     }
 
     pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
@@ -219,11 +223,11 @@ impl Document {
         &self.workbench_animation_frame_being_dragged
     }
 
-    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<usize> {
+    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<String> {
         &self.workbench_hitbox_being_dragged
     }
 
-    pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<usize> {
+    pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<String> {
         &self.workbench_hitbox_being_scaled
     }
 
@@ -251,9 +255,9 @@ impl Document {
         match &self.selection {
             Some(Selection::Animation(a)) => {
                 self.sheet.delete_animation(&a);
-                if self.content_rename_animation_target == Some(a.clone()) {
-                    self.content_rename_animation_target = None;
-                    self.content_rename_animation_buffer = None;
+                if self.item_being_renamed == Some(RenameItem::Animation(a.clone())) {
+                    self.item_being_renamed = None;
+                    self.rename_buffer.clear();
                 }
             }
             Some(Selection::Frame(f)) => {
@@ -263,12 +267,12 @@ impl Document {
                 }
             }
             Some(Selection::Hitbox(f, h)) => {
-                self.sheet.delete_hitbox(&f, *h);
+                self.sheet.delete_hitbox(&f, &h);
                 if self.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
-                    if self.workbench_hitbox_being_dragged == Some(*h) {
+                    if self.workbench_hitbox_being_dragged == Some(h.to_owned()) {
                         self.workbench_hitbox_being_dragged = None;
                     }
-                    if self.workbench_hitbox_being_scaled == Some(*h) {
+                    if self.workbench_hitbox_being_scaled == Some(h.to_owned()) {
                         self.workbench_hitbox_being_scaled = None;
                     }
                 }
@@ -285,13 +289,53 @@ impl Document {
         };
         self.selection = None;
     }
+
+    fn rename_selection(&mut self) -> Result<(), Error> {
+        match &self.selection {
+            Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
+            Some(Selection::Hitbox(f, h)) => self.begin_hitbox_rename(f.clone(), h.clone())?,
+            Some(Selection::Frame(_f)) => (),
+            Some(Selection::AnimationFrame(_a, _af)) => (),
+            None => {}
+        };
+        Ok(())
+    }
+
+    fn begin_animation_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
+        let sheet = self.get_sheet_mut();
+        let _animation = sheet
+            .get_animation(&old_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+        self.item_being_renamed = Some(RenameItem::Animation(old_name.as_ref().to_owned()));
+        self.rename_buffer = old_name.as_ref().to_owned();
+        Ok(())
+    }
+
+    fn begin_hitbox_rename<T: AsRef<Path>, U: AsRef<str>>(
+        &mut self,
+        frame_path: T,
+        old_name: U,
+    ) -> Result<(), Error> {
+        let sheet = self.get_sheet_mut();
+        let _hitbox = sheet
+            .get_frame(&frame_path)
+            .ok_or(StateError::FrameNotInDocument)?
+            .get_hitbox(old_name.as_ref())
+            .ok_or(StateError::HitboxNotInFrame)?;
+        self.item_being_renamed = Some(RenameItem::Hitbox(
+            frame_path.as_ref().to_owned(),
+            old_name.as_ref().to_owned(),
+        ));
+        self.rename_buffer = old_name.as_ref().to_owned();
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
     Frame(PathBuf),
     Animation(String),
-    Hitbox(PathBuf, usize),
+    Hitbox(PathBuf, String),
     AnimationFrame(String, usize),
 }
 
@@ -299,6 +343,12 @@ pub enum Selection {
 pub enum ContentTab {
     Frames,
     Animations,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum RenameItem {
+    Animation(String),
+    Hitbox(PathBuf, String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -661,7 +711,7 @@ impl State {
         Ok(())
     }
 
-    fn select_hitbox(&mut self, hitbox_index: usize) -> Result<(), Error> {
+    fn select_hitbox<T: AsRef<str>>(&mut self, hitbox_name: T) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -675,9 +725,12 @@ impl State {
             .get_frame(&frame_path)
             .ok_or(StateError::FrameNotInDocument)?;
         let _hitbox = frame
-            .get_hitbox(hitbox_index)
+            .get_hitbox(&hitbox_name)
             .ok_or(StateError::InvalidHitboxIndex)?;
-        document.selection = Some(Selection::Hitbox(frame_path, hitbox_index));
+        document.selection = Some(Selection::Hitbox(
+            frame_path,
+            hitbox_name.as_ref().to_owned(),
+        ));
         Ok(())
     }
 
@@ -730,58 +783,12 @@ impl State {
     }
 
     fn create_animation(&mut self) -> Result<(), Error> {
-        let animation_name;
-        {
-            let document = self
-                .get_current_document_mut()
-                .ok_or(StateError::NoDocumentOpen)?;
-            let sheet = document.get_sheet_mut();
-            animation_name = sheet.add_animation();
-        }
-        self.begin_animation_rename(animation_name)?;
-        Ok(())
-    }
-
-    fn begin_animation_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
         let sheet = document.get_sheet_mut();
-        let _animation = sheet
-            .get_animation(&old_name)
-            .ok_or(StateError::AnimationNotInDocument)?;
-        document.content_rename_animation_target = Some(old_name.as_ref().to_owned());
-        document.content_rename_animation_buffer = Some(old_name.as_ref().to_owned());
-        Ok(())
-    }
-
-    fn update_animation_rename<T: AsRef<str>>(&mut self, new_name: T) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        document.content_rename_animation_buffer = Some(new_name.as_ref().to_owned());
-        Ok(())
-    }
-
-    fn end_animation_rename(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        if let (Some(old_name), Some(new_name)) = (
-            document.content_rename_animation_target.as_ref().cloned(),
-            document.content_rename_animation_buffer.as_ref().cloned(),
-        ) {
-            if old_name != new_name {
-                if document.get_sheet().has_animation(&new_name) {
-                    return Err(StateError::AnimationAlreadyExists.into());
-                }
-                let sheet = document.get_sheet_mut();
-                sheet.rename_animation(&old_name, &new_name)?;
-            }
-            document.content_rename_animation_target = None;
-            document.content_rename_animation_buffer = None;
-        }
-        Ok(())
+        let animation_name = sheet.add_animation();
+        document.begin_animation_rename(animation_name)
     }
 
     fn begin_frame_drag<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
@@ -991,39 +998,34 @@ impl State {
     }
 
     fn create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        let frame_path = match document.get_workbench_item() {
-            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyFrame)?;
+        let hitbox_name = {
+            let document = self
+                .get_current_document_mut()
+                .ok_or(StateError::NoDocumentOpen)?;
+            let frame_path = match document.get_workbench_item() {
+                Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
+                _ => None,
+            }
+            .ok_or(StateError::NotEditingAnyFrame)?;
 
-        let hitbox_index;
-        let hitbox;
-        {
             let frame = document
                 .get_sheet_mut()
                 .get_frame_mut(frame_path)
                 .ok_or(StateError::FrameNotInDocument)?;
 
-            hitbox_index = frame.add_hitbox();
-            hitbox = frame
-                .get_hitbox_mut(hitbox_index)
-                .ok_or(StateError::InvalidHitboxIndex)?;
+            let hitbox = frame.add_hitbox();
             hitbox.set_position((
                 mouse_position.0.round() as i32,
                 mouse_position.1.round() as i32,
             ));
-        }
-
-        self.begin_hitbox_scale(hitbox_index, ResizeAxis::SE, mouse_position)
+            hitbox.get_name().to_owned()
+        };
+        self.begin_hitbox_scale(hitbox_name, ResizeAxis::SE, mouse_position)
     }
 
-    fn begin_hitbox_scale(
+    fn begin_hitbox_scale<T: AsRef<str>>(
         &mut self,
-        hitbox_index: usize,
+        hitbox_name: T,
         axis: ResizeAxis,
         mouse_position: (f32, f32),
     ) -> Result<(), Error> {
@@ -1043,16 +1045,16 @@ impl State {
         {
             let frame = document
                 .get_sheet_mut()
-                .get_frame_mut(frame_path)
+                .get_frame_mut(&frame_path)
                 .ok_or(StateError::FrameNotInDocument)?;
             hitbox = frame
-                .get_hitbox_mut(hitbox_index)
+                .get_hitbox_mut(&hitbox_name)
                 .ok_or(StateError::InvalidHitboxIndex)?;
             position = hitbox.get_position();
             size = hitbox.get_size();
         }
 
-        document.workbench_hitbox_being_scaled = Some(hitbox_index);
+        document.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
         document.workbench_hitbox_scale_axis = axis;
         document.workbench_hitbox_scale_initial_mouse_position = mouse_position;
         document.workbench_hitbox_scale_initial_position = position;
@@ -1071,8 +1073,10 @@ impl State {
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
 
-        let hitbox_index = document
+        let hitbox_name = document
             .workbench_hitbox_being_scaled
+            .as_ref()
+            .cloned()
             .ok_or(StateError::NotDraggingAHitbox)?;
 
         let initial_position = document.workbench_hitbox_scale_initial_position;
@@ -1088,7 +1092,7 @@ impl State {
             .get_sheet_mut()
             .get_frame_mut(frame_path)
             .ok_or(StateError::FrameNotInDocument)?
-            .get_hitbox_mut(hitbox_index)
+            .get_hitbox_mut(&hitbox_name)
             .ok_or(StateError::InvalidHitboxIndex)?;
 
         let new_size = (
@@ -1172,9 +1176,9 @@ impl State {
         Ok(())
     }
 
-    fn begin_hitbox_drag(
+    fn begin_hitbox_drag<T: AsRef<str>>(
         &mut self,
-        hitbox_index: usize,
+        hitbox_name: T,
         mouse_position: (f32, f32),
     ) -> Result<(), Error> {
         let document = self
@@ -1191,15 +1195,15 @@ impl State {
         {
             let frame = document
                 .get_sheet()
-                .get_frame(frame_path)
+                .get_frame(&frame_path)
                 .ok_or(StateError::FrameNotInDocument)?;
             let hitbox = frame
-                .get_hitbox(hitbox_index)
+                .get_hitbox(&hitbox_name)
                 .ok_or(StateError::InvalidHitboxIndex)?;
             hitbox_position = hitbox.get_position();
         }
 
-        document.workbench_hitbox_being_dragged = Some(hitbox_index);
+        document.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
         document.workbench_hitbox_drag_initial_mouse_position = mouse_position;
         document.workbench_hitbox_drag_initial_offset = hitbox_position;
 
@@ -1219,8 +1223,10 @@ impl State {
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
 
-        let hitbox_index = document
+        let hitbox_name = document
             .workbench_hitbox_being_dragged
+            .as_ref()
+            .cloned()
             .ok_or(StateError::NotDraggingAHitbox)?;
 
         let old_offset = document.workbench_hitbox_drag_initial_offset;
@@ -1234,7 +1240,7 @@ impl State {
             .get_sheet_mut()
             .get_frame_mut(frame_path)
             .ok_or(StateError::FrameNotInDocument)?
-            .get_hitbox_mut(hitbox_index)
+            .get_hitbox_mut(&hitbox_name)
             .ok_or(StateError::InvalidHitboxIndex)?;
         hitbox.set_position(new_offset);
 
@@ -1339,6 +1345,61 @@ impl State {
         Ok(())
     }
 
+    fn begin_rename_selection(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.rename_selection()
+    }
+
+    fn update_rename_selection<T: AsRef<str>>(&mut self, new_name: T) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.rename_buffer = new_name.as_ref().to_owned();
+        Ok(())
+    }
+
+    fn end_rename_selection(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+
+        let new_name = document.rename_buffer.clone();
+
+        match document.item_being_renamed.as_ref().cloned() {
+            Some(RenameItem::Animation(old_name)) => {
+                if document.get_sheet().has_animation(&new_name) {
+                    return Err(StateError::AnimationAlreadyExists.into());
+                }
+                document
+                    .get_sheet_mut()
+                    .rename_animation(&old_name, &new_name)?;
+            }
+            Some(RenameItem::Hitbox(frame_path, old_name)) => {
+                if document
+                    .get_sheet()
+                    .get_frame(&frame_path)
+                    .ok_or(StateError::FrameNotInDocument)?
+                    .has_hitbox(&new_name)
+                {
+                    return Err(StateError::HitboxAlreadyExists.into());
+                }
+                document
+                    .get_sheet_mut()
+                    .get_frame_mut(frame_path)
+                    .ok_or(StateError::FrameNotInDocument)?
+                    .rename_hitbox(&old_name, &new_name)?;
+            }
+            None => (),
+        }
+
+        document.item_being_renamed = None;
+        document.rename_buffer.clear();
+
+        Ok(())
+    }
+
     pub fn get_workbench_zoom_factor(&self) -> Result<f32, Error> {
         let document = self
             .get_current_document()
@@ -1401,14 +1462,11 @@ impl State {
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::SelectAnimation(a) => self.select_animation(&a)?,
-            Command::SelectHitbox(h) => self.select_hitbox(*h)?,
+            Command::SelectHitbox(h) => self.select_hitbox(&h)?,
             Command::SelectAnimationFrame(af) => self.select_animation_frame(*af)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
             Command::EditAnimation(a) => self.edit_animation(&a)?,
             Command::CreateAnimation => self.create_animation()?,
-            Command::BeginAnimationRename(old_name) => self.begin_animation_rename(old_name)?,
-            Command::UpdateAnimationRename(new_name) => self.update_animation_rename(new_name)?,
-            Command::EndAnimationRename => self.end_animation_rename()?,
             Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
             Command::EndFrameDrag => self.end_frame_drag()?,
             Command::CreateAnimationFrame(f) => self.create_animation_frame(f)?,
@@ -1431,10 +1489,10 @@ impl State {
             Command::WorkbenchResetZoom => self.workbench_reset_zoom()?,
             Command::Pan(delta) => self.pan(*delta)?,
             Command::CreateHitbox(p) => self.create_hitbox(*p)?,
-            Command::BeginHitboxScale(i, a, p) => self.begin_hitbox_scale(*i, *a, *p)?,
+            Command::BeginHitboxScale(h, a, p) => self.begin_hitbox_scale(&h, *a, *p)?,
             Command::UpdateHitboxScale(p) => self.update_hitbox_scale(*p)?,
             Command::EndHitboxScale => self.end_hitbox_scale()?,
-            Command::BeginHitboxDrag(a, m) => self.begin_hitbox_drag(*a, *m)?,
+            Command::BeginHitboxDrag(a, m) => self.begin_hitbox_drag(&a, *m)?,
             Command::UpdateHitboxDrag(o) => self.update_hitbox_drag(*o)?,
             Command::EndHitboxDrag => self.end_hitbox_drag()?,
             Command::TogglePlayback => self.toggle_playback()?,
@@ -1446,6 +1504,9 @@ impl State {
             Command::UpdateScrub(t) => self.update_scrub(t)?,
             Command::EndScrub => self.end_scrub()?,
             Command::DeleteSelection => self.delete_selection()?,
+            Command::BeginRenameSelection => self.begin_rename_selection()?,
+            Command::UpdateRenameSelection(n) => self.update_rename_selection(n)?,
+            Command::EndRenameSelection => self.end_rename_selection()?,
         };
         Ok(())
     }

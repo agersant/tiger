@@ -13,8 +13,12 @@ pub enum SheetError {
     FrameNotFound,
     #[fail(display = "Animation was not found")]
     AnimationNotFound,
+    #[fail(display = "Hitbox was not found")]
+    HitboxNotFound,
     #[fail(display = "Animation name too long")]
     AnimationNameTooLong,
+    #[fail(display = "Hitbox name too long")]
+    HitboxNameTooLong,
     #[fail(display = "Error converting an absolute path to a relative path")]
     AbsoluteToRelativePath,
 }
@@ -98,29 +102,49 @@ impl Frame {
         self.hitboxes.iter()
     }
 
-    pub fn get_hitbox(&self, index: usize) -> Option<&Hitbox> {
-        if index >= self.hitboxes.len() {
-            return None;
-        }
-        Some(&self.hitboxes[index])
+    pub fn get_hitbox<T: AsRef<str>>(&self, name: T) -> Option<&Hitbox> {
+        self.hitboxes.iter().find(|a| &a.name == name.as_ref())
     }
 
-    pub fn get_hitbox_mut(&mut self, index: usize) -> Option<&mut Hitbox> {
-        if index >= self.hitboxes.len() {
-            return None;
-        }
-        Some(&mut self.hitboxes[index])
+    pub fn get_hitbox_mut<T: AsRef<str>>(&mut self, name: T) -> Option<&mut Hitbox> {
+        self.hitboxes.iter_mut().find(|a| &a.name == name.as_ref())
     }
 
-    pub fn add_hitbox(&mut self) -> usize {
+    pub fn has_hitbox<T: AsRef<str>>(&self, name: T) -> bool {
+        self.hitboxes.iter().any(|a| &a.name == name.as_ref())
+    }
+
+    pub fn add_hitbox(&mut self) -> &mut Hitbox {
+        let mut name = "New Hitbox".to_owned();
+        let mut index = 2;
+        while self.has_hitbox(&name) {
+            name = format!("New Hitbox {}", index);
+            index += 1;
+        }
+
         self.hitboxes.push(Hitbox {
-            name: "Hitbox".to_owned(),
+            name: name,
             geometry: Shape::Rectangle(Rectangle {
                 top_left: (0, 0),
                 size: (0, 0),
             }),
         });
-        self.hitboxes.len() - 1
+        self.hitboxes.last_mut().unwrap() // TODO no unwrap?
+    }
+
+    pub fn rename_hitbox<T: AsRef<str>, U: AsRef<str>>(
+        &mut self,
+        old_name: T,
+        new_name: U,
+    ) -> Result<(), Error> {
+        if new_name.as_ref().len() > MAX_HITBOX_NAME_LENGTH {
+            return Err(SheetError::HitboxNameTooLong.into());
+        }
+        let hitbox = self
+            .get_hitbox_mut(old_name)
+            .ok_or(SheetError::HitboxNotFound)?;
+        hitbox.name = new_name.as_ref().to_owned();
+        Ok(())
     }
 }
 
@@ -463,11 +487,9 @@ impl Sheet {
         }
     }
 
-    pub fn delete_hitbox<T: AsRef<Path>>(&mut self, path: T, hitbox_index: usize) {
+    pub fn delete_hitbox<T: AsRef<Path>, U: AsRef<str>>(&mut self, path: T, name: U) {
         if let Some(frame) = self.get_frame_mut(path.as_ref()) {
-            if hitbox_index < frame.hitboxes.len() {
-                frame.hitboxes.remove(hitbox_index);
-            }
+            frame.hitboxes.retain(|h| &h.name != name.as_ref());
         }
     }
 
