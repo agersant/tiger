@@ -1370,27 +1370,43 @@ impl State {
 
         match document.item_being_renamed.as_ref().cloned() {
             Some(RenameItem::Animation(old_name)) => {
-                if document.get_sheet().has_animation(&new_name) {
-                    return Err(StateError::AnimationAlreadyExists.into());
+                if old_name != new_name {
+                    if document.get_sheet().has_animation(&new_name) {
+                        return Err(StateError::AnimationAlreadyExists.into());
+                    }
+                    document
+                        .get_sheet_mut()
+                        .rename_animation(&old_name, &new_name)?;
+                    if Some(Selection::Animation(old_name.clone())) == document.selection {
+                        document.selection = Some(Selection::Animation(new_name.clone()));
+                    }
+                    if Some(WorkbenchItem::Animation(old_name.clone())) == document.workbench_item {
+                        document.workbench_item = Some(WorkbenchItem::Animation(new_name.clone()));
+                    }
                 }
-                document
-                    .get_sheet_mut()
-                    .rename_animation(&old_name, &new_name)?;
             }
             Some(RenameItem::Hitbox(frame_path, old_name)) => {
-                if document
-                    .get_sheet()
-                    .get_frame(&frame_path)
-                    .ok_or(StateError::FrameNotInDocument)?
-                    .has_hitbox(&new_name)
-                {
-                    return Err(StateError::HitboxAlreadyExists.into());
+                if old_name != new_name {
+                    if document
+                        .get_sheet()
+                        .get_frame(&frame_path)
+                        .ok_or(StateError::FrameNotInDocument)?
+                        .has_hitbox(&new_name)
+                    {
+                        return Err(StateError::HitboxAlreadyExists.into());
+                    }
+                    document
+                        .get_sheet_mut()
+                        .get_frame_mut(&frame_path)
+                        .ok_or(StateError::FrameNotInDocument)?
+                        .rename_hitbox(&old_name, &new_name)?;
+                    if Some(Selection::Hitbox(frame_path.clone(), old_name.clone()))
+                        == document.selection
+                    {
+                        document.selection =
+                            Some(Selection::Hitbox(frame_path.clone(), new_name.clone()));
+                    }
                 }
-                document
-                    .get_sheet_mut()
-                    .get_frame_mut(frame_path)
-                    .ok_or(StateError::FrameNotInDocument)?
-                    .rename_hitbox(&old_name, &new_name)?;
             }
             None => (),
         }
