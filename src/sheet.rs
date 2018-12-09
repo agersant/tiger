@@ -37,6 +37,10 @@ pub struct Hitbox {
 }
 
 impl Hitbox {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
     pub fn get_rectangle(&self) -> &Rectangle {
         match &self.geometry {
             Shape::Rectangle(r) => &r,
@@ -456,6 +460,14 @@ impl Sheet {
         self.frames.retain(|f| &f.source != path.as_ref());
         for animation in self.animations.iter_mut() {
             animation.timeline.retain(|af| &af.frame != path.as_ref())
+        }
+    }
+
+    pub fn delete_hitbox<T: AsRef<Path>>(&mut self, path: T, hitbox_index: usize) {
+        if let Some(frame) = self.get_frame_mut(path.as_ref()) {
+            if hitbox_index < frame.hitboxes.len() {
+                frame.hitboxes.remove(hitbox_index);
+            }
         }
     }
 

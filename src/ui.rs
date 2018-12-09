@@ -10,6 +10,7 @@ use crate::streamer::TextureCache;
 use crate::utils;
 
 mod content_window;
+mod hitboxes_window;
 mod selection_window;
 mod timeline_window;
 mod workbench_window;
@@ -85,6 +86,7 @@ pub fn run<'a>(
     let (window_width, window_height) = (window_width as f32, window_height as f32);
 
     let content_width = 0.12 * window_width;
+    let hitboxes_width = 0.12 * window_width;
 
     let (_, menu_height) = draw_main_menu(ui, &mut commands);
 
@@ -135,6 +137,15 @@ pub fn run<'a>(
             size: (timeline_width, timeline_height),
         };
         timeline_window::draw(ui, &timeline_rect, state, &mut commands);
+    }
+
+    {
+        let hitboxes_height = content_height;
+        let hitboxes_rect = Rect {
+            position: (window_width - hitboxes_width, menu_height),
+            size: (hitboxes_width, hitboxes_height),
+        };
+        hitboxes_window::draw(ui, &hitboxes_rect, state, &mut commands);
     }
 
     draw_export_popup(ui, state, &mut commands);

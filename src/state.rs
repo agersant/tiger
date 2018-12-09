@@ -262,10 +262,23 @@ impl Document {
                     self.content_frame_being_dragged = None;
                 }
             }
+            Some(Selection::Hitbox(f, h)) => {
+                self.sheet.delete_hitbox(&f, *h);
+                if self.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
+                    if self.workbench_hitbox_being_dragged == Some(*h) {
+                        self.workbench_hitbox_being_dragged = None;
+                    }
+                    if self.workbench_hitbox_being_scaled == Some(*h) {
+                        self.workbench_hitbox_being_scaled = None;
+                    }
+                }
+            }
             Some(Selection::AnimationFrame(a, af)) => {
                 self.sheet.delete_animation_frame(a, *af);
-                if self.workbench_animation_frame_being_dragged == Some(*af) {
-                    self.workbench_animation_frame_being_dragged = None;
+                if self.workbench_item == Some(WorkbenchItem::Animation(a.clone())) {
+                    if self.workbench_animation_frame_being_dragged == Some(*af) {
+                        self.workbench_animation_frame_being_dragged = None;
+                    }
                 }
             }
             None => {}
@@ -278,6 +291,7 @@ impl Document {
 pub enum Selection {
     Frame(PathBuf),
     Animation(String),
+    Hitbox(PathBuf, usize),
     AnimationFrame(String, usize),
 }
 
@@ -287,7 +301,7 @@ pub enum ContentTab {
     Animations,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum WorkbenchItem {
     Frame(PathBuf),
     Animation(String),
@@ -644,6 +658,26 @@ impl State {
             return Err(StateError::AnimationNotInDocument.into());
         }
         document.selection = Some(Selection::Animation(name.as_ref().to_owned()));
+        Ok(())
+    }
+
+    fn select_hitbox(&mut self, hitbox_index: usize) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let frame_path = match document.get_workbench_item() {
+            Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyFrame)?;
+        let frame = document
+            .get_sheet()
+            .get_frame(&frame_path)
+            .ok_or(StateError::FrameNotInDocument)?;
+        let _hitbox = frame
+            .get_hitbox(hitbox_index)
+            .ok_or(StateError::InvalidHitboxIndex)?;
+        document.selection = Some(Selection::Hitbox(frame_path, hitbox_index));
         Ok(())
     }
 
@@ -1367,6 +1401,7 @@ impl State {
             Command::Import => self.import()?,
             Command::SelectFrame(p) => self.select_frame(&p)?,
             Command::SelectAnimation(a) => self.select_animation(&a)?,
+            Command::SelectHitbox(h) => self.select_hitbox(*h)?,
             Command::SelectAnimationFrame(af) => self.select_animation_frame(*af)?,
             Command::EditFrame(p) => self.edit_frame(&p)?,
             Command::EditAnimation(a) => self.edit_animation(&a)?,

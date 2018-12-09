@@ -89,10 +89,14 @@ fn draw_frame<'a>(
                         _ => (),
                     };
                 } else {
-                    let resize_handle_width =
-                        max(4, min(16, ((bottom_right.0 - top_left.0) / 3.0).ceil() as i32)) as f32;
-                    let resize_handle_height =
-                        max(4, min(16, ((bottom_right.1 - top_left.1) / 3.0).ceil() as i32)) as f32;
+                    let resize_handle_width = max(
+                        4,
+                        min(16, ((bottom_right.0 - top_left.0) / 3.0).ceil() as i32),
+                    ) as f32;
+                    let resize_handle_height = max(
+                        4,
+                        min(16, ((bottom_right.1 - top_left.1) / 3.0).ceil() as i32),
+                    ) as f32;
                     let drag_button_size = (
                         bottom_right.0 - top_left.0 - resize_handle_width,
                         bottom_right.1 - top_left.1 - resize_handle_height,
