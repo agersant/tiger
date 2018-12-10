@@ -4,9 +4,14 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use self::constants::*;
-pub use self::compat::version1::*;
+pub use self::compat::version2::*;
 
 pub mod compat;
+
+pub mod constants {
+	pub const MAX_ANIMATION_NAME_LENGTH: usize = 32;
+	pub const MAX_HITBOX_NAME_LENGTH: usize = 32;
+}
 
 #[derive(Fail, Debug)]
 pub enum SheetError {

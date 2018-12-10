@@ -1,10 +1,5 @@
 use std::path::PathBuf;
 
-pub mod constants {
-	pub const MAX_ANIMATION_NAME_LENGTH: usize = 32;
-	pub const MAX_HITBOX_NAME_LENGTH: usize = 32;
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct VersionedSheet {
     pub sheet: Sheet,
