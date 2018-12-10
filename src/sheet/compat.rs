@@ -3,13 +3,13 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
 
-use crate::sheet::{compat, Sheet};
+use crate::sheet::{self, Sheet};
 
 pub mod version1;
 pub mod version2;
 
-#[derive(Serialize, Deserialize)]
-enum Version {
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum Version {
     Tiger1,
     Tiger2,
 }
@@ -28,18 +28,7 @@ struct VersionedSheet<'a> {
 
 pub fn read_sheet<T: AsRef<Path>>(path: T) -> Result<Sheet, Error> {
     let versioned: Versioned = serde_json::from_reader(BufReader::new(File::open(path.as_ref())?))?;
-    match versioned.version {
-		Version::Tiger1 => {
-            let deserialized: compat::version1::VersionedSheet =
-                serde_json::from_reader(BufReader::new(File::open(path.as_ref())?))?;
-            Ok(deserialized.sheet.into())
-        }
-		Version::Tiger2 => {
-            let deserialized: compat::version2::VersionedSheet =
-                serde_json::from_reader(BufReader::new(File::open(path.as_ref())?))?;
-            Ok(deserialized.sheet)
-        }
-    }
+	sheet::read_file(versioned.version, path)
 }
 
 pub fn write_sheet<T: AsRef<Path>>(path: T, sheet: &Sheet) -> Result<(), Error> {

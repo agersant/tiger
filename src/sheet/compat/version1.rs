@@ -1,8 +1,25 @@
-use std::path::PathBuf;
+use failure::Error;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
+
+use crate::sheet::compat::Version;
 
 #[derive(Serialize, Deserialize)]
 pub struct VersionedSheet {
     pub sheet: Sheet,
+}
+
+pub fn read_file<T: AsRef<Path>>(version: Version, path: T) -> Result<Sheet, Error> {
+	assert!(version == Version::Tiger1);
+	match version {
+		Version::Tiger1 => {
+            let deserialized: VersionedSheet =
+                serde_json::from_reader(BufReader::new(File::open(path.as_ref())?))?;
+            Ok(deserialized.sheet)
+        }
+		_ => bail!("Unexpected version"),
+	}
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
