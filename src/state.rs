@@ -2,13 +2,13 @@ use failure::Error;
 use std::cmp::min;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::command::Command;
 use crate::export;
 use crate::pack;
+use crate::sheet::compat;
 use crate::sheet::{ExportFormat, ExportSettings, Sheet};
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
@@ -163,12 +163,8 @@ impl Document {
     pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
         let mut directory = path.as_ref().to_path_buf();
         directory.pop();
-
-        // TODO support old versions!!!
-        let file = BufReader::new(File::open(path.as_ref())?);
-        let sheet: Sheet = serde_json::from_reader(file)?;
+        let sheet: Sheet = compat::read_sheet(path.as_ref())?;
         let sheet = sheet.with_absolute_paths(&directory);
-
         let mut document = Document::new(&path);
         document.sheet = sheet;
         Ok(document)
@@ -177,11 +173,8 @@ impl Document {
     fn save(&mut self) -> Result<(), Error> {
         let mut directory = self.source.to_path_buf();
         directory.pop();
-
         let sheet = self.get_sheet().with_relative_paths(directory)?;
-
-        let file = BufWriter::new(File::create(&self.source)?);
-        serde_json::to_writer_pretty(file, &sheet)?;
+        compat::write_sheet(&self.source, &sheet)?;
         Ok(())
     }
 
