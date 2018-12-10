@@ -295,8 +295,14 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, hitbox: &Hitbox, off
         state.get_workbench_offset(),
     ) {
         let rectangle = hitbox.get_rectangle();
-        let cursor_x = workbench_offset.0 + rect.size.0 / 2.0 + zoom * rectangle.top_left.0 as f32 + zoom * offset.0 as f32;
-        let cursor_y = workbench_offset.1 + rect.size.1 / 2.0 + zoom * rectangle.top_left.1 as f32 + zoom * offset.1 as f32;
+        let cursor_x = workbench_offset.0
+            + rect.size.0 / 2.0
+            + zoom * rectangle.top_left.0 as f32
+            + zoom * offset.0 as f32;
+        let cursor_y = workbench_offset.1
+            + rect.size.1 / 2.0
+            + zoom * rectangle.top_left.1 as f32
+            + zoom * offset.1 as f32;
         ui.set_cursor_pos((cursor_x, cursor_y));
 
         let top_left = ui.get_cursor_screen_pos();
@@ -435,7 +441,14 @@ fn draw_animation<'a>(
                 if *dragged_frame_index != frame_index {
                     if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
-                            draw_animation_frame(ui, rect, state, texture_cache, document, animation_frame);
+                            draw_animation_frame(
+                                ui,
+                                rect,
+                                state,
+                                texture_cache,
+                                document,
+                                animation_frame,
+                            );
                         });
                     }
                 }
