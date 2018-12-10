@@ -13,7 +13,7 @@
 	· Release pipeline
 	✓ No placeholder menu options
 	✓ Export (using last known settings)
-	· Draw frame being dragged even during animation
+	✓ Draw frame being dragged even during animation
 	· Draw hitboxes during animation
 	✓ Animation renames
 
