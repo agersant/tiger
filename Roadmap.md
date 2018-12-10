@@ -14,7 +14,7 @@
 	✓ No placeholder menu options
 	✓ Export (using last known settings)
 	✓ Draw frame being dragged even during animation
-	· Draw hitboxes during animation
+	✓ Draw hitboxes during animation
 	✓ Animation renames
 
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
@@ -33,6 +33,7 @@
 ## For v0.3
 	· Multiple selections
 	· Prettier UI
+	· Jump to next/previous frame
 	· Timeline follows playback
 	· Export perf fixes
 	· Handle missing frame files
