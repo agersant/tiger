@@ -3,7 +3,7 @@ use imgui::*;
 use std::cmp::{max, min};
 
 use crate::command::CommandBuffer;
-use crate::sheet::{Animation, Frame};
+use crate::sheet::{Animation, AnimationFrame, Frame};
 use crate::state::{self, Document, ResizeAxis, State};
 use crate::streamer::TextureCache;
 use crate::ui::Rect;
@@ -304,6 +304,24 @@ fn draw_frame<'a>(
     }
 }
 
+fn draw_animation_frame<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &TextureCache, animation_frame: &AnimationFrame) {
+    if let (Ok(zoom), Ok(offset)) = (
+        state.get_workbench_zoom_factor(),
+        state.get_workbench_offset(),
+    ) {
+        if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
+            let frame_offset = animation_frame.get_offset();
+            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+            let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (rect.size.0 / 2.0).floor()
+                - (draw_size.0 / 2.0).floor();
+            let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (rect.size.1 / 2.0).floor()
+                - (draw_size.1 / 2.0).floor();
+            ui.set_cursor_pos((cursor_x, cursor_y));
+            ui.image(texture.id, draw_size).build();
+        }
+    }
+}
+
 fn draw_animation<'a>(
     ui: &Ui<'a>,
     rect: &Rect,
@@ -313,49 +331,38 @@ fn draw_animation<'a>(
     document: &Document,
     animation: &Animation,
 ) {
-    if let (Ok(zoom), Ok(offset)) = (
-        state.get_workbench_zoom_factor(),
-        state.get_workbench_offset(),
-    ) {
-        let now = document.get_timeline_clock();
-        if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-            if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-                let frame_offset = animation_frame.get_offset();
-                let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-                let cursor_x =
-                    offset.0 + zoom * frame_offset.0 as f32 + (rect.size.0 / 2.0).floor()
-                        - (draw_size.0 / 2.0).floor();
-                let cursor_y =
-                    offset.1 + zoom * frame_offset.1 as f32 + (rect.size.1 / 2.0).floor()
-                        - (draw_size.1 / 2.0).floor();
-                ui.set_cursor_pos((cursor_x, cursor_y));
-                ui.image(texture.id, draw_size).build();
+    let now = document.get_timeline_clock();
+    if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
 
-                // TODO always draw frame being dragged
+        draw_animation_frame(ui, rect, state, texture_cache, animation_frame);
 
-                let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-                let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-                match document.get_workbench_animation_frame_being_dragged() {
-                    None => {
-                        if ui.is_item_hovered() {
-                            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                            if is_mouse_down && !is_mouse_dragging {
-                                let mouse_pos = ui.imgui().mouse_pos();
-                                commands.begin_animation_frame_offset_drag(frame_index, mouse_pos);
-                            }
-                        }
+        let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+        match document.get_workbench_animation_frame_being_dragged() {
+            None => {
+                if ui.is_item_hovered() {
+                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                    if is_mouse_down && !is_mouse_dragging {
+                        let mouse_pos = ui.imgui().mouse_pos();
+                        commands.begin_animation_frame_offset_drag(frame_index, mouse_pos);
                     }
-                    Some(i) if *i == frame_index => {
-                        ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                        if is_mouse_dragging {
-                            let mouse_pos = ui.imgui().mouse_pos();
-                            commands.update_animation_frame_offset_drag(mouse_pos);
-                        }
-                    }
-                    _ => (),
-                };
+                }
             }
-        }
+            Some(dragged_frame_index) => {
+                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                if is_mouse_dragging {
+                    let mouse_pos = ui.imgui().mouse_pos();
+                    commands.update_animation_frame_offset_drag(mouse_pos);
+                }
+                if *dragged_frame_index != frame_index {
+                    if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
+                        ui.with_style_var(StyleVar::Alpha(0.2),|| {
+                            draw_animation_frame(ui, rect, state, texture_cache, animation_frame);
+                        });
+                    }
+                }
+            }
+        };
     }
 }
 
