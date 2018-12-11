@@ -18,7 +18,7 @@ script: cargo test --release --verbose
 
 before_deploy:
   - mkdir artifacts
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cp target\release\tiger.exe artifacts ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cp target/release/tiger.exe artifacts ; fi
 
 
 deploy:
