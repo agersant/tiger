@@ -8,7 +8,7 @@ use crate::sheet::{self, Sheet};
 pub mod version1;
 pub mod version2;
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub enum Version {
     Tiger1,
     Tiger2,
