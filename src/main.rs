@@ -9,10 +9,8 @@ use gfx_window_glutin;
 use glutin;
 use imgui_gfx_renderer;
 use imgui_glutin_support;
-use liquid;
 #[macro_use]
 extern crate serde_derive;
-use texture_packer;
 
 use gfx::Device;
 use std::ops::{Deref, DerefMut};
