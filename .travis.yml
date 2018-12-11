@@ -1,0 +1,10 @@
+os:
+  - windows
+  - linux
+  - osx
+
+dist: xenial
+
+language: rust
+rust:
+  - nightly
