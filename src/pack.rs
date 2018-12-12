@@ -67,7 +67,7 @@ pub fn pack_sheet(sheet: &Sheet) -> Result<PackedSheet, Error> {
                 PathBuf::from(k),
                 PackedFrame {
                     position_in_sheet: (v.frame.x, v.frame.y),
-                    size_in_sheet: (v.frame.h, v.frame.w),
+                    size_in_sheet: (v.frame.w, v.frame.h),
                 },
             )
         })
