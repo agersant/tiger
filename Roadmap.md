@@ -9,6 +9,7 @@
 		✓ Hitboxes
 		✓ Sheet path in export
 		✓ Top left coords available in template
+		· Allow user to choose what directory paths are relative to in export
 	✓ Tiger backwards compat
 	✓ Release pipeline
 	✓ No placeholder menu options
