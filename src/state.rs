@@ -164,7 +164,7 @@ impl Document {
         let mut directory = path.as_ref().to_path_buf();
         directory.pop();
         let sheet: Sheet = compat::read_sheet(path.as_ref())?;
-        let sheet = sheet.with_absolute_paths(&directory);
+        let sheet = sheet.with_absolute_paths(&directory)?;
         let mut document = Document::new(&path);
         document.sheet = sheet;
         Ok(document)
