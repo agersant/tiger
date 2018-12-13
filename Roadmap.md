@@ -17,7 +17,7 @@
 	✓ Draw hitboxes during animation
 	✓ Animation renames
 
-	· Fix bug where export window shows weird absolute + relative concatenated paths
+	✓ Fix bug where export window shows weird absolute + relative concatenated paths
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
 	✓ Fix bug where renaming an animation(/hitbox) unselects and unedits it
 
