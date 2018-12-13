@@ -42,17 +42,13 @@ impl Sheet {
     pub fn with_relative_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<Sheet, Error> {
         let mut sheet = self.clone();
         for frame in sheet.frames_iter_mut() {
-            frame.source = canonicalize(
-                diff_paths(&frame.source, relative_to.as_ref())
-                .ok_or(SheetError::AbsoluteToRelativePath)?
-            )?;
+            frame.source = diff_paths(&frame.source, relative_to.as_ref())
+                          .ok_or(SheetError::AbsoluteToRelativePath)?;
         }
         for animation in sheet.animations.iter_mut() {
             for animation_frame in animation.frames_iter_mut() {
-                animation_frame.frame = canonicalize(
-                    diff_paths(&animation_frame.frame, relative_to.as_ref())
-                    .ok_or(SheetError::AbsoluteToRelativePath)?
-                )?;
+                animation_frame.frame = diff_paths(&animation_frame.frame, relative_to.as_ref())
+                                        .ok_or(SheetError::AbsoluteToRelativePath)?;
             }
         }
         if let Some(e) = sheet.export_settings {
@@ -419,10 +415,8 @@ impl ExportFormat {
     ) -> Result<ExportFormat, Error> {
         match self {
             ExportFormat::Template(p) => Ok(ExportFormat::Template(
-                canonicalize(
-                    diff_paths(&p, relative_to.as_ref())
-                    .ok_or(SheetError::AbsoluteToRelativePath)?
-                )?,
+                diff_paths(&p, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?
             )),
         }
     }
@@ -449,14 +443,14 @@ impl ExportSettings {
     ) -> Result<ExportSettings, Error> {
         Ok(ExportSettings {
             format: self.format.with_relative_paths(&relative_to)?,
-            texture_destination: canonicalize(
+            texture_destination:
                 diff_paths(&self.texture_destination, relative_to.as_ref())
                 .ok_or(SheetError::AbsoluteToRelativePath)?
-            )?,
-            metadata_destination: canonicalize(
+            ,
+            metadata_destination:
                 diff_paths(&self.metadata_destination, relative_to.as_ref())
                 .ok_or(SheetError::AbsoluteToRelativePath)?
-            )?,
+            ,
         })
     }
 
