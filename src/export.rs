@@ -73,6 +73,7 @@ fn liquid_data_from_hitbox(
 }
 
 fn liquid_data_from_frame(
+    sheet: &Sheet,
     frame: &Frame,
     texture_layout: &TextureLayout,
 ) -> Result<LiquidData, Error> {
@@ -83,6 +84,12 @@ fn liquid_data_from_frame(
             frame.get_source().to_string_lossy().into_owned(),
         )),
     );
+
+    let index = sheet
+        .frames_iter()
+        .position(|f| f as *const Frame == frame as *const Frame)
+        .ok_or(ExportError::InvalidFrameReference)?;
+    frame_data.insert("index".into(), Value::Scalar(Scalar::new(index as i32)));
 
     let frame_layout = texture_layout
         .get(frame.get_source().into())
@@ -124,8 +131,13 @@ fn liquid_data_from_frame(
 fn liquid_data_from_animation_frame(
     sheet: &Sheet,
     animation_frame: &AnimationFrame,
-    packed_frame: &PackedFrame,
+    texture_layout: &TextureLayout,
 ) -> Result<LiquidData, Error> {
+
+    let packed_frame = texture_layout
+            .get(animation_frame.get_frame())
+            .ok_or(ExportError::FrameWasNotPacked)?;
+
     let mut map = LiquidData::new();
     map.insert(
         "duration".into(),
@@ -155,11 +167,11 @@ fn liquid_data_from_animation_frame(
         Value::Scalar(Scalar::new(top_left_offset.1)),
     );
 
-    let index = sheet
-        .frames_iter()
-        .position(|f| f.get_source() == animation_frame.get_frame())
-        .ok_or(ExportError::InvalidFrameReference)?;
-    map.insert("index".into(), Value::Scalar(Scalar::new(index as i32)));
+    let frame = sheet.get_frame(animation_frame.get_frame())
+                .ok_or(ExportError::InvalidFrameReference)?;
+
+    let frame_data = liquid_data_from_frame(sheet, frame, texture_layout)?;
+    map.insert("frame".into(), Value::Object(frame_data));
 
     Ok(map)
 }
@@ -183,13 +195,10 @@ fn liquid_data_from_animation(
 
     let mut frames = Vec::new();
     for animation_frame in animation.frames_iter() {
-        let packed_frame = texture_layout
-            .get(animation_frame.get_frame().into())
-            .ok_or(ExportError::FrameWasNotPacked)?;
-        let frame = liquid_data_from_animation_frame(sheet, animation_frame, packed_frame)?;
+        let frame = liquid_data_from_animation_frame(sheet, animation_frame, texture_layout)?;
         frames.push(Value::Object(frame));
     }
-    map.insert("frames".into(), Value::Array(frames));
+    map.insert("keyframes".into(), Value::Array(frames));
 
     Ok(map)
 }
@@ -205,6 +214,7 @@ fn liquid_data_from_sheet(
         let mut frames = Vec::new();
         for frame in sheet.frames_iter() {
             frames.push(Value::Object(liquid_data_from_frame(
+                sheet,
                 frame,
                 texture_layout,
             )?));
