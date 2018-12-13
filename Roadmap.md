@@ -28,6 +28,7 @@
 	· Keyboard shortcuts menu entries
 	· Keyboard shortcuts for list navigation
 	· Loading spinners
+	· Begin editing animation after creating it
 	· Duplicate animation / animation frame (within same sheet)
 	· Grid
 	· Drag and drop frames to workbench
@@ -41,6 +42,7 @@
 	· Sort hitbox panel entries by name
 
 	· Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
+	· Fix bug where frame name can go outside frame bound in timeline
 
 ## For v0.3
 	· Error dialogs
