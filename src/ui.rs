@@ -344,9 +344,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                     {
                         ui.push_id(2);
                         ui.label_text(
-                            &ImString::new(
-                                settings.metadata_paths_root.to_string_lossy().borrow(),
-                            ),
+                            &ImString::new(settings.metadata_paths_root.to_string_lossy().borrow()),
                             im_str!("Store paths relative to:"),
                         );
                         ui.same_line(0.0);

@@ -4,14 +4,14 @@ use pathdiff::diff_paths;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use self::constants::*;
 pub use self::compat::version2::*;
+use self::constants::*;
 
 pub mod compat;
 
 pub mod constants {
-	pub const MAX_ANIMATION_NAME_LENGTH: usize = 32;
-	pub const MAX_HITBOX_NAME_LENGTH: usize = 32;
+    pub const MAX_ANIMATION_NAME_LENGTH: usize = 32;
+    pub const MAX_HITBOX_NAME_LENGTH: usize = 32;
 }
 
 #[derive(Fail, Debug)]
@@ -43,12 +43,12 @@ impl Sheet {
         let mut sheet = self.clone();
         for frame in sheet.frames_iter_mut() {
             frame.source = diff_paths(&frame.source, relative_to.as_ref())
-                          .ok_or(SheetError::AbsoluteToRelativePath)?;
+                .ok_or(SheetError::AbsoluteToRelativePath)?;
         }
         for animation in sheet.animations.iter_mut() {
             for animation_frame in animation.frames_iter_mut() {
                 animation_frame.frame = diff_paths(&animation_frame.frame, relative_to.as_ref())
-                                        .ok_or(SheetError::AbsoluteToRelativePath)?;
+                    .ok_or(SheetError::AbsoluteToRelativePath)?;
             }
         }
         if let Some(e) = sheet.export_settings {
@@ -64,7 +64,8 @@ impl Sheet {
         }
         for animation in sheet.animations.iter_mut() {
             for animation_frame in animation.frames_iter_mut() {
-                animation_frame.frame = canonicalize(relative_to.as_ref().join(&&animation_frame.frame))?;
+                animation_frame.frame =
+                    canonicalize(relative_to.as_ref().join(&&animation_frame.frame))?;
             }
         }
         if let Some(e) = sheet.export_settings {
@@ -195,7 +196,6 @@ impl Sheet {
         }
     }
 }
-
 
 impl Animation {
     pub fn new<T: AsRef<str>>(name: T) -> Animation {
@@ -415,15 +415,19 @@ impl ExportFormat {
     ) -> Result<ExportFormat, Error> {
         match self {
             ExportFormat::Template(p) => Ok(ExportFormat::Template(
-                diff_paths(&p, relative_to.as_ref())
-                .ok_or(SheetError::AbsoluteToRelativePath)?
+                diff_paths(&p, relative_to.as_ref()).ok_or(SheetError::AbsoluteToRelativePath)?,
             )),
         }
     }
 
-    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<ExportFormat, Error> {
+    pub fn with_absolute_paths<T: AsRef<Path>>(
+        &self,
+        relative_to: T,
+    ) -> Result<ExportFormat, Error> {
         match self {
-            ExportFormat::Template(p) => Ok(ExportFormat::Template(canonicalize(relative_to.as_ref().join(&p))?)),
+            ExportFormat::Template(p) => Ok(ExportFormat::Template(canonicalize(
+                relative_to.as_ref().join(&p),
+            )?)),
         }
     }
 }
@@ -444,27 +448,30 @@ impl ExportSettings {
     ) -> Result<ExportSettings, Error> {
         Ok(ExportSettings {
             format: self.format.with_relative_paths(&relative_to)?,
-            texture_destination:
-                diff_paths(&self.texture_destination, relative_to.as_ref())
-                .ok_or(SheetError::AbsoluteToRelativePath)?
-            ,
-            metadata_destination:
-                diff_paths(&self.metadata_destination, relative_to.as_ref())
-                .ok_or(SheetError::AbsoluteToRelativePath)?
-            ,
-            metadata_paths_root:
-                diff_paths(&self.metadata_paths_root, relative_to.as_ref())
-                .ok_or(SheetError::AbsoluteToRelativePath)?
-            ,
+            texture_destination: diff_paths(&self.texture_destination, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?,
+            metadata_destination: diff_paths(&self.metadata_destination, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?,
+            metadata_paths_root: diff_paths(&self.metadata_paths_root, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?,
         })
     }
 
-    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<ExportSettings, Error> {
+    pub fn with_absolute_paths<T: AsRef<Path>>(
+        &self,
+        relative_to: T,
+    ) -> Result<ExportSettings, Error> {
         Ok(ExportSettings {
             format: self.format.with_absolute_paths(&relative_to)?,
-            texture_destination: canonicalize(relative_to.as_ref().join(&self.texture_destination))?,
-            metadata_destination: canonicalize(relative_to.as_ref().join(&self.metadata_destination))?,
-            metadata_paths_root: canonicalize(relative_to.as_ref().join(&self.metadata_paths_root))?,
+            texture_destination: canonicalize(
+                relative_to.as_ref().join(&self.texture_destination),
+            )?,
+            metadata_destination: canonicalize(
+                relative_to.as_ref().join(&self.metadata_destination),
+            )?,
+            metadata_paths_root: canonicalize(
+                relative_to.as_ref().join(&self.metadata_paths_root),
+            )?,
         })
     }
 }

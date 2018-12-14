@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use crate::sheet::compat::Version;
 use crate::sheet::compat::version1 as previous_version;
+use crate::sheet::compat::Version;
 
 const THIS_VERSION: Version = Version::Tiger2;
 
@@ -14,14 +14,14 @@ pub struct VersionedSheet {
 }
 
 pub fn read_file<T: AsRef<Path>>(version: Version, path: T) -> Result<Sheet, Error> {
-	match version {
-		THIS_VERSION => {
+    match version {
+        THIS_VERSION => {
             let deserialized: VersionedSheet =
                 serde_json::from_reader(BufReader::new(File::open(path.as_ref())?))?;
             Ok(deserialized.sheet)
         }
-		_ => Ok(previous_version::read_file(version, path)?.into()),
-	}
+        _ => Ok(previous_version::read_file(version, path)?.into()),
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

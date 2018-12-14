@@ -133,10 +133,9 @@ fn liquid_data_from_animation_frame(
     animation_frame: &AnimationFrame,
     texture_layout: &TextureLayout,
 ) -> Result<LiquidData, Error> {
-
     let packed_frame = texture_layout
-            .get(animation_frame.get_frame())
-            .ok_or(ExportError::FrameWasNotPacked)?;
+        .get(animation_frame.get_frame())
+        .ok_or(ExportError::FrameWasNotPacked)?;
 
     let mut map = LiquidData::new();
     map.insert(
@@ -167,8 +166,9 @@ fn liquid_data_from_animation_frame(
         Value::Scalar(Scalar::new(top_left_offset.1)),
     );
 
-    let frame = sheet.get_frame(animation_frame.get_frame())
-                .ok_or(ExportError::InvalidFrameReference)?;
+    let frame = sheet
+        .get_frame(animation_frame.get_frame())
+        .ok_or(ExportError::InvalidFrameReference)?;
 
     let frame_data = liquid_data_from_frame(sheet, frame, texture_layout)?;
     map.insert("frame".into(), Value::Object(frame_data));
