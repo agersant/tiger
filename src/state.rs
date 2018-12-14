@@ -835,6 +835,27 @@ impl State {
         Ok(())
     }
 
+    fn insert_animation_frame_before<T: AsRef<Path>>(
+        &mut self,
+        frame: T,
+        next_frame_index: usize,
+    ) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?
+            .insert_frame(frame, next_frame_index)?;
+        Ok(())
+    }
+
     fn begin_animation_frame_duration_drag(&mut self, animation_index: usize) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -1502,6 +1523,9 @@ impl State {
             Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
             Command::EndFrameDrag => self.end_frame_drag()?,
             Command::CreateAnimationFrame(f) => self.create_animation_frame(f)?,
+            Command::InsertAnimationFrameBefore(f, n) => {
+                self.insert_animation_frame_before(f, *n)?
+            }
             Command::BeginAnimationFrameDurationDrag(a) => {
                 self.begin_animation_frame_duration_drag(*a)?
             }

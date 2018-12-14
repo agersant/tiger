@@ -28,6 +28,8 @@ pub enum SheetError {
     HitboxNameTooLong,
     #[fail(display = "Error converting an absolute path to a relative path")]
     AbsoluteToRelativePath,
+    #[fail(display = "Invalid frame index")]
+    InvalidFrameIndex,
 }
 
 impl Sheet {
@@ -265,6 +267,15 @@ impl Animation {
             self.timeline.len() - 1,
             self.timeline.iter().last().unwrap(),
         )) // TODO no unwrap
+    }
+
+    pub fn insert_frame<T: AsRef<Path>>(&mut self, frame: T, index: usize) -> Result<(), Error> {
+        if index > self.timeline.len() {
+            return Err(SheetError::InvalidFrameIndex.into());
+        }
+        let animation_frame = AnimationFrame::new(frame);
+        self.timeline.insert(index, animation_frame);
+        Ok(())
     }
 
     pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {

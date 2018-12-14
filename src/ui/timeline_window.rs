@@ -73,20 +73,22 @@ fn draw_animation_frame<'a>(
     commands: &mut CommandBuffer,
     document: &Document,
     animation: &Animation,
-    frame_index: usize,
-    frame: &AnimationFrame,
+    animation_frame_index: usize,
+    animation_frame: &AnimationFrame,
     frame_starts_at: Duration,
+    hovered: &mut bool,
 ) {
     let zoom = state.get_timeline_zoom_factor().unwrap_or(1.0);
-    let w = frame.get_duration() as f32 * zoom;
+    let w = animation_frame.get_duration() as f32 * zoom;
     let h = 20.0; // TODO DPI?
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let resize_handle_size = 16.0; // TODO DPI?
+    let insert_marker_size = 8.0; // TODO DPI?
     let is_selected = document.get_selection()
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
-            frame_index,
+            animation_frame_index,
         ));
 
     // TODO what happens when things get tiny?
@@ -130,7 +132,7 @@ fn draw_animation_frame<'a>(
     );
 
     // Draw name
-    if let Some(name) = frame.get_frame().file_name() {
+    if let Some(name) = animation_frame.get_frame().file_name() {
         let text_color = outline_color; // TODO.style
         let text_position = (fill_top_left.0 + text_padding, fill_top_left.1);
         draw_list.add_text(text_position, text_color, name.to_string_lossy());
@@ -147,7 +149,31 @@ fn draw_animation_frame<'a>(
                 bottom_right.1 - top_left.1,
             ),
         ) {
-            commands.select_animation_frame(frame_index);
+            commands.select_animation_frame(animation_frame_index);
+        }
+    }
+
+    // Drag and drop interactions
+    {
+        if ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem) {
+            *hovered = true;
+            if let Some(dragged_frame) = document.get_content_frame_being_dragged() {
+                let insert_marker_color = [249.0 / 255.0, 40.0 / 255.0, 50.0 / 255.0];
+                let marker_top_left = (top_left.0 - insert_marker_size / 2.0, top_left.1);
+                let marker_bottom_right = (top_left.0 + insert_marker_size / 2.0, bottom_right.1);
+                draw_list.add_rect_filled_multicolor(
+                    marker_top_left,
+                    marker_bottom_right,
+                    insert_marker_color,
+                    insert_marker_color,
+                    insert_marker_color,
+                    insert_marker_color,
+                );
+                let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+                if !is_mouse_down {
+                    commands.insert_animation_frame_before(dragged_frame, animation_frame_index);
+                }
+            }
         }
     }
 
@@ -164,11 +190,11 @@ fn draw_animation_frame<'a>(
                 if ui.is_item_hovered() {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                     if is_mouse_down && !is_mouse_dragging {
-                        commands.begin_animation_frame_duration_drag(frame_index);
+                        commands.begin_animation_frame_duration_drag(animation_frame_index);
                     }
                 }
             }
-            Some(i) if *i == frame_index => {
+            Some(i) if *i == animation_frame_index => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                 if is_mouse_dragging {
                     let mouse_pos = ui.imgui().mouse_pos();
@@ -226,15 +252,6 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                     {
                         if let Some(animation) = document.get_sheet().get_animation(animation_name)
                         {
-                            let is_window_hovered = ui.is_window_hovered();
-                            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-                            if is_window_hovered && !is_mouse_down {
-                                if let Some(frame) = document.get_content_frame_being_dragged() {
-                                    // TODO allow dropping frame on workbench
-                                    commands.create_animation_frame(frame);
-                                }
-                            }
-
                             if ui.small_button(im_str!("Play/Pause")) {
                                 commands.toggle_playback();
                             }
@@ -251,6 +268,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
 
                             let frames_cursor_position = ui.get_cursor_pos();
                             let mut cursor = Duration::new(0, 0);
+                            let mut any_frame_hovered = false;
                             for (frame_index, animation_frame) in
                                 animation.frames_iter().enumerate()
                             {
@@ -264,6 +282,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     frame_index,
                                     animation_frame,
                                     cursor,
+                                    &mut any_frame_hovered,
                                 );
                                 cursor +=
                                     Duration::from_millis(animation_frame.get_duration() as u64);
@@ -271,6 +290,15 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
 
                             ui.set_cursor_pos(ticks_cursor_position);
                             draw_playback_head(ui, state, document, animation);
+
+                            let is_window_hovered = ui.is_window_hovered();
+                            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+                            if is_window_hovered && !is_mouse_down && !any_frame_hovered {
+                                if let Some(frame) = document.get_content_frame_being_dragged() {
+                                    // TODO allow dropping frame on workbench
+                                    commands.create_animation_frame(frame);
+                                }
+                            }
 
                             if ui.is_window_hovered() {
                                 if ui.imgui().key_ctrl() {
