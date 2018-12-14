@@ -3,7 +3,7 @@
 ## For v0.1
 	✓ Don't store absolute paths in tiger files
 	✓ Show frame names in timeline
-	· Solution(s) to edit/order/insert frames in timeline
+	✓ Solution(s) to edit/order/insert frames in timeline
 	✓ Add, position, tag, delete hitboxes
 	· Full compat with crystal sheets:
 		✓ Hitboxes
