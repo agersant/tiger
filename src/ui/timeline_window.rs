@@ -189,10 +189,8 @@ fn draw_animation_frame<'a>(
                 }
                 if !is_mouse_down {
                     if let Some(dragged_frame) = document.get_content_frame_being_dragged() {
-                        commands.insert_animation_frame_before(
-                            dragged_frame,
-                            animation_frame_index,
-                        );
+                        commands
+                            .insert_animation_frame_before(dragged_frame, animation_frame_index);
                     } else if let Some(dragged_animation_frame) =
                         document.get_timeline_frame_being_dragged()
                     {
