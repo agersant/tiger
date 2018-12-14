@@ -60,6 +60,7 @@
 	· Timeline snapping
 	· Playback speed
 	· Hitbox colors
+	· Default paths for NFD dialogs
 	· Draw hitbox names in workbench
 	· Onion skin
 	· Workbench tabs?
