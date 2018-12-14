@@ -16,7 +16,7 @@
 	✓ Draw frame being dragged even during animation
 	✓ Draw hitboxes during animation
 	✓ Animation renames
-	· Allow user to choose what directory paths are relative to during export
+	✓ Allow user to choose what directory paths are relative to during export
 
 	✓ Fix bug where export window shows weird absolute + relative concatenated paths
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
