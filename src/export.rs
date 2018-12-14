@@ -234,8 +234,7 @@ fn liquid_data_from_sheet(
     }
 
     {
-        let mut relative_to = export_settings.metadata_destination.clone();
-        relative_to.pop();
+        let relative_to = export_settings.metadata_paths_root.clone();
         let image_path = diff_paths(&export_settings.texture_destination, &relative_to)
             .ok_or(ExportError::AbsoluteToRelativePath)?;
         map.insert(

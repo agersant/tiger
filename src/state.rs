@@ -566,6 +566,23 @@ impl State {
         Ok(())
     }
 
+    fn update_export_as_metadata_paths_root(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let export_settings = &mut document
+            .export_settings
+            .as_mut()
+            .ok_or(StateError::NotExporting)?;
+        match nfd::open_pick_folder(None)? {
+            nfd::Response::Okay(path_string) => {
+                export_settings.metadata_paths_root = std::path::PathBuf::from(path_string);
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
     fn update_export_as_format(&mut self) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -1466,6 +1483,9 @@ impl State {
             }
             Command::UpdateExportAsMetadataDestination => {
                 self.update_export_as_metadata_destination()?
+            }
+            Command::UpdateExportAsMetadataPathsRoot => {
+                self.update_export_as_metadata_paths_root()?
             }
             Command::UpdateExportAsFormat => self.update_export_as_format()?,
             Command::EndExportAs => self.end_export_as()?,

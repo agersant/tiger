@@ -434,6 +434,7 @@ impl ExportSettings {
             format: ExportFormat::Template(PathBuf::new()),
             texture_destination: PathBuf::new(),
             metadata_destination: PathBuf::new(),
+            metadata_paths_root: PathBuf::new(),
         }
     }
 
@@ -451,6 +452,10 @@ impl ExportSettings {
                 diff_paths(&self.metadata_destination, relative_to.as_ref())
                 .ok_or(SheetError::AbsoluteToRelativePath)?
             ,
+            metadata_paths_root:
+                diff_paths(&self.metadata_paths_root, relative_to.as_ref())
+                .ok_or(SheetError::AbsoluteToRelativePath)?
+            ,
         })
     }
 
@@ -459,6 +464,7 @@ impl ExportSettings {
             format: self.format.with_absolute_paths(&relative_to)?,
             texture_destination: canonicalize(relative_to.as_ref().join(&self.texture_destination))?,
             metadata_destination: canonicalize(relative_to.as_ref().join(&self.metadata_destination))?,
+            metadata_paths_root: canonicalize(relative_to.as_ref().join(&self.metadata_paths_root))?,
         })
     }
 }

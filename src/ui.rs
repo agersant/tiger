@@ -343,6 +343,21 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
 
                     {
                         ui.push_id(2);
+                        ui.label_text(
+                            &ImString::new(
+                                settings.metadata_paths_root.to_string_lossy().borrow(),
+                            ),
+                            im_str!("Store paths relative to:"),
+                        );
+                        ui.same_line(0.0);
+                        if ui.small_button(im_str!("Browse…")) {
+                            commands.update_export_as_metadata_paths_root();
+                        }
+                        ui.pop_id();
+                    }
+
+                    {
+                        ui.push_id(3);
                         match &settings.format {
                             ExportFormat::Template(p) => {
                                 ui.label_text(

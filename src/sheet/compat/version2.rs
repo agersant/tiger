@@ -151,6 +151,7 @@ pub struct ExportSettings {
     pub format: ExportFormat,
     pub texture_destination: PathBuf,
     pub metadata_destination: PathBuf,
+    pub metadata_paths_root: PathBuf,
 }
 
 impl From<previous_version::ExportSettings> for ExportSettings {
@@ -158,7 +159,8 @@ impl From<previous_version::ExportSettings> for ExportSettings {
         ExportSettings {
             format: old.format.into(),
             texture_destination: old.texture_destination,
-            metadata_destination: old.metadata_destination,
+            metadata_destination: old.metadata_destination.clone(),
+            metadata_paths_root: old.metadata_destination,
         }
     }
 }
