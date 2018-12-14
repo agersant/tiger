@@ -67,6 +67,7 @@
 ## For v1.0
 	· Review all TODO
 	· Compile on Rust Stable
+	· Get rid of failure crate
 	· Document template format
 	· About dialog
 	· Logo
