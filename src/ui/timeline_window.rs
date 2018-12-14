@@ -67,6 +67,22 @@ fn draw_timeline_ticks<'a>(
     }
 }
 
+fn draw_insert_marker<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList, height: f32) {
+    let position = ui.get_cursor_screen_pos();
+    let insert_marker_size = 8.0; // TODO DPI?
+    let insert_marker_color = [249.0 / 255.0, 40.0 / 255.0, 50.0 / 255.0];
+    let marker_top_left = (position.0 - insert_marker_size / 2.0, position.1);
+    let marker_bottom_right = (position.0 + insert_marker_size / 2.0, position.1 + height);
+    draw_list.add_rect_filled_multicolor(
+        marker_top_left,
+        marker_bottom_right,
+        insert_marker_color,
+        insert_marker_color,
+        insert_marker_color,
+        insert_marker_color,
+    );
+}
+
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
     state: &State,
@@ -84,7 +100,6 @@ fn draw_animation_frame<'a>(
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let resize_handle_size = 16.0; // TODO DPI?
-    let insert_marker_size = 8.0; // TODO DPI?
     let is_selected = document.get_selection()
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
@@ -155,24 +170,40 @@ fn draw_animation_frame<'a>(
 
     // Drag and drop interactions
     {
-        if ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem) {
+        let mouse_pos = ui.imgui().mouse_pos();
+        let is_hovering_frame = mouse_pos.0 >= top_left.0 && mouse_pos.0 <= bottom_right.0;
+        let is_window_hovered =
+            ui.is_window_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem);
+        if is_hovering_frame && is_window_hovered {
             *hovered = true;
-            if let Some(dragged_frame) = document.get_content_frame_being_dragged() {
-                let insert_marker_color = [249.0 / 255.0, 40.0 / 255.0, 50.0 / 255.0];
-                let marker_top_left = (top_left.0 - insert_marker_size / 2.0, top_left.1);
-                let marker_bottom_right = (top_left.0 + insert_marker_size / 2.0, bottom_right.1);
-                draw_list.add_rect_filled_multicolor(
-                    marker_top_left,
-                    marker_bottom_right,
-                    insert_marker_color,
-                    insert_marker_color,
-                    insert_marker_color,
-                    insert_marker_color,
-                );
-                let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-                if !is_mouse_down {
-                    commands.insert_animation_frame_before(dragged_frame, animation_frame_index);
+
+            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            let dragging_frame = document.get_content_frame_being_dragged().is_some();
+            let dragging_animation_frame = document.get_timeline_frame_being_dragged().is_some();
+
+            if dragging_frame || dragging_animation_frame {
+                if is_mouse_dragging {
+                    ui.set_cursor_screen_pos(top_left);
+                    draw_insert_marker(ui, &draw_list, h);
                 }
+                if !is_mouse_down {
+                    if let Some(dragged_frame) = document.get_content_frame_being_dragged() {
+                        commands.insert_animation_frame_before(
+                            dragged_frame,
+                            animation_frame_index,
+                        );
+                    } else if let Some(dragged_animation_frame) =
+                        document.get_timeline_frame_being_dragged()
+                    {
+                        commands.reorder_animation_frame(
+                            *dragged_animation_frame,
+                            animation_frame_index,
+                        );
+                    }
+                }
+            } else if is_mouse_down && !is_mouse_dragging {
+                commands.begin_animation_frame_drag(animation_frame_index);
             }
         }
     }
@@ -206,6 +237,8 @@ fn draw_animation_frame<'a>(
             _ => (),
         };
     }
+
+    ui.set_cursor_screen_pos(bottom_right);
 }
 
 fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, animation: &Animation) {
@@ -266,13 +299,14 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                             let ticks_cursor_position = ui.get_cursor_pos();
                             draw_timeline_ticks(ui, state, commands, document);
 
-                            let frames_cursor_position = ui.get_cursor_pos();
+                            let frames_start_cursor_position = ui.get_cursor_pos();
+                            let mut frames_end_cursor_position = frames_start_cursor_position;
                             let mut cursor = Duration::new(0, 0);
                             let mut any_frame_hovered = false;
                             for (frame_index, animation_frame) in
                                 animation.frames_iter().enumerate()
                             {
-                                ui.set_cursor_pos(frames_cursor_position);
+                                ui.set_cursor_pos(frames_start_cursor_position);
                                 draw_animation_frame(
                                     ui,
                                     state,
@@ -284,6 +318,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     cursor,
                                     &mut any_frame_hovered,
                                 );
+                                frames_end_cursor_position = ui.get_cursor_pos();
                                 cursor +=
                                     Duration::from_millis(animation_frame.get_duration() as u64);
                             }
@@ -291,12 +326,35 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                             ui.set_cursor_pos(ticks_cursor_position);
                             draw_playback_head(ui, state, document, animation);
 
-                            let is_window_hovered = ui.is_window_hovered();
+                            let is_window_hovered = ui.is_window_hovered_with_flags(
+                                ImGuiHoveredFlags::AllowWhenBlockedByActiveItem,
+                            );
                             let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-                            if is_window_hovered && !is_mouse_down && !any_frame_hovered {
-                                if let Some(frame) = document.get_content_frame_being_dragged() {
-                                    // TODO allow dropping frame on workbench
-                                    commands.create_animation_frame(frame);
+                            let is_dragging = document.get_content_frame_being_dragged().is_some()
+                                || document.get_timeline_frame_being_dragged().is_some();
+                            if is_window_hovered && is_dragging && !any_frame_hovered {
+                                ui.set_cursor_pos((
+                                    frames_end_cursor_position.0,
+                                    frames_start_cursor_position.1,
+                                ));
+                                draw_insert_marker(
+                                    ui,
+                                    &ui.get_window_draw_list(),
+                                    frames_end_cursor_position.1 - frames_start_cursor_position.1,
+                                );
+                                if !is_mouse_down {
+                                    if let Some(frame) = document.get_content_frame_being_dragged()
+                                    {
+                                        // TODO allow dropping frame on workbench
+                                        commands.create_animation_frame(frame);
+                                    } else if let Some(dragged_animation_frame) =
+                                        document.get_timeline_frame_being_dragged()
+                                    {
+                                        commands.reorder_animation_frame(
+                                            *dragged_animation_frame,
+                                            animation.get_num_frames(),
+                                        );
+                                    }
                                 }
                             }
 

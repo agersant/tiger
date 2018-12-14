@@ -440,7 +440,7 @@ dependencies = [
 [[package]]
 name = "imgui"
 version = "0.0.22-pre"
-source = "git+https://github.com/agersant/imgui-rs?branch=tiger#fbd2b9143c7122333473f7ef199af6b998deb1d2"
+source = "git+https://github.com/agersant/imgui-rs?branch=tiger#a57d090900f61b472cd98c11cbcfe5b64e065621"
 dependencies = [
  "imgui-sys 0.0.22-pre (git+https://github.com/agersant/imgui-rs?branch=tiger)",
 ]
@@ -448,7 +448,7 @@ dependencies = [
 [[package]]
 name = "imgui-gfx-renderer"
 version = "0.0.22-pre"
-source = "git+https://github.com/agersant/imgui-rs?branch=tiger#fbd2b9143c7122333473f7ef199af6b998deb1d2"
+source = "git+https://github.com/agersant/imgui-rs?branch=tiger#a57d090900f61b472cd98c11cbcfe5b64e065621"
 dependencies = [
  "gfx 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "imgui 0.0.22-pre (git+https://github.com/agersant/imgui-rs?branch=tiger)",
@@ -458,7 +458,7 @@ dependencies = [
 [[package]]
 name = "imgui-glutin-support"
 version = "0.0.22-pre"
-source = "git+https://github.com/agersant/imgui-rs?branch=tiger#fbd2b9143c7122333473f7ef199af6b998deb1d2"
+source = "git+https://github.com/agersant/imgui-rs?branch=tiger#a57d090900f61b472cd98c11cbcfe5b64e065621"
 dependencies = [
  "glutin 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "imgui 0.0.22-pre (git+https://github.com/agersant/imgui-rs?branch=tiger)",
@@ -467,7 +467,7 @@ dependencies = [
 [[package]]
 name = "imgui-sys"
 version = "0.0.22-pre"
-source = "git+https://github.com/agersant/imgui-rs?branch=tiger#fbd2b9143c7122333473f7ef199af6b998deb1d2"
+source = "git+https://github.com/agersant/imgui-rs?branch=tiger#a57d090900f61b472cd98c11cbcfe5b64e065621"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -88,6 +88,7 @@ pub struct Document {
     workbench_animation_frame_drag_initial_offset: (i32, i32),
     timeline_zoom_level: i32,
     timeline_frame_being_scaled: Option<usize>,
+    timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
     timeline_scrubbing: bool,
@@ -120,6 +121,7 @@ impl Document {
             workbench_animation_frame_drag_initial_offset: (0, 0),
             timeline_zoom_level: 1,
             timeline_frame_being_scaled: None,
+            timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
             timeline_scrubbing: false,
@@ -212,6 +214,10 @@ impl Document {
 
     pub fn get_timeline_frame_being_scaled(&self) -> &Option<usize> {
         &self.timeline_frame_being_scaled
+    }
+
+    pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
+        &self.timeline_frame_being_dragged
     }
 
     pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
@@ -856,6 +862,23 @@ impl State {
         Ok(())
     }
 
+    fn reorder_animation_frame(&mut self, old_index: usize, new_index: usize) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?
+            .reorder_frame(old_index, new_index)?;
+        Ok(())
+    }
+
     fn begin_animation_frame_duration_drag(&mut self, animation_index: usize) -> Result<(), Error> {
         let document = self
             .get_current_document_mut()
@@ -906,6 +929,34 @@ impl State {
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
         document.timeline_frame_being_scaled = None;
+        Ok(())
+    }
+
+    fn begin_animation_frame_drag(&mut self, animation_index: usize) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        let animation_name = match document.get_workbench_item() {
+            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NotEditingAnyAnimation)?;
+        let animation = document
+            .get_sheet_mut()
+            .get_animation_mut(animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
+        let _animation_frame = animation
+            .get_frame(animation_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        document.timeline_frame_being_dragged = Some(animation_index);
+        Ok(())
+    }
+
+    fn end_animation_frame_drag(&mut self) -> Result<(), Error> {
+        let document = self
+            .get_current_document_mut()
+            .ok_or(StateError::NoDocumentOpen)?;
+        document.timeline_frame_being_dragged = None;
         Ok(())
     }
 
@@ -1526,6 +1577,7 @@ impl State {
             Command::InsertAnimationFrameBefore(f, n) => {
                 self.insert_animation_frame_before(f, *n)?
             }
+            Command::ReorderAnimationFrame(a, b) => self.reorder_animation_frame(*a, *b)?,
             Command::BeginAnimationFrameDurationDrag(a) => {
                 self.begin_animation_frame_duration_drag(*a)?
             }
@@ -1533,6 +1585,8 @@ impl State {
                 self.update_animation_frame_duration_drag(*d)?
             }
             Command::EndAnimationFrameDurationDrag => self.end_animation_frame_duration_drag()?,
+            Command::BeginAnimationFrameDrag(a) => self.begin_animation_frame_drag(*a)?,
+            Command::EndAnimationFrameDrag => self.end_animation_frame_drag()?,
             Command::BeginAnimationFrameOffsetDrag(a, m) => {
                 self.begin_animation_frame_offset_drag(*a, *m)?
             }

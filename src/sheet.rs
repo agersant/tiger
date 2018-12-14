@@ -278,6 +278,20 @@ impl Animation {
         Ok(())
     }
 
+    pub fn reorder_frame(&mut self, old_index: usize, new_index: usize) -> Result<(), Error> {
+        if old_index >= self.timeline.len() || new_index > self.timeline.len() {
+            return Err(SheetError::InvalidFrameIndex.into());
+        }
+        let moving_element = self.timeline.remove(old_index);
+        let adjusted_index = if new_index > old_index {
+            new_index - 1
+        } else {
+            new_index
+        };
+        self.timeline.insert(adjusted_index, moving_element);
+        Ok(())
+    }
+
     pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {
         self.timeline.iter()
     }

@@ -265,6 +265,9 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBu
             if document.get_timeline_frame_being_scaled().is_some() {
                 commands.end_animation_frame_duration_drag();
             }
+            if document.get_timeline_frame_being_dragged().is_some() {
+                commands.end_animation_frame_drag();
+            }
             if document
                 .get_workbench_animation_frame_being_dragged()
                 .is_some()

@@ -35,9 +35,12 @@ pub enum Command {
     EndFrameDrag,
     CreateAnimationFrame(PathBuf),
     InsertAnimationFrameBefore(PathBuf, usize),
+    ReorderAnimationFrame(usize, usize),
     BeginAnimationFrameDurationDrag(usize),
     UpdateAnimationFrameDurationDrag(u32),
     EndAnimationFrameDurationDrag,
+    BeginAnimationFrameDrag(usize),
+    EndAnimationFrameDrag,
     BeginAnimationFrameOffsetDrag(usize, (f32, f32)),
     UpdateAnimationFrameOffsetDrag((f32, f32)),
     EndAnimationFrameOffsetDrag,
@@ -233,6 +236,11 @@ impl CommandBuffer {
         ));
     }
 
+    pub fn reorder_animation_frame(&mut self, old_index: usize, new_index: usize) {
+        self.queue
+            .push(Command::ReorderAnimationFrame(old_index, new_index));
+    }
+
     pub fn begin_animation_frame_duration_drag(&mut self, animation_frame_index: usize) {
         self.queue.push(Command::BeginAnimationFrameDurationDrag(
             animation_frame_index,
@@ -246,6 +254,15 @@ impl CommandBuffer {
 
     pub fn end_animation_frame_duration_drag(&mut self) {
         self.queue.push(Command::EndAnimationFrameDurationDrag);
+    }
+
+    pub fn begin_animation_frame_drag(&mut self, animation_frame_index: usize) {
+        self.queue
+            .push(Command::BeginAnimationFrameDrag(animation_frame_index));
+    }
+
+    pub fn end_animation_frame_drag(&mut self) {
+        self.queue.push(Command::EndAnimationFrameDrag);
     }
 
     pub fn begin_animation_frame_offset_drag(
