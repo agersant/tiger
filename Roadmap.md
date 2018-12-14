@@ -16,6 +16,7 @@
 	✓ Draw frame being dragged even during animation
 	✓ Draw hitboxes during animation
 	✓ Animation renames
+	· Allow user to choose what directory paths are relative to during export
 
 	✓ Fix bug where export window shows weird absolute + relative concatenated paths
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
@@ -59,9 +60,9 @@
 	· Timeline snapping
 	· Playback speed
 	· Hitbox colors
-	· Allow user to choose what directory paths are relative to during export
 	· Draw hitbox names in workbench
 	· Onion skin
+	· Workbench tabs?
 
 ## For v1.0
 	· Review all TODO
@@ -71,7 +72,9 @@
 	· Logo
 	· Itch.io or other distribution method
 
-## Future work
+## Post 1.0
 	· Tiger CLI
 	· Sheet splitter tool
+	· Anchor points (like hitbox but point)
+	· Place arbitrary markers ("events") on timeline
 	· Copy/paste animation or animation frame (between sheets)
