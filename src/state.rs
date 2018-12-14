@@ -87,7 +87,7 @@ pub struct Document {
     workbench_animation_frame_drag_initial_mouse_position: (f32, f32),
     workbench_animation_frame_drag_initial_offset: (i32, i32),
     timeline_zoom_level: i32,
-    timeline_frame_being_dragged: Option<usize>,
+    timeline_frame_being_scaled: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
     timeline_scrubbing: bool,
@@ -119,7 +119,7 @@ impl Document {
             workbench_animation_frame_drag_initial_mouse_position: (0.0, 0.0),
             workbench_animation_frame_drag_initial_offset: (0, 0),
             timeline_zoom_level: 1,
-            timeline_frame_being_dragged: None,
+            timeline_frame_being_scaled: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
             timeline_scrubbing: false,
@@ -210,8 +210,8 @@ impl Document {
         &self.rename_buffer
     }
 
-    pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
-        &self.timeline_frame_being_dragged
+    pub fn get_timeline_frame_being_scaled(&self) -> &Option<usize> {
+        &self.timeline_frame_being_scaled
     }
 
     pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
@@ -872,7 +872,7 @@ impl State {
         let _animation_frame = animation
             .get_frame(animation_index)
             .ok_or(StateError::InvalidAnimationFrameIndex)?;
-        document.timeline_frame_being_dragged = Some(animation_index);
+        document.timeline_frame_being_scaled = Some(animation_index);
         Ok(())
     }
 
@@ -887,7 +887,7 @@ impl State {
         .ok_or(StateError::NotEditingAnyAnimation)?;
 
         let animation_index = document
-            .timeline_frame_being_dragged
+            .timeline_frame_being_scaled
             .ok_or(StateError::NotDraggingATimelineFrame)?;
 
         let animation_frame = document
@@ -905,7 +905,7 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        document.timeline_frame_being_dragged = None;
+        document.timeline_frame_being_scaled = None;
         Ok(())
     }
 
