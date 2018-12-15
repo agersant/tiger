@@ -5,7 +5,7 @@
 	✓ Show frame names in timeline
 	✓ Solution(s) to edit/order/insert frames in timeline
 	✓ Add, position, tag, delete hitboxes
-	· Full compat with crystal sheets:
+	✓ Full compat with crystal sheets:
 		✓ Hitboxes
 		✓ Sheet path in export
 		✓ Top left coords available in template
