@@ -99,7 +99,7 @@ fn draw_animation_frame<'a>(
     let h = 20.0; // TODO DPI?
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
-    let resize_handle_size = 16.0; // TODO DPI?
+    let resize_handle_size = (w / 3.0).floor().min(16.0 /* TODO DPI? */);
     let is_selected = document.get_selection()
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
@@ -170,11 +170,19 @@ fn draw_animation_frame<'a>(
 
     // Drag and drop interactions
     {
+        let id = format!("frame_middle_{}", top_left.0);
+        ui.set_cursor_screen_pos((top_left.0 + resize_handle_size / 2.0, top_left.1));
+        ui.invisible_button(&ImString::new(id), (w - resize_handle_size, h));
+
         let mouse_pos = ui.imgui().mouse_pos();
-        let is_hovering_frame = mouse_pos.0 >= top_left.0 && mouse_pos.0 <= bottom_right.0;
+        let is_hovering_frame_exact =
+            ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem);
+        let is_hovering_frame_timerange =
+            mouse_pos.0 >= top_left.0 && mouse_pos.0 <= bottom_right.0;
         let is_window_hovered =
             ui.is_window_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem);
-        if is_hovering_frame && is_window_hovered {
+
+        if is_hovering_frame_timerange && is_window_hovered {
             *hovered = true;
 
             let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
@@ -200,14 +208,14 @@ fn draw_animation_frame<'a>(
                         );
                     }
                 }
-            } else if is_mouse_down && !is_mouse_dragging {
+            } else if is_mouse_down && !is_mouse_dragging && is_hovering_frame_exact {
                 commands.begin_animation_frame_drag(animation_frame_index);
             }
         }
     }
 
     // Drag to resize interaction
-    {
+    if resize_handle_size >= 1.0 {
         let id = format!("frame_handle_{}", top_left.0);
         ui.set_cursor_screen_pos((bottom_right.0 - resize_handle_size / 2.0, top_left.1));
         ui.invisible_button(&ImString::new(id), (resize_handle_size, h));

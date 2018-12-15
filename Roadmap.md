@@ -21,6 +21,8 @@
 	✓ Fix bug where export window shows weird absolute + relative concatenated paths
 	✓ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
 	✓ Fix bug where renaming an animation(/hitbox) unselects and unedits it
+	✓ Fix bug where animation frame duration drag shows insert markers
+	✓ Fix bug where animation frames can be reorderer by dragging timeline
 
 ## For v0.2
 	· Unsaved file marker and warnings
@@ -30,6 +32,7 @@
 	· Keyboard shortcuts for list navigation
 	· Loading spinners
 	· Begin editing animation after creating it
+	· Select hitbox after creating it
 	· Duplicate animation / animation frame (within same sheet)
 	· Grid
 	· Drag and drop frames to workbench
@@ -39,8 +42,10 @@
 	· In selection window, keep origin centered to preview turnarounds
 	· When moving animation frame or hitbox, hold shift to move only on one axis
 	· When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
+	· Content window and workbench should say what the current workbench item is
 	· Sort content panel entries by name
 	· Sort hitbox panel entries by name
+	· Dont draw origin when editing frame
 
 	· Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 	· Fix bug where frame name can go outside frame bound in timeline
@@ -54,6 +59,7 @@
 	· Jump to next/previous frame
 	· Export perf fixes
 	· Handle missing frame files (warning + offer to relocate)
+	· Copy/paste hitboxes
 	· Auto reload on frame edit
 	· Timeline follows playback
 	· Timeline follows frame selection (or double click?)
@@ -68,6 +74,7 @@
 ## For v1.0
 	· Review all TODO
 	· Compile on Rust Stable
+	· Remove commands threads (keep long commands thread)
 	· Get rid of failure crate
 	· Document template format
 	· About dialog
