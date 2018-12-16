@@ -44,8 +44,8 @@
 - [ ] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
 - [ ] Content window and workbench should say what the current workbench item is
-- [ ] Sort content panel entries by name
-- [ ] Sort hitbox panel entries by name
+- [x] Sort content panel entries by name
+- [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
 - [ ] Use rect and point structs consistently instead of tuples everywhere
 - [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
