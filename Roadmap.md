@@ -49,8 +49,8 @@
 - [x] Dont draw origin when editing frame
 - [ ] Use rect and point structs consistently instead of tuples everywhere
 - [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
-- [ ] Fix bug where frame name can go outside frame bound in timeline
-- [ ] Fix bug where reordering frame changes selected frame
+- [x] Fix bug where frame name can go outside frame bound in timeline
+- [ ] Fix bug where reordering animation frames changes selected animation frame
 - [ ] Fix bug where a console window opens alongside Tiger on Windows
 
 ## Tiger 0.3
