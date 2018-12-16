@@ -182,7 +182,7 @@ fn draw_animation_frame<'a>(
 
         // Draw name
         if let Some(name) = animation_frame.get_frame().file_name() {
-            draw_list.with_clip_rect_intersect(fill_top_left, fill_bottom_right, ||{
+            draw_list.with_clip_rect_intersect(fill_top_left, fill_bottom_right, || {
                 let text_color = outline_color; // TODO.style
                 let text_position = (fill_top_left.0 + text_padding, fill_top_left.1);
                 draw_list.add_text(text_position, text_color, name.to_string_lossy());

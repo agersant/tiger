@@ -852,6 +852,10 @@ impl State {
     }
 
     fn reorder_animation_frame(&mut self, old_index: usize, new_index: usize) -> Result<(), Error> {
+        if old_index == new_index {
+            return Ok(());
+        }
+
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
@@ -860,11 +864,29 @@ impl State {
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
+
         document
             .get_sheet_mut()
-            .get_animation_mut(animation_name)
+            .get_animation_mut(&animation_name)
             .ok_or(StateError::AnimationNotInDocument)?
             .reorder_frame(old_index, new_index)?;
+
+        match document.selection {
+            Some(Selection::AnimationFrame(ref n, i)) if n == &animation_name => {
+                if i == old_index {
+                    document.selection = Some(Selection::AnimationFrame(
+                        n.clone(),
+                        new_index - if old_index < new_index { 1 } else { 0 },
+                    ));
+                } else if i > old_index && i < new_index {
+                    document.selection = Some(Selection::AnimationFrame(n.clone(), i - 1));
+                } else if i >= new_index && i < old_index {
+                    document.selection = Some(Selection::AnimationFrame(n.clone(), i + 1));
+                }
+            }
+            _ => (),
+        }
+
         Ok(())
     }
 
