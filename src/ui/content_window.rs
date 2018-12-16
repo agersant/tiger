@@ -32,7 +32,11 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             }
         })
         .collect();
-    frames.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+    frames.sort_unstable_by(|(a, _), (b, _)| {
+        a.to_string_lossy()
+            .to_lowercase()
+            .cmp(&b.to_string_lossy().to_lowercase())
+    });
     for (name, frame) in frames.iter() {
         let is_selected = match document.get_selection() {
             Some(Selection::Frame(p)) => p == frame.get_source(),

@@ -13,7 +13,11 @@ fn draw_hitboxes<'a>(
     frame: &Frame,
 ) {
     let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
-    hitboxes.sort_unstable_by(|a, b| a.get_name().to_lowercase().cmp(&b.get_name().to_lowercase()));
+    hitboxes.sort_unstable_by(|a, b| {
+        a.get_name()
+            .to_lowercase()
+            .cmp(&b.get_name().to_lowercase())
+    });
     for hitbox in hitboxes.iter() {
         let is_selected = match document.get_selection() {
             Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == &hitbox.get_name(),
