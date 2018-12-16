@@ -296,9 +296,8 @@ fn main() -> Result<(), failure::Error> {
             let ui_frame;
             {
                 imgui_winit_support::update_mouse_cursor(&imgui_instance, &window);
-                let frame_size =
-                    imgui_winit_support::get_frame_size(&window, rounded_hidpi_factor)
-                        .ok_or(MainError::FrameSizeError)?;
+                let frame_size = imgui_winit_support::get_frame_size(&window, rounded_hidpi_factor)
+                    .ok_or(MainError::FrameSizeError)?;
                 ui_frame = imgui_instance.frame(frame_size, delta_s);
             }
 

@@ -1,7 +1,9 @@
 use imgui::StyleVar::*;
 use imgui::*;
+use std::ffi::OsStr;
 
 use crate::command::CommandBuffer;
+use crate::sheet::{Animation, Frame};
 use crate::state::{ContentTab, Document, Selection, State};
 use crate::ui::Rect;
 
@@ -19,35 +21,45 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
     if ui.small_button(im_str!("Import…")) {
         commands.import();
     }
-    for frame in document.get_sheet().frames_iter() {
-        if let Some(name) = frame.get_source().file_name() {
-            let is_selected = match document.get_selection() {
-                Some(Selection::Frame(p)) => p == frame.get_source(),
-                _ => false,
-            };
-
-            let mut flags = ImGuiSelectableFlags::empty();
-            flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
-            if ui.selectable(
-                &ImString::new(name.to_string_lossy()),
-                is_selected,
-                flags,
-                ImVec2::new(0.0, 0.0),
-            ) {
-                if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
-                    commands.edit_frame(frame);
-                } else {
-                    commands.select_frame(frame);
-                }
+    let mut frames: Vec<(&OsStr, &Frame)> = document
+        .get_sheet()
+        .frames_iter()
+        .filter_map(|f| {
+            if let Some(name) = f.get_source().file_name() {
+                Some((name, f))
+            } else {
+                None
             }
+        })
+        .collect();
+    frames.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+    for (name, frame) in frames.iter() {
+        let is_selected = match document.get_selection() {
+            Some(Selection::Frame(p)) => p == frame.get_source(),
+            _ => false,
+        };
 
-            if document.get_content_frame_being_dragged().is_none() {
-                if ui.is_item_hovered()
-                    && ui.imgui().is_mouse_down(ImMouseButton::Left)
-                    && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
-                {
-                    commands.begin_frame_drag(frame);
-                }
+        let mut flags = ImGuiSelectableFlags::empty();
+        flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
+        if ui.selectable(
+            &ImString::new(name.to_string_lossy()),
+            is_selected,
+            flags,
+            ImVec2::new(0.0, 0.0),
+        ) {
+            if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
+                commands.edit_frame(frame);
+            } else {
+                commands.select_frame(frame);
+            }
+        }
+
+        if document.get_content_frame_being_dragged().is_none() {
+            if ui.is_item_hovered()
+                && ui.imgui().is_mouse_down(ImMouseButton::Left)
+                && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+            {
+                commands.begin_frame_drag(frame);
             }
         }
     }
@@ -57,7 +69,13 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     if ui.small_button(im_str!("Add")) {
         commands.create_animation();
     }
-    for animation in document.get_sheet().animations_iter() {
+    let mut animations: Vec<&Animation> = document.get_sheet().animations_iter().collect();
+    animations.sort_unstable_by(|a, b| {
+        a.get_name()
+            .to_lowercase()
+            .cmp(&b.get_name().to_lowercase())
+    });
+    for animation in animations.iter() {
         let is_selected = match document.get_selection() {
             Some(Selection::Animation(a)) => a == animation.get_name(),
             _ => false,
