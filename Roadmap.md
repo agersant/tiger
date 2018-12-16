@@ -51,7 +51,7 @@
 - [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
-- [ ] Fix bug where a console window opens alongside Tiger on Windows
+- [x] Fix bug where a console window opens alongside Tiger on Windows
 
 ## Tiger 0.3
 - [ ] Error dialogs
