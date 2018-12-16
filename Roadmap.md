@@ -32,7 +32,7 @@
 - [ ] Keyboard shortcuts menu entries
 - [ ] Keyboard shortcuts for list navigation
 - [ ] Loading spinners
-- [ ] Begin editing animation after creating it
+- [x] Begin editing animation after creating it
 - [ ] Select hitbox after creating it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [ ] Grid

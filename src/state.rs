@@ -801,13 +801,17 @@ impl State {
     }
 
     fn create_animation(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        let sheet = document.get_sheet_mut();
-        let animation = sheet.add_animation();
-        let animation_name = animation.get_name().to_owned();
-        document.begin_animation_rename(animation_name)
+        let animation_name = {
+            let document = self
+                .get_current_document_mut()
+                .ok_or(StateError::NoDocumentOpen)?;
+            let sheet = document.get_sheet_mut();
+            let animation = sheet.add_animation();
+            let animation_name = animation.get_name().to_owned();
+            document.begin_animation_rename(&animation_name)?;
+            animation_name
+        };
+        self.edit_animation(animation_name)
     }
 
     fn begin_frame_drag<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
