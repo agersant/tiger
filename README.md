@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/agersant/tiger.svg?branch=master)](https://travis-ci.org/agersant/tiger)
+
 Tiger is a graphical tool for generating spritesheets and metadata about the animation and hitboxes they contain.
 
 ![Tiger](res/readme/screenshot-0.1.0.png?raw=true "Tiger")
