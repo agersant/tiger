@@ -76,6 +76,7 @@
 
 ## Tiger 1.0
 - [ ] Review all TODO
+- [ ] Provide export templates for some common formats (TBD)
 - [ ] Compile on Rust Stable
 - [ ] Remove commands threads (keep long commands thread)
 - [ ] Get rid of failure crate
