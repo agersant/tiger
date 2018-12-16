@@ -12,7 +12,9 @@ before_install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update ; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install libgtk-3-dev ; fi
 
-install: cargo rustc --release --verbose -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+install:
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cargo rustc --release --verbose -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup" ; fi
+- if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then cargo build --release --verbose ; fi
 
 script: cargo test --release --verbose
 
