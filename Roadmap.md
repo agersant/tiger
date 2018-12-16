@@ -18,7 +18,6 @@
 - [x] Draw hitboxes during animation
 - [x] Animation renames
 - [x] Allow user to choose what directory paths are relative to during export
-
 - [x] Fix bug where export window shows weird absolute + relative concatenated paths
 - [x] Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
 - [x] Fix bug where renaming an animation(/hitbox) unselects and unedits it
@@ -49,7 +48,6 @@
 - [ ] Sort hitbox panel entries by name
 - [ ] Dont draw origin when editing frame
 - [ ] Use rect and point structs consistently instead of tuples everywhere
-
 - [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [ ] Fix bug where frame name can go outside frame bound in timeline
 - [ ] Fix bug where reordering frame changes selected frame
