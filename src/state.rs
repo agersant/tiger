@@ -826,21 +826,6 @@ impl State {
         Ok(())
     }
 
-    fn create_animation_frame<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        let animation = match document.get_workbench_item() {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyAnimation)?;
-        document
-            .get_sheet_mut()
-            .add_animation_frame(animation, frame)?;
-        Ok(())
-    }
-
     fn insert_animation_frame_before<T: AsRef<Path>>(
         &mut self,
         frame: T,
@@ -1573,7 +1558,6 @@ impl State {
             Command::CreateAnimation => self.create_animation()?,
             Command::BeginFrameDrag(f) => self.begin_frame_drag(f)?,
             Command::EndFrameDrag => self.end_frame_drag()?,
-            Command::CreateAnimationFrame(f) => self.create_animation_frame(f)?,
             Command::InsertAnimationFrameBefore(f, n) => {
                 self.insert_animation_frame_before(f, *n)?
             }

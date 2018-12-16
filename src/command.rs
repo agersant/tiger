@@ -33,7 +33,6 @@ pub enum Command {
     CreateAnimation,
     BeginFrameDrag(PathBuf),
     EndFrameDrag,
-    CreateAnimationFrame(PathBuf),
     InsertAnimationFrameBefore(PathBuf, usize),
     ReorderAnimationFrame(usize, usize),
     BeginAnimationFrameDurationDrag(usize),
@@ -218,11 +217,6 @@ impl CommandBuffer {
 
     pub fn end_frame_drag(&mut self) {
         self.queue.push(Command::EndFrameDrag);
-    }
-
-    pub fn create_animation_frame<T: AsRef<Path>>(&mut self, frame: T) {
-        self.queue
-            .push(Command::CreateAnimationFrame(frame.as_ref().to_path_buf()));
     }
 
     pub fn insert_animation_frame_before<T: AsRef<Path>>(

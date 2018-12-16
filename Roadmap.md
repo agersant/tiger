@@ -23,6 +23,7 @@
 	✓ Fix bug where renaming an animation(/hitbox) unselects and unedits it
 	✓ Fix bug where animation frame duration drag shows insert markers
 	✓ Fix bug where animation frames can be reorderer by dragging timeline
+	✓ Fix bugs when manipulating extremely short animation frames
 
 ## For v0.2
 	· Unsaved file marker and warnings
@@ -46,9 +47,11 @@
 	· Sort content panel entries by name
 	· Sort hitbox panel entries by name
 	· Dont draw origin when editing frame
+	· Use rect and point structs consistently instead of tuples everywhere
 
 	· Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 	· Fix bug where frame name can go outside frame bound in timeline
+	· Fix bug where reordering frame changes selected frame
 
 ## For v0.3
 	· Error dialogs

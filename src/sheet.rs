@@ -16,8 +16,6 @@ pub mod constants {
 
 #[derive(Fail, Debug)]
 pub enum SheetError {
-    #[fail(display = "Frame was not found")]
-    FrameNotFound,
     #[fail(display = "Animation was not found")]
     AnimationNotFound,
     #[fail(display = "Hitbox was not found")]
@@ -114,22 +112,6 @@ impl Sheet {
         let animation = Animation::new(&name);
         self.animations.push(animation);
         self.animations.last_mut().unwrap()
-    }
-
-    pub fn add_animation_frame<T: AsRef<str>, U: AsRef<Path>>(
-        &mut self,
-        animation: T,
-        frame: U,
-    ) -> Result<(), SheetError> {
-        if !self.has_frame(&frame) {
-            return Err(SheetError::FrameNotFound.into());
-        }
-        let animation = self
-            .get_animation_mut(animation)
-            .ok_or(SheetError::AnimationNotFound)?;
-        let animation_frame = AnimationFrame::new(frame);
-        animation.timeline.push(animation_frame);
-        Ok(())
     }
 
     pub fn get_frame<T: AsRef<Path>>(&self, path: T) -> Option<&Frame> {
@@ -270,6 +252,7 @@ impl Animation {
     }
 
     pub fn insert_frame<T: AsRef<Path>>(&mut self, frame: T, index: usize) -> Result<(), Error> {
+        // TODO validate that frame exists in sheet!
         if index > self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
         }
