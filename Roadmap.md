@@ -2,32 +2,33 @@
 # Roadmap
 
 ## Tiger 0.1
-- [x]️ Don't store absolute paths in tiger files
-- [x]️ Show frame names in timeline
-- [x]️ Solution(s) to edit/order/insert frames in timeline
-- [x]️ Add, position, tag, delete hitboxes
-- [x]️ Full compat with crystal sheets:
-	- [x]️ Hitboxes
-	- [x]️ Sheet path in export
-	- [x]️ Top left coords available in template
-- [x]️ Tiger backwards compat
-- [x]️ Release pipeline
-- [x]️ No placeholder menu options
-- [x]️ Export (using last known settings)
-- [x]️ Draw frame being dragged even during animation
-- [x]️ Draw hitboxes during animation
-- [x]️ Animation renames
-- [x]️ Allow user to choose what directory paths are relative to during export
+- [x] Don't store absolute paths in tiger files
+- [x] Show frame names in timeline
+- [x] Solution(s) to edit/order/insert frames in timeline
+- [x] Add, position, tag, delete hitboxes
+- [x] Full compat with crystal sheets:
+	- [x] Hitboxes
+	- [x] Sheet path in export
+	- [x] Top left coords available in template
+- [x] Tiger backwards compat
+- [x] Release pipeline
+- [x] No placeholder menu options
+- [x] Export (using last known settings)
+- [x] Draw frame being dragged even during animation
+- [x] Draw hitboxes during animation
+- [x] Animation renames
+- [x] Allow user to choose what directory paths are relative to during export
 
-- [x]️ Fix bug where export window shows weird absolute + relative concatenated paths
-- [x]️ Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
-- [x]️ Fix bug where renaming an animation(/hitbox) unselects and unedits it
-- [x]️ Fix bug where animation frame duration drag shows insert markers
-- [x]️ Fix bug where animation frames can be reorderer by dragging timeline
-- [x]️ Fix bugs when manipulating extremely short animation frames
+- [x] Fix bug where export window shows weird absolute + relative concatenated paths
+- [x] Fix bug where pressing delete while renaming an animation(/hitbox) deletes it
+- [x] Fix bug where renaming an animation(/hitbox) unselects and unedits it
+- [x] Fix bug where animation frame duration drag shows insert markers
+- [x] Fix bug where animation frames can be reorderer by dragging timeline
+- [x] Fix bugs when manipulating extremely short animation frames
 
 ## Tiger 0.2
 - [ ] Unsaved file marker and warnings
+- [x] fewfw
 - [ ] Undo/Redo
 - [ ] Keyboard shortcuts for playback controls
 - [ ] Keyboard shortcuts menu entries
