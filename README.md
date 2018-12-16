@@ -10,6 +10,8 @@ Tiger is a graphical tool for generating spritesheets and metadata about the ani
 - Generated texture atlas for use in-engine
 - Free and open-source with a permissive license
 
+⚠️ This project is under development. It is already usable and is generating spritesheets for [Project Crystal](https://github.com/agersant/crystal). However, you should come back in a few months if you are looking for a polished experience!
+
 # Getting Started
 
 ## Requirements
