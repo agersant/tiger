@@ -46,7 +46,7 @@
 - [ ] Content window and workbench should say what the current workbench item is
 - [ ] Sort content panel entries by name
 - [ ] Sort hitbox panel entries by name
-- [ ] Dont draw origin when editing frame
+- [x] Dont draw origin when editing frame
 - [ ] Use rect and point structs consistently instead of tuples everywhere
 - [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [ ] Fix bug where frame name can go outside frame bound in timeline
@@ -73,6 +73,7 @@
 - [ ] Draw hitbox names in workbench
 - [ ] Onion skin
 - [ ] Workbench tabs?
+- [ ] Editing hitboxes while animation is in workbench?
 
 ## Tiger 1.0
 - [ ] Review all TODO

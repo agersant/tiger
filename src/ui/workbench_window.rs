@@ -546,6 +546,7 @@ pub fn draw<'a>(
                                     document,
                                     animation,
                                 );
+                                draw_origin(ui, state);
                             }
                         }
                         None => (),
@@ -567,8 +568,6 @@ pub fn draw<'a>(
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                         }
                     }
-
-                    draw_origin(ui, state);
                 }
             });
     });
