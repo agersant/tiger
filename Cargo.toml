@@ -12,10 +12,9 @@ gfx_core = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 gfx_device_gl = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 gfx_window_glutin = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 image = "0.20"
-# TODO imgui master now has glutin19, still needs content regions and hover flags to get rid of fork
-imgui = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
-imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
-imgui-glutin-support = { git = "https://github.com/agersant/imgui-rs", branch = "tiger" }
+imgui = { git = "https://github.com/Gekkio/imgui-rs" }
+imgui-gfx-renderer = { git = "https://github.com/Gekkio/imgui-rs" }
+imgui-winit-support = { git = "https://github.com/Gekkio/imgui-rs" }
 liquid = "0.17"
 nfd = "0.0.4"
 pathdiff = "0.1.0"

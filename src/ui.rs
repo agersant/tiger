@@ -72,7 +72,7 @@ pub fn init(window: &glutin::GlWindow) -> ImGui {
         imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
     }
 
-    imgui_glutin_support::configure_keys(&mut imgui_instance);
+    imgui_winit_support::configure_keys(&mut imgui_instance);
 
     imgui_instance
 }
