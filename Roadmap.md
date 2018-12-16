@@ -28,7 +28,6 @@
 
 ## Tiger 0.2
 - [ ] Unsaved file marker and warnings
-- [x] fewfw
 - [ ] Undo/Redo
 - [ ] Keyboard shortcuts for playback controls
 - [ ] Keyboard shortcuts menu entries
