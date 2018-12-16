@@ -32,9 +32,13 @@ fn draw_animation<'a>(
 ) {
     ui.text(&ImString::new(animation.get_name().to_owned()));
     match utils::get_bounding_box(animation, texture_cache) {
-        Ok(bbox) => {
+        Ok(mut bbox) => {
+            bbox.center_on_origin();
             let space = ui.get_content_region_avail();
-            let bbox_size = (bbox.size.0 as f32, bbox.size.1 as f32);
+            let bbox_size = (
+                (bbox.right - bbox.left) as f32,
+                (bbox.bottom - bbox.top) as f32,
+            );
             if let Some(fill) = utils::fill(space, bbox_size) {
                 let cursor_pos = ui.get_cursor_pos();
                 let duration = animation.get_duration().unwrap(); // TODO no unwrap

@@ -1,3 +1,6 @@
+use std::cmp::max;
+use std::cmp::min;
+
 use crate::sheet::Animation;
 use crate::streamer::TextureCache;
 
@@ -56,7 +59,20 @@ pub struct BoundingBox {
     pub right: i32,
     pub top: i32,
     pub bottom: i32,
-    pub size: (u32, u32),
+}
+
+impl BoundingBox {
+    pub fn center_on_origin(&mut self) {
+        self.left = min(self.left, 0);
+        self.right = max(self.right, 0);
+        self.top = min(self.top, 0);
+        self.bottom = max(self.bottom, 0);
+
+        self.left = -max(self.left.abs(), self.right);
+        self.right = max(self.left.abs(), self.right);
+        self.top = -max(self.top.abs(), self.bottom);
+        self.bottom = max(self.top.abs(), self.bottom);
+    }
 }
 
 pub fn get_bounding_box(
@@ -79,16 +95,15 @@ pub fn get_bounding_box(
         let frame_right = offset.0 + (texture.size.0 / 2.0).floor() as i32;
         let frame_top = offset.1 - (texture.size.1 / 2.0).ceil() as i32;
         let frame_bottom = offset.1 + (texture.size.1 / 2.0).floor() as i32;
-        left = std::cmp::min(left, frame_left);
-        right = std::cmp::max(right, frame_right);
-        top = std::cmp::min(top, frame_top);
-        bottom = std::cmp::max(bottom, frame_bottom);
+        left = min(left, frame_left);
+        right = max(right, frame_right);
+        top = min(top, frame_top);
+        bottom = max(bottom, frame_bottom);
     }
     Ok(BoundingBox {
         left,
         right,
         top,
         bottom,
-        size: ((right - left) as u32, (bottom - top) as u32),
     })
 }
