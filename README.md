@@ -43,4 +43,4 @@ If you want to uninstall Tiger, execute `make uninstall` from the extracted arch
 
 # Roadmap
 
-See [here](res/Roadmap.md).
+See [here](Roadmap.md).
