@@ -1094,7 +1094,8 @@ impl State {
             ));
             hitbox.get_name().to_owned()
         };
-        self.begin_hitbox_scale(hitbox_name, ResizeAxis::SE, mouse_position)
+        self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;
+        self.select_hitbox(&hitbox_name)
     }
 
     fn begin_hitbox_scale<T: AsRef<str>>(

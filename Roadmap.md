@@ -33,7 +33,7 @@
 - [ ] Keyboard shortcuts for list navigation
 - [ ] Loading spinners
 - [x] Begin editing animation after creating it
-- [ ] Select hitbox after creating it
+- [x] Select hitbox after creating it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [ ] Grid
 - [ ] Drag and drop frames to workbench
