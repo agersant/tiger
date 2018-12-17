@@ -67,7 +67,7 @@ fn draw_timeline_ticks<'a>(
     }
 }
 
-fn draw_insert_marker<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList, height: f32) {
+fn draw_insert_marker<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, height: f32) {
     let position = ui.get_cursor_screen_pos();
     let insert_marker_size = 8.0; // TODO DPI?
     let insert_marker_color = [249.0 / 255.0, 40.0 / 255.0, 50.0 / 255.0];

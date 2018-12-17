@@ -386,7 +386,7 @@ impl State {
         Ok(document.get_workbench_offset())
     }
 
-    pub fn documents_iter(&self) -> std::slice::Iter<Document> {
+    pub fn documents_iter(&self) -> std::slice::Iter<'_, Document> {
         self.documents.iter()
     }
 

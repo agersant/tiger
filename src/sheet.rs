@@ -75,15 +75,15 @@ impl Sheet {
         Ok(sheet)
     }
 
-    pub fn frames_iter(&self) -> std::slice::Iter<Frame> {
+    pub fn frames_iter(&self) -> std::slice::Iter<'_, Frame> {
         self.frames.iter()
     }
 
-    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<Frame> {
+    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<'_, Frame> {
         self.frames.iter_mut()
     }
 
-    pub fn animations_iter(&self) -> std::slice::Iter<Animation> {
+    pub fn animations_iter(&self) -> std::slice::Iter<'_, Animation> {
         self.animations.iter()
     }
 
@@ -276,11 +276,11 @@ impl Animation {
         Ok(())
     }
 
-    pub fn frames_iter(&self) -> std::slice::Iter<AnimationFrame> {
+    pub fn frames_iter(&self) -> std::slice::Iter<'_, AnimationFrame> {
         self.timeline.iter()
     }
 
-    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<AnimationFrame> {
+    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<'_, AnimationFrame> {
         self.timeline.iter_mut()
     }
 }
@@ -309,7 +309,7 @@ impl Frame {
         &self.source
     }
 
-    pub fn hitboxes_iter(&self) -> std::slice::Iter<Hitbox> {
+    pub fn hitboxes_iter(&self) -> std::slice::Iter<'_, Hitbox> {
         self.hitboxes.iter()
     }
 
