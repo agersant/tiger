@@ -28,7 +28,7 @@
 ## Tiger 0.2
 - [ ] Unsaved file marker and warnings
 - [ ] Undo/Redo
-- [ ] Keyboard shortcuts for playback controls
+- [x] Keyboard shortcuts for playback controls
 - [ ] Keyboard shortcuts menu entries
 - [ ] Keyboard shortcuts for list navigation
 - [ ] Loading spinners
@@ -40,7 +40,7 @@
 - [ ] Grid snapping
 - [ ] Content of selection window when selecting animation frame
 - [ ] Content of selection window when selecting hitbox
-- [ ] In selection window, keep origin centered to preview turnarounds
+- [x] In selection window, keep origin centered to preview turnarounds
 - [ ] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
 - [ ] Content window and workbench should say what the current workbench item is
@@ -48,7 +48,7 @@
 - [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
 - [ ] Use rect and point structs consistently instead of tuples everywhere
-- [ ] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
+- [x] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows

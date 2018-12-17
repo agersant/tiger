@@ -55,6 +55,8 @@ pub enum Command {
     UpdateHitboxDrag((f32, f32)),
     EndHitboxDrag,
     TogglePlayback,
+    SnapToPreviousFrame,
+    SnapToNextFrame,
     ToggleLooping,
     TimelineZoomIn,
     TimelineZoomOut,
@@ -337,6 +339,14 @@ impl CommandBuffer {
 
     pub fn toggle_playback(&mut self) {
         self.queue.push(Command::TogglePlayback);
+    }
+
+    pub fn snap_to_previous_frame(&mut self) {
+        self.queue.push(Command::SnapToPreviousFrame);
+    }
+
+    pub fn snap_to_next_frame(&mut self) {
+        self.queue.push(Command::SnapToNextFrame);
     }
 
     pub fn toggle_looping(&mut self) {

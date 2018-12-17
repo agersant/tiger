@@ -430,4 +430,13 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     if ui.imgui().is_key_released(VirtualKeyCode::F2 as _) {
         commands.begin_rename_selection();
     }
+    if ui.imgui().is_key_released(VirtualKeyCode::Space as _) {
+        commands.toggle_playback();
+    }
+    if ui.imgui().is_key_released(VirtualKeyCode::Left as _) {
+        commands.snap_to_previous_frame();
+    }
+    if ui.imgui().is_key_released(VirtualKeyCode::Right as _) {
+        commands.snap_to_next_frame();
+    }
 }

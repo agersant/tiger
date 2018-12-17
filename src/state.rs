@@ -511,7 +511,13 @@ impl State {
                 .end_hitbox_drag(),
             Command::TogglePlayback => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .toggle_playback(),
+                .toggle_playback()?,
+            Command::SnapToPreviousFrame => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .snap_to_previous_frame()?,
+            Command::SnapToNextFrame => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .snap_to_next_frame()?,
             Command::ToggleLooping => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_looping()?,

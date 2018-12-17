@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::compat;
-use crate::sheet::{ExportSettings, Sheet};
+use crate::sheet::{Animation, ExportSettings, Sheet};
 
 #[derive(Fail, Debug)]
 pub enum DocumentError {
@@ -627,23 +627,105 @@ impl Document {
         self.timeline_zoom_level = 1;
     }
 
-    pub fn toggle_playback(&mut self) {
-        if let Some(WorkbenchItem::Animation(animation_name)) = &self.workbench_item {
-            self.timeline_playing = !self.timeline_playing;
-            if self.timeline_playing {
-                if let Some(animation) = self.get_sheet().get_animation(animation_name) {
-                    if let Some(d) = animation.get_duration() {
-                        if d > 0 {
-                            if !animation.is_looping()
-                                && self.timeline_clock.as_millis() == d as u128
-                            {
-                                self.timeline_clock = Duration::new(0, d);
-                            }
+    fn get_workbench_animation(&self) -> Result<&Animation, Error> {
+        match &self.workbench_item {
+            Some(WorkbenchItem::Animation(n)) => Some(
+                self.get_sheet()
+                    .get_animation(n)
+                    .ok_or(DocumentError::AnimationNotInDocument)?,
+            ),
+            _ => None,
+        }
+        .ok_or(DocumentError::NotEditingAnyAnimation.into())
+    }
+
+    pub fn toggle_playback(&mut self) -> Result<(), Error> {
+        let mut new_timeline_clock = self.timeline_clock.clone();
+
+        {
+            let animation = self.get_workbench_animation()?;
+
+            if !self.timeline_playing {
+                if let Some(d) = animation.get_duration() {
+                    if d > 0 {
+                        if !animation.is_looping() && self.timeline_clock.as_millis() == d as u128 {
+                            new_timeline_clock = Duration::new(0, d);
                         }
                     }
                 }
             }
         }
+
+        self.timeline_playing = !self.timeline_playing;
+        self.timeline_clock = new_timeline_clock;
+
+        Ok(())
+    }
+
+    pub fn snap_to_previous_frame(&mut self) -> Result<(), Error> {
+        let (index, clock) = {
+            let animation = self.get_workbench_animation()?;
+
+            if animation.get_num_frames() == 0 {
+                return Ok(());
+            }
+
+            let mut cursor = 0 as u64;
+            let now = self.timeline_clock.as_millis() as u64;
+            let frame_times: Vec<(usize, u64)> = animation
+                .frames_iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    let t = cursor;
+                    cursor += f.get_duration() as u64;
+                    (i, t)
+                })
+                .collect();
+
+            match frame_times.iter().rev().find(|(_, t1)| *t1 < now) {
+                Some((i, t1)) => (*i, *t1),
+                None => match frame_times.iter().next() {
+                    Some((_, t)) => (0, *t),
+                    None => (0, 0),
+                },
+            }
+        };
+
+        self.timeline_clock = Duration::from_millis(clock);
+        self.select_animation_frame(index)
+    }
+
+    pub fn snap_to_next_frame(&mut self) -> Result<(), Error> {
+        let (index, clock) = {
+            let animation = self.get_workbench_animation()?;
+
+            if animation.get_num_frames() == 0 {
+                return Ok(());
+            }
+
+            let mut cursor = 0 as u64;
+            let now = self.timeline_clock.as_millis() as u64;
+            let frame_times: Vec<(usize, u64)> = animation
+                .frames_iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    let t = cursor;
+                    cursor += f.get_duration() as u64;
+                    (i, t)
+                })
+                .collect();
+
+            match frame_times.iter().find(|(_, t1)| *t1 > now) {
+                Some((i, t1)) => (*i, *t1),
+                None => match frame_times.iter().enumerate().last() {
+                    Some((i, (_, t))) => (i, *t),
+                    None => (0, 0),
+                },
+            }
+        };
+
+        self.timeline_clock = Duration::from_millis(clock);
+        self.select_animation_frame(index)
     }
 
     pub fn reorder_animation_frame(
@@ -700,7 +782,7 @@ impl Document {
         hitbox_name: T,
         mouse_position: (f32, f32),
     ) -> Result<(), Error> {
-        let frame_path = match self.get_workbench_item() {
+        let frame_path = match &self.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
         }
