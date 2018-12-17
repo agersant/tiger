@@ -89,11 +89,11 @@ struct FrameLocation {
 }
 
 fn get_frame_location(
-    state: &State,
+    document: &Document,
     frame_starts_at: Duration,
     animation_frame: &AnimationFrame,
 ) -> FrameLocation {
-    let zoom = state.get_timeline_zoom_factor().unwrap_or(1.0);
+    let zoom = document.get_timeline_zoom_factor();
     let w = (animation_frame.get_duration() as f32 * zoom).ceil();
     let h = 20.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
@@ -105,7 +105,6 @@ fn get_frame_location(
 
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
-    state: &State,
     commands: &mut CommandBuffer,
     document: &Document,
     animation: &Animation,
@@ -113,8 +112,8 @@ fn draw_animation_frame<'a>(
     animation_frame: &AnimationFrame,
     frame_starts_at: Duration,
 ) {
-    let animation_frame_location = get_frame_location(state, frame_starts_at, animation_frame);
-    let zoom = state.get_timeline_zoom_factor().unwrap_or(1.0);
+    let animation_frame_location = get_frame_location(document, frame_starts_at, animation_frame);
+    let zoom = document.get_timeline_zoom_factor();
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
@@ -295,14 +294,14 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, anima
 
 fn get_frame_under_mouse<'a>(
     ui: &Ui<'a>,
-    state: &State,
+    document: &Document,
     animation: &Animation,
     start_screen_position: (f32, f32),
 ) -> Option<(usize, FrameLocation)> {
     let mouse_pos = ui.imgui().mouse_pos();
     let mut cursor = Duration::new(0, 0);
     for (frame_index, animation_frame) in animation.frames_iter().enumerate() {
-        let frame_location = get_frame_location(state, cursor, animation_frame);
+        let frame_location = get_frame_location(document, cursor, animation_frame);
         let frame_start_x = start_screen_position.0 + frame_location.top_left.0;
         if mouse_pos.0 >= frame_start_x && mouse_pos.0 < (frame_start_x + frame_location.size.0) {
             return Some((frame_index, frame_location));
@@ -314,7 +313,6 @@ fn get_frame_under_mouse<'a>(
 
 fn handle_drag_and_drop<'a>(
     ui: &Ui<'a>,
-    state: &State,
     commands: &mut CommandBuffer,
     document: &Document,
     animation: &Animation,
@@ -327,7 +325,7 @@ fn handle_drag_and_drop<'a>(
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if is_window_hovered {
-        let frame_under_mouse = get_frame_under_mouse(ui, state, animation, cursor_start);
+        let frame_under_mouse = get_frame_under_mouse(ui, document, animation, cursor_start);
         let h = cursor_end.1 - cursor_start.1;
 
         if is_mouse_dragging {
@@ -428,7 +426,6 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                 ui.set_cursor_screen_pos(frames_cursor_position_start);
                                 draw_animation_frame(
                                     ui,
-                                    state,
                                     commands,
                                     document,
                                     animation,
@@ -447,7 +444,6 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
 
                             handle_drag_and_drop(
                                 ui,
-                                state,
                                 commands,
                                 document,
                                 animation,

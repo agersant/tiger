@@ -361,11 +361,7 @@ impl State {
         let document = self
             .get_current_document()
             .ok_or(StateError::NoDocumentOpen)?;
-        Ok(if document.get_timeline_zoom_level() >= 0 {
-            document.get_timeline_zoom_level() as f32
-        } else {
-            -1.0 / document.get_timeline_zoom_level() as f32
-        })
+        Ok(document.get_timeline_zoom_factor())
     }
 
     pub fn get_workbench_offset(&self) -> Result<(f32, f32), Error> {

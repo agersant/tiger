@@ -236,10 +236,6 @@ impl Document {
         self.timeline_clock
     }
 
-    pub fn get_timeline_zoom_level(&self) -> i32 {
-        self.timeline_zoom_level
-    }
-
     pub fn is_scrubbing(&self) -> bool {
         self.timeline_scrubbing
     }
@@ -676,6 +672,14 @@ impl Document {
 
     pub fn timeline_reset_zoom(&mut self) {
         self.timeline_zoom_level = 1;
+    }
+
+    pub fn get_timeline_zoom_factor(&self) -> f32 {
+        if self.timeline_zoom_level >= 0 {
+            self.timeline_zoom_level as f32
+        } else {
+            -1.0 / self.timeline_zoom_level as f32
+        }
     }
 
     fn get_workbench_animation(&self) -> Result<&Animation, Error> {
