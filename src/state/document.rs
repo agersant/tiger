@@ -284,7 +284,7 @@ impl Document {
         } else {
             self.workbench_zoom_level /= 2;
         }
-        self.workbench_zoom_level = std::cmp::min(self.workbench_zoom_level, 4);
+        self.workbench_zoom_level = std::cmp::min(self.workbench_zoom_level, 16);
     }
 
     pub fn workbench_zoom_out(&mut self) {
@@ -295,7 +295,7 @@ impl Document {
         } else {
             self.workbench_zoom_level *= 2;
         }
-        self.workbench_zoom_level = std::cmp::max(self.workbench_zoom_level, -4);
+        self.workbench_zoom_level = std::cmp::max(self.workbench_zoom_level, -8);
     }
 
     pub fn workbench_reset_zoom(&mut self) {
