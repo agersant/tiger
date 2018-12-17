@@ -235,10 +235,16 @@ fn main() -> Result<(), failure::Error> {
     let texture_cache_for_streamer = texture_cache.clone();
     let main_thread_frame_for_streamer = main_thread_frame.clone();
     std::thread::spawn(move || {
-        let &(ref lock, ref cvar) = &*main_thread_frame_for_streamer;
+        let &(ref mutex, ref cvar) = &*main_thread_frame_for_streamer;
         loop {
             // Update streamer at most once per frame to avoid hogging state and texture cache mutexes.
-            let _ = cvar.wait(lock.lock().unwrap()).unwrap();
+            {
+                let mut lock = mutex.lock().expect("Can't lock");
+                while !*lock {
+                    lock = cvar.wait(lock).expect("Can't wait");
+                }
+                *lock = false;
+            }
 
             let state;
             {
@@ -346,8 +352,10 @@ fn main() -> Result<(), failure::Error> {
 
             // Allow streamer thread to tick
             {
-                let &(_, ref cvar) = &*main_thread_frame;
-                cvar.notify_all();
+                let &(ref mutex, ref cvar) = &*main_thread_frame;
+                let mut lock = mutex.lock().expect("Can't lock");
+                *lock = true;
+                cvar.notify_one();
             }
         }
     }
