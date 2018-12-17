@@ -41,7 +41,7 @@ impl From<previous_version::Sheet> for Sheet {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Animation {
     pub name: String,
     pub timeline: Vec<AnimationFrame>,
@@ -58,7 +58,7 @@ impl From<previous_version::Animation> for Animation {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Frame {
     pub source: PathBuf,
     pub hitboxes: Vec<Hitbox>,
@@ -73,7 +73,7 @@ impl From<previous_version::Frame> for Frame {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AnimationFrame {
     pub frame: PathBuf,
     pub duration: u32, // in ms
@@ -90,7 +90,7 @@ impl From<previous_version::AnimationFrame> for AnimationFrame {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Hitbox {
     pub name: String,
     pub geometry: Shape,
@@ -105,7 +105,7 @@ impl From<previous_version::Hitbox> for Hitbox {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Shape {
     Rectangle(Rectangle),
 }
@@ -118,7 +118,7 @@ impl From<previous_version::Shape> for Shape {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Rectangle {
     pub top_left: (i32, i32),
     pub size: (u32, u32),

@@ -424,19 +424,25 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     }
 
     let delete_key_index = ui.imgui().get_key_index(ImGuiKey::Delete);
-    if ui.imgui().is_key_released(delete_key_index) {
+    if ui.imgui().is_key_pressed(delete_key_index) {
         commands.delete_selection();
     }
-    if ui.imgui().is_key_released(VirtualKeyCode::F2 as _) {
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
+        commands.select_previous(); // TODO autoscroll somehow?
+    }
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
+        commands.select_next(); // TODO autoscroll somehow?
+    }
+    if ui.imgui().is_key_pressed(VirtualKeyCode::F2 as _) {
         commands.begin_rename_selection();
     }
-    if ui.imgui().is_key_released(VirtualKeyCode::Space as _) {
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
         commands.toggle_playback();
     }
-    if ui.imgui().is_key_released(VirtualKeyCode::Left as _) {
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
         commands.snap_to_previous_frame();
     }
-    if ui.imgui().is_key_released(VirtualKeyCode::Right as _) {
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
         commands.snap_to_next_frame();
     }
 }

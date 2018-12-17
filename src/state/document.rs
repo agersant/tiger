@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::compat;
-use crate::sheet::{Animation, ExportSettings, Sheet};
+use crate::sheet::{Animation, ExportSettings, Frame, Hitbox, Sheet};
 
 #[derive(Fail, Debug)]
 pub enum DocumentError {
@@ -454,20 +454,71 @@ impl Document {
     }
 
     pub fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
-        let animation_name = match &self.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(DocumentError::NotEditingAnyAnimation)?;
-        let animation = self
-            .get_sheet()
-            .get_animation(&animation_name)
-            .ok_or(DocumentError::AnimationNotInDocument)?;
+        let animation = self.get_workbench_animation()?;
         let _animation_frame = animation
             .get_frame(frame_index)
             .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-        self.selection = Some(Selection::AnimationFrame(animation_name, frame_index));
+        self.selection = Some(Selection::AnimationFrame(
+            animation.get_name().to_string(),
+            frame_index,
+        ));
         Ok(())
+    }
+
+    fn advance_selection<F>(&mut self, advance: F) -> Result<(), Error>
+    where
+        F: Fn(usize) -> usize,
+    {
+        match &self.selection {
+            Some(Selection::Frame(p)) => {
+                let mut frames: Vec<&Frame> = self.get_sheet().frames_iter().collect();
+                frames.sort_unstable();
+                let current_index = frames
+                    .iter()
+                    .position(|f| f.get_source() == p)
+                    .ok_or(DocumentError::FrameNotInDocument)?;
+                if let Some(f) = frames.iter().nth(advance(current_index)) {
+                    self.selection = Some(Selection::Frame(f.get_source().to_owned()));
+                }
+            }
+            Some(Selection::Animation(n)) => {
+                let mut animations: Vec<&Animation> = self.get_sheet().animations_iter().collect();
+                animations.sort_unstable();
+                let current_index = animations
+                    .iter()
+                    .position(|a| a.get_name() == n)
+                    .ok_or(DocumentError::AnimationNotInDocument)?;
+                if let Some(n) = animations.iter().nth(advance(current_index)) {
+                    self.selection = Some(Selection::Animation(n.get_name().to_owned()));
+                }
+            }
+            Some(Selection::Hitbox(p, n)) => {
+                let frame = self
+                    .get_sheet()
+                    .frames_iter()
+                    .find(|f| f.get_source() == p)
+                    .ok_or(DocumentError::FrameNotInDocument)?;
+                let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
+                hitboxes.sort_unstable();
+                let current_index = hitboxes
+                    .iter()
+                    .position(|h| h.get_name() == n)
+                    .ok_or(DocumentError::InvalidHitboxIndex)?;
+                if let Some(h) = hitboxes.iter().nth(advance(current_index)) {
+                    self.selection = Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
+                }
+            }
+            Some(Selection::AnimationFrame(_, _)) | None => (),
+        };
+        Ok(())
+    }
+
+    pub fn select_previous(&mut self) -> Result<(), Error> {
+        self.advance_selection(|n| n.checked_sub(1).unwrap_or(n))
+    }
+
+    pub fn select_next(&mut self) -> Result<(), Error> {
+        self.advance_selection(|n| n.checked_add(1).unwrap_or(n))
     }
 
     pub fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {

@@ -437,6 +437,10 @@ impl State {
             Command::SelectAnimationFrame(af) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation_frame(*af)?,
+            Command::SelectPrevious => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .select_previous()?,
+            Command::SelectNext => document.ok_or(StateError::NoDocumentOpen)?.select_next()?,
             Command::EditFrame(p) => document.ok_or(StateError::NoDocumentOpen)?.edit_frame(&p)?,
             Command::EditAnimation(a) => document
                 .ok_or(StateError::NoDocumentOpen)?

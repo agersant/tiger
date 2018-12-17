@@ -28,6 +28,8 @@ pub enum Command {
     SelectAnimation(String),
     SelectHitbox(String),
     SelectAnimationFrame(usize),
+    SelectPrevious,
+    SelectNext,
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
@@ -196,6 +198,14 @@ impl CommandBuffer {
     pub fn select_animation_frame(&mut self, animation_frame_index: usize) {
         self.queue
             .push(Command::SelectAnimationFrame(animation_frame_index));
+    }
+
+    pub fn select_previous(&mut self) {
+        self.queue.push(Command::SelectPrevious);
+    }
+
+    pub fn select_next(&mut self) {
+        self.queue.push(Command::SelectNext);
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {

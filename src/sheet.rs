@@ -1,3 +1,4 @@
+use core::cmp::Ordering;
 use dunce::canonicalize;
 use failure::Error;
 use pathdiff::diff_paths;
@@ -284,6 +285,18 @@ impl Animation {
     }
 }
 
+impl Ord for Animation {
+    fn cmp(&self, other: &Animation) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for Animation {
+    fn partial_cmp(&self, other: &Animation) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Frame {
     pub fn new<T: AsRef<Path>>(path: T) -> Frame {
         Frame {
@@ -346,6 +359,20 @@ impl Frame {
     }
 }
 
+impl Ord for Frame {
+    fn cmp(&self, other: &Frame) -> Ordering {
+        self.source
+            .to_string_lossy()
+            .cmp(&other.source.to_string_lossy())
+    }
+}
+
+impl PartialOrd for Frame {
+    fn partial_cmp(&self, other: &Frame) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Hitbox {
     pub fn get_name(&self) -> &str {
         &self.name
@@ -383,6 +410,18 @@ impl Hitbox {
                 r.size = new_size;
             }
         }
+    }
+}
+
+impl Ord for Hitbox {
+    fn cmp(&self, other: &Hitbox) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for Hitbox {
+    fn partial_cmp(&self, other: &Hitbox) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

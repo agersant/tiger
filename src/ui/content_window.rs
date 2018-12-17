@@ -32,11 +32,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             }
         })
         .collect();
-    frames.sort_unstable_by(|(a, _), (b, _)| {
-        a.to_string_lossy()
-            .to_lowercase()
-            .cmp(&b.to_string_lossy().to_lowercase())
-    });
+    frames.sort_unstable();
     for (name, frame) in frames.iter() {
         let is_selected = match document.get_selection() {
             Some(Selection::Frame(p)) => p == frame.get_source(),
@@ -74,11 +70,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
         commands.create_animation();
     }
     let mut animations: Vec<&Animation> = document.get_sheet().animations_iter().collect();
-    animations.sort_unstable_by(|a, b| {
-        a.get_name()
-            .to_lowercase()
-            .cmp(&b.get_name().to_lowercase())
-    });
+    animations.sort_unstable();
     for animation in animations.iter() {
         let is_selected = match document.get_selection() {
             Some(Selection::Animation(a)) => a == animation.get_name(),
