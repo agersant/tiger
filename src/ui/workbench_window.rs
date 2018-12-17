@@ -17,6 +17,44 @@ fn screen_to_workbench(screen_coords: (f32, f32), document: &Document, rect: &Re
     )
 }
 
+fn axis_to_cursor(axis: ResizeAxis) -> ImGuiMouseCursor {
+    match axis {
+        ResizeAxis::N => ImGuiMouseCursor::ResizeNS,
+        ResizeAxis::S => ImGuiMouseCursor::ResizeNS,
+        ResizeAxis::E => ImGuiMouseCursor::ResizeEW,
+        ResizeAxis::W => ImGuiMouseCursor::ResizeEW,
+        ResizeAxis::NW => ImGuiMouseCursor::ResizeNWSE,
+        ResizeAxis::SE => ImGuiMouseCursor::ResizeNWSE,
+        ResizeAxis::NE => ImGuiMouseCursor::ResizeNESW,
+        ResizeAxis::SW => ImGuiMouseCursor::ResizeNESW,
+    }
+}
+
+fn draw_resize_handle<'a>(
+    ui: &Ui<'a>,
+    commands: &mut CommandBuffer,
+    hitbox: &Hitbox,
+    position: (f32, f32),
+    size: (f32, f32),
+    axis: ResizeAxis,
+    mouse_pos: (f32, f32),
+) -> bool {
+    let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+
+    ui.set_cursor_pos(position);
+    let id = format!("hitbox_handle_{}_resize_{:?}", hitbox.get_name(), axis);
+    ui.invisible_button(&ImString::new(id), size);
+    if ui.is_item_hovered() {
+        ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
+        if is_mouse_down {
+            commands.begin_hitbox_scale(hitbox, axis, mouse_pos);
+            return true;
+        }
+    }
+
+    false
+}
+
 fn draw_hitbox_controls<'a>(
     ui: &Ui<'a>,
     rect: &Rect,
@@ -48,16 +86,7 @@ fn draw_hitbox_controls<'a>(
             Some(n) if n == hitbox.get_name() => {
                 commands.update_hitbox_scale(mouse_position_in_workbench);
                 let axis = document.get_workbench_hitbox_axis_being_scaled();
-                ui.imgui().set_mouse_cursor(match axis {
-                    ResizeAxis::N => ImGuiMouseCursor::ResizeNS,
-                    ResizeAxis::S => ImGuiMouseCursor::ResizeNS,
-                    ResizeAxis::E => ImGuiMouseCursor::ResizeEW,
-                    ResizeAxis::W => ImGuiMouseCursor::ResizeEW,
-                    ResizeAxis::NW => ImGuiMouseCursor::ResizeNWSE,
-                    ResizeAxis::SE => ImGuiMouseCursor::ResizeNWSE,
-                    ResizeAxis::NE => ImGuiMouseCursor::ResizeNESW,
-                    ResizeAxis::SW => ImGuiMouseCursor::ResizeNESW,
-                });
+                ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
             }
             _ => (),
         };
@@ -102,149 +131,117 @@ fn draw_hitbox_controls<'a>(
             }
 
             // N
-            ui.set_cursor_pos((
-                cursor_x + resize_handle_width / 2.0,
-                cursor_y - resize_handle_height / 2.0,
-            ));
-            let id = format!("hitbox_handle_{}_resize_N", hitbox.get_name());
-            ui.invisible_button(
-                &ImString::new(id),
+            *is_scaling |= draw_resize_handle(
+                ui,
+                commands,
+                hitbox,
+                (
+                    cursor_x + resize_handle_width / 2.0,
+                    cursor_y - resize_handle_height / 2.0,
+                ),
                 (drag_button_size.0, resize_handle_height),
+                ResizeAxis::N,
+                mouse_position_in_workbench,
             );
-            if ui.is_item_hovered() {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNS);
-                if is_mouse_down {
-                    commands.begin_hitbox_scale(hitbox, ResizeAxis::N, mouse_position_in_workbench);
-                    *is_scaling = true;
-                }
-            }
 
             // S
-            ui.set_cursor_pos((
-                cursor_x + resize_handle_width / 2.0,
-                cursor_y + resize_handle_height / 2.0 + drag_button_size.1,
-            ));
-            let id = format!("hitbox_handle_{}_resize_S", hitbox.get_name());
-            ui.invisible_button(
-                &ImString::new(id),
+            *is_scaling |= draw_resize_handle(
+                ui,
+                commands,
+                hitbox,
+                (
+                    cursor_x + resize_handle_width / 2.0,
+                    cursor_y + resize_handle_height / 2.0 + drag_button_size.1,
+                ),
                 (drag_button_size.0, resize_handle_height),
+                ResizeAxis::S,
+                mouse_position_in_workbench,
             );
-            if ui.is_item_hovered() {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNS);
-                if is_mouse_down {
-                    commands.begin_hitbox_scale(hitbox, ResizeAxis::S, mouse_position_in_workbench);
-                    *is_scaling = true;
-                }
-            }
 
             // W
-            ui.set_cursor_pos((
-                cursor_x - resize_handle_width / 2.0,
-                cursor_y + resize_handle_height / 2.0,
-            ));
-            let id = format!("hitbox_handle_{}_resize_W", hitbox.get_name());
-            ui.invisible_button(
-                &ImString::new(id),
+            *is_scaling |= draw_resize_handle(
+                ui,
+                commands,
+                hitbox,
+                (
+                    cursor_x - resize_handle_width / 2.0,
+                    cursor_y + resize_handle_height / 2.0,
+                ),
                 (resize_handle_width, drag_button_size.1),
+                ResizeAxis::W,
+                mouse_position_in_workbench,
             );
-            if ui.is_item_hovered() {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                if is_mouse_down {
-                    commands.begin_hitbox_scale(hitbox, ResizeAxis::W, mouse_position_in_workbench);
-                    *is_scaling = true;
-                }
-            }
 
             // E
-            ui.set_cursor_pos((
-                cursor_x + resize_handle_width / 2.0 + drag_button_size.0,
-                cursor_y + resize_handle_height / 2.0,
-            ));
-            let id = format!("hitbox_handle_{}_resize_E", hitbox.get_name());
-            ui.invisible_button(
-                &ImString::new(id),
+            *is_scaling |= draw_resize_handle(
+                ui,
+                commands,
+                hitbox,
+                (
+                    cursor_x + resize_handle_width / 2.0 + drag_button_size.0,
+                    cursor_y + resize_handle_height / 2.0,
+                ),
                 (resize_handle_width, drag_button_size.1),
+                ResizeAxis::E,
+                mouse_position_in_workbench,
             );
-            if ui.is_item_hovered() {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                if is_mouse_down {
-                    commands.begin_hitbox_scale(hitbox, ResizeAxis::E, mouse_position_in_workbench);
-                    *is_scaling = true;
-                }
-            }
         }
 
         // NW
-        ui.set_cursor_pos((
-            cursor_x - resize_handle_width / 2.0,
-            cursor_y - resize_handle_height / 2.0,
-        ));
-        let id = format!("hitbox_handle_{}_resize_NW", hitbox.get_name());
-        ui.invisible_button(
-            &ImString::new(id),
+        *is_scaling |= draw_resize_handle(
+            ui,
+            commands,
+            hitbox,
+            (
+                cursor_x - resize_handle_width / 2.0,
+                cursor_y - resize_handle_height / 2.0,
+            ),
             (resize_handle_width, resize_handle_height),
+            ResizeAxis::NW,
+            mouse_position_in_workbench,
         );
-        if ui.is_item_hovered() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNWSE);
-            if is_mouse_down {
-                commands.begin_hitbox_scale(hitbox, ResizeAxis::NW, mouse_position_in_workbench);
-                *is_scaling = true;
-            }
-        }
 
         // NE
-        ui.set_cursor_pos((
-            cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
-            cursor_y - resize_handle_height / 2.0,
-        ));
-        let id = format!("hitbox_handle_{}_resize_NE", hitbox.get_name());
-        ui.invisible_button(
-            &ImString::new(id),
+        *is_scaling |= draw_resize_handle(
+            ui,
+            commands,
+            hitbox,
+            (
+                cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
+                cursor_y - resize_handle_height / 2.0,
+            ),
             (resize_handle_width, resize_handle_height),
+            ResizeAxis::NE,
+            mouse_position_in_workbench,
         );
-        if ui.is_item_hovered() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNESW);
-            if is_mouse_down {
-                commands.begin_hitbox_scale(hitbox, ResizeAxis::NE, mouse_position_in_workbench);
-                *is_scaling = true;
-            }
-        }
 
         // SE
-        ui.set_cursor_pos((
-            cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
-            cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
-        ));
-        let id = format!("hitbox_handle_{}_resize_NE", hitbox.get_name());
-        ui.invisible_button(
-            &ImString::new(id),
+        *is_scaling |= draw_resize_handle(
+            ui,
+            commands,
+            hitbox,
+            (
+                cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
+                cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
+            ),
             (resize_handle_width, resize_handle_height),
+            ResizeAxis::SE,
+            mouse_position_in_workbench,
         );
-        if ui.is_item_hovered() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNWSE);
-            if is_mouse_down {
-                commands.begin_hitbox_scale(hitbox, ResizeAxis::SE, mouse_position_in_workbench);
-                *is_scaling = true;
-            }
-        }
 
         // SW
-        ui.set_cursor_pos((
-            cursor_x - resize_handle_width / 2.0,
-            cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
-        ));
-        let id = format!("hitbox_handle_{}_resize_SW", hitbox.get_name());
-        ui.invisible_button(
-            &ImString::new(id),
+        *is_scaling |= draw_resize_handle(
+            ui,
+            commands,
+            hitbox,
+            (
+                cursor_x - resize_handle_width / 2.0,
+                cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
+            ),
             (resize_handle_width, resize_handle_height),
+            ResizeAxis::SW,
+            mouse_position_in_workbench,
         );
-        if ui.is_item_hovered() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeNESW);
-            if is_mouse_down {
-                commands.begin_hitbox_scale(hitbox, ResizeAxis::SW, mouse_position_in_workbench);
-                *is_scaling = true;
-            }
-        }
     }
 }
 
