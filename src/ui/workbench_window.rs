@@ -311,7 +311,7 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, hitbox: &Hitbox, off
             top_left.1 + zoom * rectangle.size.1 as f32,
         );
         let draw_list = ui.get_window_draw_list();
-        let outline_color = [255.0 / 255.0, 255.0 / 255.0, 200.0 / 255.0]; // TODO.style
+        let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
         draw_list
             .add_rect(top_left, bottom_right, outline_color)
             .build();
@@ -367,12 +367,13 @@ fn draw_frame<'a>(
                 );
             }
 
-            if !is_scaling_hitbox && !is_dragging_hitbox {
-                if ui.is_window_hovered() {
-                    if is_mouse_down && !is_mouse_dragging {
-                        commands.create_hitbox(mouse_position_in_workbench);
-                    }
-                }
+            if !is_scaling_hitbox
+                && !is_dragging_hitbox
+                && ui.is_window_hovered()
+                && is_mouse_down
+                && !is_mouse_dragging
+            {
+                commands.create_hitbox(mouse_position_in_workbench);
             }
         }
     }
@@ -505,7 +506,7 @@ pub fn draw<'a>(
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Workbench"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)

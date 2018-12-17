@@ -150,12 +150,12 @@ impl Document {
                             // Loop animation
                             if animation.is_looping() {
                                 self.timeline_clock =
-                                    Duration::from_millis((clock_ms % d as u128) as u64)
+                                    Duration::from_millis((clock_ms % u128::from(d)) as u64)
 
                             // Stop playhead at the end of animation
-                            } else if clock_ms >= d as u128 {
+                            } else if clock_ms >= u128::from(d) {
                                 self.timeline_playing = false;
-                                self.timeline_clock = Duration::from_millis(d as u64)
+                                self.timeline_clock = Duration::from_millis(u64::from(d))
                             }
                         }
 
@@ -339,10 +339,10 @@ impl Document {
             }
             Some(Selection::AnimationFrame(a, af)) => {
                 self.sheet.delete_animation_frame(a, *af);
-                if self.workbench_item == Some(WorkbenchItem::Animation(a.clone())) {
-                    if self.workbench_animation_frame_being_dragged == Some(*af) {
-                        self.workbench_animation_frame_being_dragged = None;
-                    }
+                if self.workbench_item == Some(WorkbenchItem::Animation(a.clone()))
+                    && self.workbench_animation_frame_being_dragged == Some(*af)
+                {
+                    self.workbench_animation_frame_being_dragged = None;
                 }
             }
             None => {}
@@ -477,7 +477,7 @@ impl Document {
                     .iter()
                     .position(|f| f.get_source() == p)
                     .ok_or(DocumentError::FrameNotInDocument)?;
-                if let Some(f) = frames.iter().nth(advance(current_index)) {
+                if let Some(f) = frames.get(advance(current_index)) {
                     self.selection = Some(Selection::Frame(f.get_source().to_owned()));
                 }
             }
@@ -488,7 +488,7 @@ impl Document {
                     .iter()
                     .position(|a| a.get_name() == n)
                     .ok_or(DocumentError::AnimationNotInDocument)?;
-                if let Some(n) = animations.iter().nth(advance(current_index)) {
+                if let Some(n) = animations.get(advance(current_index)) {
                     self.selection = Some(Selection::Animation(n.get_name().to_owned()));
                 }
             }
@@ -504,7 +504,7 @@ impl Document {
                     .iter()
                     .position(|h| h.get_name() == n)
                     .ok_or(DocumentError::InvalidHitboxIndex)?;
-                if let Some(h) = hitboxes.iter().nth(advance(current_index)) {
+                if let Some(h) = hitboxes.get(advance(current_index)) {
                     self.selection = Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
                 }
             }
@@ -644,8 +644,8 @@ impl Document {
         self.timeline_scrubbing = true;
     }
 
-    pub fn update_timeline_scrub(&mut self, new_time: &Duration) {
-        self.timeline_clock = new_time.clone();
+    pub fn update_timeline_scrub(&mut self, new_time: Duration) {
+        self.timeline_clock = new_time;
     }
 
     pub fn end_timeline_scrub(&mut self) {
@@ -687,21 +687,22 @@ impl Document {
             ),
             _ => None,
         }
-        .ok_or(DocumentError::NotEditingAnyAnimation.into())
+        .ok_or_else(|| DocumentError::NotEditingAnyAnimation.into())
     }
 
     pub fn toggle_playback(&mut self) -> Result<(), Error> {
-        let mut new_timeline_clock = self.timeline_clock.clone();
+        let mut new_timeline_clock = self.timeline_clock;
 
         {
             let animation = self.get_workbench_animation()?;
 
             if !self.timeline_playing {
                 if let Some(d) = animation.get_duration() {
-                    if d > 0 {
-                        if !animation.is_looping() && self.timeline_clock.as_millis() == d as u128 {
-                            new_timeline_clock = Duration::new(0, d);
-                        }
+                    if d > 0
+                        && !animation.is_looping()
+                        && self.timeline_clock.as_millis() == u128::from(d)
+                    {
+                        new_timeline_clock = Duration::new(0, d);
                     }
                 }
             }
@@ -728,7 +729,7 @@ impl Document {
                 .enumerate()
                 .map(|(i, f)| {
                     let t = cursor;
-                    cursor += f.get_duration() as u64;
+                    cursor += u64::from(f.get_duration());
                     (i, t)
                 })
                 .collect();
@@ -761,7 +762,7 @@ impl Document {
                 .enumerate()
                 .map(|(i, f)| {
                     let t = cursor;
-                    cursor += f.get_duration() as u64;
+                    cursor += u64::from(f.get_duration());
                     (i, t)
                 })
                 .collect();

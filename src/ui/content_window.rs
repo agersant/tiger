@@ -54,13 +54,12 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             }
         }
 
-        if document.get_content_frame_being_dragged().is_none() {
-            if ui.is_item_hovered()
-                && ui.imgui().is_mouse_down(ImMouseButton::Left)
-                && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
-            {
-                commands.begin_frame_drag(frame);
-            }
+        if document.get_content_frame_being_dragged().is_none()
+            && ui.is_item_hovered()
+            && ui.imgui().is_mouse_down(ImMouseButton::Left)
+            && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+        {
+            commands.begin_frame_drag(frame);
         }
     }
 }
@@ -94,7 +93,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
 }
 
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)

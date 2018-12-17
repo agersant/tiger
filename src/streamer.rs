@@ -60,7 +60,7 @@ pub fn load_from_disk(
                 // TODO log and mark as bad image in cache
                 continue;
             }
-            io_time += io_time + (std::time::Instant::now() - start);
+            io_time += std::time::Instant::now() - start;
         }
     }
 

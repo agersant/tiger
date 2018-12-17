@@ -57,7 +57,7 @@ impl State {
     }
 
     fn is_document_open<T: AsRef<Path>>(&self, path: T) -> bool {
-        self.documents.iter().any(|d| &d.source == path.as_ref())
+        self.documents.iter().any(|d| d.source == path.as_ref())
     }
 
     fn get_current_document_mut(&mut self) -> Option<&mut Document> {
@@ -85,24 +85,23 @@ impl State {
     fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
         self.documents
             .iter_mut()
-            .find(|d| &d.source == path.as_ref())
+            .find(|d| d.source == path.as_ref())
     }
 
     fn new_document(&mut self) -> Result<(), Error> {
-        match nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)? {
-            nfd::Response::Okay(path_string) => {
-                let mut path = std::path::PathBuf::from(path_string);
-                path.set_extension(SHEET_FILE_EXTENSION);
-                match self.get_document_mut(&path) {
-                    Some(d) => *d = Document::new(&path),
-                    None => {
-                        let document = Document::new(&path);
-                        self.add_document(document);
-                    }
+        if let nfd::Response::Okay(path_string) =
+            nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
+        {
+            let mut path = std::path::PathBuf::from(path_string);
+            path.set_extension(SHEET_FILE_EXTENSION);
+            match self.get_document_mut(&path) {
+                Some(d) => *d = Document::new(&path),
+                None => {
+                    let document = Document::new(&path);
+                    self.add_document(document);
                 }
-                self.current_document = Some(path.clone());
             }
-            _ => (),
+            self.current_document = Some(path.clone());
         };
         Ok(())
     }
@@ -168,14 +167,13 @@ impl State {
         let document = self
             .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
-        match nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)? {
-            nfd::Response::Okay(path_string) => {
-                document.source = std::path::PathBuf::from(path_string);
-                document.source.set_extension(SHEET_FILE_EXTENSION);
-                document.save()?;
-                self.current_document = Some(document.source.clone());
-            }
-            _ => (),
+        if let nfd::Response::Okay(path_string) =
+            nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
+        {
+            document.source = std::path::PathBuf::from(path_string);
+            document.source.set_extension(SHEET_FILE_EXTENSION);
+            document.save()?;
+            self.current_document = Some(document.source.clone());
         };
         Ok(())
     }
@@ -197,7 +195,7 @@ impl State {
             .get_export_settings()
             .as_ref()
             .cloned()
-            .or(Some(ExportSettings::new()));
+            .or_else(|| Some(ExportSettings::new()));
 
         Ok(())
     }
@@ -210,11 +208,10 @@ impl State {
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        match nfd::open_save_dialog(Some(IMAGE_EXPORT_FILE_EXTENSIONS), None)? {
-            nfd::Response::Okay(path_string) => {
-                export_settings.texture_destination = std::path::PathBuf::from(path_string);
-            }
-            _ => (),
+        if let nfd::Response::Okay(path_string) =
+            nfd::open_save_dialog(Some(IMAGE_EXPORT_FILE_EXTENSIONS), None)?
+        {
+            export_settings.texture_destination = std::path::PathBuf::from(path_string);
         };
         Ok(())
     }
@@ -227,11 +224,8 @@ impl State {
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        match nfd::open_save_dialog(None, None)? {
-            nfd::Response::Okay(path_string) => {
-                export_settings.metadata_destination = std::path::PathBuf::from(path_string);
-            }
-            _ => (),
+        if let nfd::Response::Okay(path_string) = nfd::open_save_dialog(None, None)? {
+            export_settings.metadata_destination = std::path::PathBuf::from(path_string);
         };
         Ok(())
     }
@@ -244,11 +238,8 @@ impl State {
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        match nfd::open_pick_folder(None)? {
-            nfd::Response::Okay(path_string) => {
-                export_settings.metadata_paths_root = std::path::PathBuf::from(path_string);
-            }
-            _ => (),
+        if let nfd::Response::Okay(path_string) = nfd::open_pick_folder(None)? {
+            export_settings.metadata_paths_root = std::path::PathBuf::from(path_string);
         };
         Ok(())
     }
@@ -261,12 +252,10 @@ impl State {
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        match nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)? {
-            nfd::Response::Okay(path_string) => {
-                export_settings.format =
-                    ExportFormat::Template(std::path::PathBuf::from(path_string));
-            }
-            _ => (),
+        if let nfd::Response::Okay(path_string) =
+            nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)?
+        {
+            export_settings.format = ExportFormat::Template(std::path::PathBuf::from(path_string));
         };
         Ok(())
     }
@@ -539,7 +528,7 @@ impl State {
                 .begin_timeline_scrub(),
             Command::UpdateScrub(t) => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_timeline_scrub(t),
+                .update_timeline_scrub(*t),
             Command::EndScrub => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_timeline_scrub(),

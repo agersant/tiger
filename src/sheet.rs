@@ -88,11 +88,11 @@ impl Sheet {
     }
 
     pub fn has_frame<T: AsRef<Path>>(&self, path: T) -> bool {
-        self.frames.iter().any(|f| &f.source == path.as_ref())
+        self.frames.iter().any(|f| f.source == path.as_ref())
     }
 
     pub fn has_animation<T: AsRef<str>>(&self, name: T) -> bool {
-        self.animations.iter().any(|a| &a.name == name.as_ref())
+        self.animations.iter().any(|a| a.name == name.as_ref())
     }
 
     pub fn add_frame<T: AsRef<Path>>(&mut self, path: T) {
@@ -116,21 +116,19 @@ impl Sheet {
     }
 
     pub fn get_frame<T: AsRef<Path>>(&self, path: T) -> Option<&Frame> {
-        self.frames.iter().find(|f| &f.source == path.as_ref())
+        self.frames.iter().find(|f| f.source == path.as_ref())
     }
 
     pub fn get_frame_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Frame> {
-        self.frames.iter_mut().find(|f| &f.source == path.as_ref())
+        self.frames.iter_mut().find(|f| f.source == path.as_ref())
     }
 
     pub fn get_animation<T: AsRef<str>>(&self, name: T) -> Option<&Animation> {
-        self.animations.iter().find(|a| &a.name == name.as_ref())
+        self.animations.iter().find(|a| a.name == name.as_ref())
     }
 
     pub fn get_animation_mut<T: AsRef<str>>(&mut self, name: T) -> Option<&mut Animation> {
-        self.animations
-            .iter_mut()
-            .find(|a| &a.name == name.as_ref())
+        self.animations.iter_mut().find(|a| a.name == name.as_ref())
     }
 
     pub fn get_export_settings(&self) -> &Option<ExportSettings> {
@@ -157,20 +155,20 @@ impl Sheet {
     }
 
     pub fn delete_frame<T: AsRef<Path>>(&mut self, path: T) {
-        self.frames.retain(|f| &f.source != path.as_ref());
+        self.frames.retain(|f| f.source != path.as_ref());
         for animation in self.animations.iter_mut() {
-            animation.timeline.retain(|af| &af.frame != path.as_ref())
+            animation.timeline.retain(|af| af.frame != path.as_ref())
         }
     }
 
     pub fn delete_hitbox<T: AsRef<Path>, U: AsRef<str>>(&mut self, path: T, name: U) {
         if let Some(frame) = self.get_frame_mut(path.as_ref()) {
-            frame.hitboxes.retain(|h| &h.name != name.as_ref());
+            frame.hitboxes.retain(|h| h.name != name.as_ref());
         }
     }
 
     pub fn delete_animation<T: AsRef<str>>(&mut self, name: T) {
-        self.animations.retain(|a| &a.name != name.as_ref());
+        self.animations.retain(|a| a.name != name.as_ref());
     }
 
     pub fn delete_animation_frame<T: AsRef<str>>(&mut self, animation_name: T, frame_index: usize) {
@@ -208,7 +206,7 @@ impl Animation {
     }
 
     pub fn get_duration(&self) -> Option<u32> {
-        if self.timeline.len() == 0 {
+        if self.timeline.is_empty() {
             return None;
         }
         Some(self.timeline.iter().map(|f| f.duration).sum())
@@ -218,14 +216,14 @@ impl Animation {
         if index >= self.timeline.len() {
             return None;
         }
-        return Some(&self.timeline[index]);
+        Some(&self.timeline[index])
     }
 
     pub fn get_frame_mut(&mut self, index: usize) -> Option<&mut AnimationFrame> {
         if index >= self.timeline.len() {
             return None;
         }
-        return Some(&mut self.timeline[index]);
+        Some(&mut self.timeline[index])
     }
 
     pub fn get_frame_at(&self, time: Duration) -> Option<(usize, &AnimationFrame)> {
@@ -235,13 +233,13 @@ impl Animation {
             Some(d) => d,
         };
         let time = if self.is_looping {
-            Duration::from_millis(time.as_millis() as u64 % duration as u64)
+            Duration::from_millis(time.as_millis() as u64 % u64::from(duration))
         } else {
             time
         };
         let mut cursor = Duration::new(0, 0);
         for (index, frame) in self.timeline.iter().enumerate() {
-            cursor = cursor + Duration::from_millis(frame.duration as u64);
+            cursor += Duration::from_millis(u64::from(frame.duration));
             if time < cursor {
                 return Some((index, frame));
             }
@@ -314,15 +312,15 @@ impl Frame {
     }
 
     pub fn get_hitbox<T: AsRef<str>>(&self, name: T) -> Option<&Hitbox> {
-        self.hitboxes.iter().find(|a| &a.name == name.as_ref())
+        self.hitboxes.iter().find(|a| a.name == name.as_ref())
     }
 
     pub fn get_hitbox_mut<T: AsRef<str>>(&mut self, name: T) -> Option<&mut Hitbox> {
-        self.hitboxes.iter_mut().find(|a| &a.name == name.as_ref())
+        self.hitboxes.iter_mut().find(|a| a.name == name.as_ref())
     }
 
     pub fn has_hitbox<T: AsRef<str>>(&self, name: T) -> bool {
-        self.hitboxes.iter().any(|a| &a.name == name.as_ref())
+        self.hitboxes.iter().any(|a| a.name == name.as_ref())
     }
 
     pub fn add_hitbox(&mut self) -> &mut Hitbox {
@@ -334,7 +332,7 @@ impl Frame {
         }
 
         self.hitboxes.push(Hitbox {
-            name: name,
+            name,
             geometry: Shape::Rectangle(Rectangle {
                 top_left: (0, 0),
                 size: (0, 0),

@@ -92,7 +92,7 @@ fn liquid_data_from_frame(
     frame_data.insert("index".into(), Value::Scalar(Scalar::new(index as i32)));
 
     let frame_layout = texture_layout
-        .get(frame.get_source().into())
+        .get(frame.get_source())
         .ok_or(ExportError::FrameWasNotPacked)?;
 
     frame_data.insert(

@@ -16,7 +16,7 @@ fn draw_hitboxes<'a>(
     hitboxes.sort_unstable();
     for hitbox in hitboxes.iter() {
         let is_selected = match document.get_selection() {
-            Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == &hitbox.get_name(),
+            Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == hitbox.get_name(),
             _ => false,
         };
 
@@ -33,7 +33,7 @@ fn draw_hitboxes<'a>(
 }
 
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Hitboxes"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)
@@ -42,13 +42,10 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
             .movable(false)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-                    match document.get_workbench_item() {
-                        Some(WorkbenchItem::Frame(frame_path)) => {
-                            if let Some(frame) = document.get_sheet().get_frame(frame_path) {
-                                draw_hitboxes(ui, commands, document, frame);
-                            }
+                    if let Some(WorkbenchItem::Frame(frame_path)) = document.get_workbench_item() {
+                        if let Some(frame) = document.get_sheet().get_frame(frame_path) {
+                            draw_hitboxes(ui, commands, document, frame);
                         }
-                        _ => (),
                     }
                 }
             });

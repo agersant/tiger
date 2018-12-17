@@ -163,7 +163,7 @@ pub fn run<'a>(
 fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
 
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File")).build(|| {
                 if ui.menu_item(im_str!("New Sheet…")).build() {
@@ -233,7 +233,7 @@ fn draw_documents_window<'a>(
 ) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
 
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Documents"))
             .position(rect.position, ImGuiCond::Always)
             .always_auto_resize(true)

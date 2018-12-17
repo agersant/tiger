@@ -31,44 +31,41 @@ fn draw_animation<'a>(
     animation: &Animation,
 ) {
     ui.text(&ImString::new(animation.get_name().to_owned()));
-    match utils::get_bounding_box(animation, texture_cache) {
-        Ok(mut bbox) => {
-            bbox.center_on_origin();
-            let space = ui.get_content_region_avail();
-            let bbox_size = (
-                (bbox.right - bbox.left) as f32,
-                (bbox.bottom - bbox.top) as f32,
-            );
-            if let Some(fill) = utils::fill(space, bbox_size) {
-                let cursor_pos = ui.get_cursor_pos();
-                let duration = animation.get_duration().unwrap(); // TODO no unwrap
-                let time =
-                    Duration::from_millis(state.get_clock().as_millis() as u64 % duration as u64); // TODO pause on first and last frame for non looping animation?
+    if let Ok(mut bbox) = utils::get_bounding_box(animation, texture_cache) {
+        bbox.center_on_origin();
+        let space = ui.get_content_region_avail();
+        let bbox_size = (
+            (bbox.right - bbox.left) as f32,
+            (bbox.bottom - bbox.top) as f32,
+        );
+        if let Some(fill) = utils::fill(space, bbox_size) {
+            let cursor_pos = ui.get_cursor_pos();
+            let duration = animation.get_duration().unwrap(); // TODO no unwrap
+            let time =
+                Duration::from_millis(state.get_clock().as_millis() as u64 % u64::from(duration)); // TODO pause on first and last frame for non looping animation?
 
-                let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
-                if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
-                    let x = cursor_pos.0 + fill.position.0
-                        - fill.zoom * bbox.left as f32
-                        - fill.zoom * texture.size.0 as f32 / 2.0
-                        + fill.zoom * animation_frame.get_offset().0 as f32;
-                    let y = cursor_pos.1 + fill.position.1
-                        - fill.zoom * bbox.top as f32
-                        - fill.zoom * texture.size.1 as f32 / 2.0
-                        + fill.zoom * animation_frame.get_offset().1 as f32;
-                    ui.set_cursor_pos((x, y));
-                    let draw_size = (fill.zoom * texture.size.0, fill.zoom * texture.size.1);
-                    ui.image(texture.id, draw_size).build();
-                } else {
-                    // TODO
-                }
+            let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
+            if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
+                let x = cursor_pos.0 + fill.position.0
+                    - fill.zoom * bbox.left as f32
+                    - fill.zoom * texture.size.0 as f32 / 2.0
+                    + fill.zoom * animation_frame.get_offset().0 as f32;
+                let y = cursor_pos.1 + fill.position.1
+                    - fill.zoom * bbox.top as f32
+                    - fill.zoom * texture.size.1 as f32 / 2.0
+                    + fill.zoom * animation_frame.get_offset().1 as f32;
+                ui.set_cursor_pos((x, y));
+                let draw_size = (fill.zoom * texture.size.0, fill.zoom * texture.size.1);
+                ui.image(texture.id, draw_size).build();
+            } else {
+                // TODO
             }
         }
-        _ => (), // TODO
     }
 }
 
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &TextureCache) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)

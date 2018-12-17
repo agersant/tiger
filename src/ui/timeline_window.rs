@@ -98,7 +98,7 @@ fn get_frame_location(
     let h = 20.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
     FrameLocation {
-        top_left: top_left,
+        top_left,
         size: (w, h),
     }
 }
@@ -208,14 +208,13 @@ fn draw_animation_frame<'a>(
     // Drag and drop interactions
     let is_dragging_duration = document.get_timeline_frame_being_scaled().is_some();
     if !is_dragging_duration {
-        let is_hovering_frame_exact = match is_too_small {
-            true => false,
-            false => {
-                let id = format!("frame_middle_{}", top_left.0);
-                ui.set_cursor_screen_pos((top_left.0 + resize_handle_size, top_left.1));
-                ui.invisible_button(&ImString::new(id), (w - resize_handle_size * 2.0, h));
-                ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem)
-            }
+        let is_hovering_frame_exact = if is_too_small {
+            false
+        } else {
+            let id = format!("frame_middle_{}", top_left.0);
+            ui.set_cursor_screen_pos((top_left.0 + resize_handle_size, top_left.1));
+            ui.invisible_button(&ImString::new(id), (w - resize_handle_size * 2.0, h));
+            ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem)
         };
 
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
@@ -223,10 +222,12 @@ fn draw_animation_frame<'a>(
         let dragging_frame = document.get_content_frame_being_dragged().is_some();
         let dragging_animation_frame = document.get_timeline_frame_being_dragged().is_some();
 
-        if !dragging_frame & !dragging_animation_frame {
-            if is_mouse_down && !is_mouse_dragging && is_hovering_frame_exact {
-                commands.begin_animation_frame_drag(animation_frame_index);
-            }
+        if !dragging_frame & !dragging_animation_frame
+            && is_mouse_down
+            && !is_mouse_dragging
+            && is_hovering_frame_exact
+        {
+            commands.begin_animation_frame_drag(animation_frame_index);
         }
     }
 
@@ -280,7 +281,7 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, anima
     cursor_pos.0 += now_ms as f32 * zoom;
     let space = ui.get_content_region_avail();
 
-    let fill_color = [255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0]; // TODO constants
+    let fill_color = [1.0, 0.0 / 255.0, 0.0 / 255.0]; // TODO constants
 
     draw_list.add_rect_filled_multicolor(
         (cursor_pos.0, cursor_pos.1),
@@ -306,7 +307,7 @@ fn get_frame_under_mouse<'a>(
         if mouse_pos.0 >= frame_start_x && mouse_pos.0 < (frame_start_x + frame_location.size.0) {
             return Some((frame_index, frame_location));
         }
-        cursor += Duration::from_millis(animation_frame.get_duration() as u64);
+        cursor += Duration::from_millis(u64::from(animation_frame.get_duration()));
     }
     None
 }
@@ -389,7 +390,7 @@ fn handle_drag_and_drop<'a>(
 }
 
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
-    ui.with_style_vars(&vec![WindowRounding(0.0), WindowBorderSize(0.0)], || {
+    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Timeline"))
             .position(rect.position, ImGuiCond::Always)
             .size(rect.size, ImGuiCond::Always)
@@ -436,8 +437,9 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                     cursor,
                                 );
                                 frames_cursor_position_end = ui.get_cursor_screen_pos();
-                                cursor +=
-                                    Duration::from_millis(animation_frame.get_duration() as u64);
+                                cursor += Duration::from_millis(u64::from(
+                                    animation_frame.get_duration(),
+                                ));
                             }
 
                             ui.set_cursor_pos(ticks_cursor_position);
@@ -453,14 +455,12 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandB
                                 frames_cursor_position_end,
                             );
 
-                            if ui.is_window_hovered() {
-                                if ui.imgui().key_ctrl() {
-                                    let mouse_wheel = ui.imgui().mouse_wheel();
-                                    if mouse_wheel > 0.0 {
-                                        commands.timeline_zoom_in();
-                                    } else if mouse_wheel < 0.0 {
-                                        commands.timeline_zoom_out();
-                                    }
+                            if ui.is_window_hovered() && ui.imgui().key_ctrl() {
+                                let mouse_wheel = ui.imgui().mouse_wheel();
+                                if mouse_wheel > 0.0 {
+                                    commands.timeline_zoom_in();
+                                } else if mouse_wheel < 0.0 {
+                                    commands.timeline_zoom_out();
                                 }
                             }
                         }
