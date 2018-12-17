@@ -59,7 +59,7 @@
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Multiple selections
 - [ ] Prettier UI
-- [ ] Jump to next/previous frame
+- [x] Jump to next/previous frame
 - [ ] Export perf fixes
 - [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] Copy/paste hitboxes
