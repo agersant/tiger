@@ -41,7 +41,7 @@
 - [ ] Content of selection window when selecting animation frame
 - [ ] Content of selection window when selecting hitbox
 - [x] In selection window, keep origin centered to preview turnarounds
-- [ ] When moving animation frame or hitbox, hold shift to move only on one axis
+- [x] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
 - [ ] Content window and workbench should say what the current workbench item is
 - [x] Sort content panel entries by name
