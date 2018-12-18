@@ -2,8 +2,8 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
 
-use crate::sheet::{Animation, Frame};
-use crate::state::{self, State};
+use crate::sheet::{Animation, AnimationFrame, Frame};
+use crate::state::{Selection, State};
 use crate::streamer::TextureCache;
 use crate::ui::Rect;
 use crate::utils;
@@ -64,6 +64,30 @@ fn draw_animation<'a>(
     }
 }
 
+fn draw_animation_frame<'a>(
+    ui: &Ui<'a>,
+    texture_cache: &TextureCache,
+    animation_frame: &AnimationFrame,
+) {
+    let frame = animation_frame.get_frame();
+    if let Some(name) = frame.file_name() {
+        ui.text(&ImString::new(name.to_string_lossy()));
+        ui.text(&ImString::new(format!(
+            "Duration: {}ms",
+            animation_frame.get_duration()
+        )));
+        if let Some(texture) = texture_cache.get(frame) {
+            let space = ui.get_content_region_avail();
+            if let Some(fill) = utils::fill(space, texture.size) {
+                let cursor_pos = ui.get_cursor_pos();
+                let x = cursor_pos.0 + fill.position.0;
+                let y = cursor_pos.1 + fill.position.1;
+                ui.set_cursor_pos((x, y));
+                ui.image(texture.id, fill.size).build();
+            }
+        }
+    }
+}
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
@@ -75,14 +99,21 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &Texture
             .build(|| {
                 if let Some(document) = state.get_current_document() {
                     match document.get_selection() {
-                        Some(state::Selection::Frame(path)) => {
+                        Some(Selection::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
-                        Some(state::Selection::Animation(name)) => {
+                        Some(Selection::Animation(name)) => {
                             if let Some(animation) = document.get_sheet().get_animation(name) {
                                 draw_animation(ui, state, texture_cache, animation);
+                            }
+                        }
+                        Some(Selection::AnimationFrame(name, index)) => {
+                            if let Some(animation) = document.get_sheet().get_animation(name) {
+                                if let Some(animation_frame) = animation.get_frame(*index) {
+                                    draw_animation_frame(ui, texture_cache, animation_frame);
+                                }
                             }
                         }
                         _ => (), // TODO
