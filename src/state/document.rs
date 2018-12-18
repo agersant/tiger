@@ -30,6 +30,8 @@ pub enum DocumentError {
     InvalidAnimationFrameIndex,
     #[fail(display = "Currently not adjusting the duration of an animation frame")]
     NotDraggingATimelineFrame,
+    #[fail(display = "No animation frame found for requested time")]
+    NoAnimationFrameForThisTime,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -97,6 +99,8 @@ pub struct Document {
     workbench_animation_frame_drag_initial_offset: (i32, i32),
     timeline_zoom_level: i32,
     timeline_frame_being_scaled: Option<usize>,
+    timeline_frame_scale_initial_duration: u32,
+    timeline_frame_scale_initial_clock: Duration,
     timeline_frame_being_dragged: Option<usize>,
     timeline_clock: Duration,
     timeline_playing: bool,
@@ -130,6 +134,8 @@ impl Document {
             workbench_animation_frame_drag_initial_offset: (0, 0),
             timeline_zoom_level: 1,
             timeline_frame_being_scaled: None,
+            timeline_frame_scale_initial_duration: 0,
+            timeline_frame_scale_initial_clock: Duration::new(0, 0),
             timeline_frame_being_dragged: None,
             timeline_clock: Duration::new(0, 0),
             timeline_playing: false,
@@ -451,13 +457,31 @@ impl Document {
 
     pub fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
         let animation = self.get_workbench_animation()?;
-        let _animation_frame = animation
+        let animation_frame = animation
             .get_frame(frame_index)
             .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+        let duration = animation_frame.get_duration() as u64;
+
         self.selection = Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
             frame_index,
         ));
+
+        let animation = self.get_workbench_animation()?;
+        let frame_times = animation.get_frame_times();
+
+        let frame_start_time = *frame_times
+            .get(frame_index)
+            .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+
+        let clock = self.timeline_clock.as_millis() as u64;
+        let is_playhead_in_frame = clock >= frame_start_time
+            && (clock < (frame_start_time + duration)
+                || frame_index == animation.get_num_frames() - 1);
+        if !self.timeline_playing && !is_playhead_in_frame {
+            self.timeline_clock = Duration::from_millis(frame_start_time);
+        }
+
         Ok(())
     }
 
@@ -640,8 +664,14 @@ impl Document {
         self.timeline_scrubbing = true;
     }
 
-    pub fn update_timeline_scrub(&mut self, new_time: Duration) {
+    pub fn update_timeline_scrub(&mut self, new_time: Duration) -> Result<(), Error> {
+        let animation = self.get_workbench_animation()?;
+        let (index, _) = animation
+            .get_frame_at(new_time)
+            .ok_or(DocumentError::NoAnimationFrameForThisTime)?;
+        self.select_animation_frame(index)?;
         self.timeline_clock = new_time;
+        Ok(())
     }
 
     pub fn end_timeline_scrub(&mut self) {
@@ -704,9 +734,9 @@ impl Document {
                 if let Some(d) = animation.get_duration() {
                     if d > 0
                         && !animation.is_looping()
-                        && self.timeline_clock.as_millis() == u128::from(d)
+                        && self.timeline_clock.as_millis() >= u128::from(d)
                     {
-                        new_timeline_clock = Duration::new(0, d);
+                        new_timeline_clock = Duration::new(0, 0);
                     }
                 }
             }
@@ -1060,7 +1090,7 @@ impl Document {
 
     pub fn begin_animation_frame_offset_drag(
         &mut self,
-        animation_index: usize,
+        index: usize,
         mouse_position: (f32, f32),
     ) -> Result<(), Error> {
         let animation_name = match &self.workbench_item {
@@ -1076,14 +1106,14 @@ impl Document {
                 .ok_or(DocumentError::AnimationNotInDocument)?;
 
             let animation_frame = animation
-                .get_frame(animation_index)
+                .get_frame(index)
                 .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
             self.workbench_animation_frame_drag_initial_offset = animation_frame.get_offset();
         }
 
-        self.workbench_animation_frame_being_dragged = Some(animation_index);
+        self.workbench_animation_frame_being_dragged = Some(index);
         self.workbench_animation_frame_drag_initial_mouse_position = mouse_position;
-        Ok(())
+        self.select_animation_frame(index)
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -1135,45 +1165,73 @@ impl Document {
         self.workbench_animation_frame_being_dragged = None;
     }
 
-    pub fn begin_animation_frame_duration_drag(
-        &mut self,
-        animation_index: usize,
-    ) -> Result<(), Error> {
-        let animation_name = match &self.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(DocumentError::NotEditingAnyAnimation)?;
-        let animation = self
-            .get_sheet_mut()
-            .get_animation_mut(animation_name)
-            .ok_or(DocumentError::AnimationNotInDocument)?;
-        let _animation_frame = animation
-            .get_frame(animation_index)
-            .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-        self.timeline_frame_being_scaled = Some(animation_index);
+    pub fn begin_animation_frame_duration_drag(&mut self, index: usize) -> Result<(), Error> {
+        let old_duration = {
+            let animation_name = match &self.workbench_item {
+                Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+                _ => None,
+            }
+            .ok_or(DocumentError::NotEditingAnyAnimation)?;
+
+            let animation = self
+                .get_sheet_mut()
+                .get_animation_mut(animation_name)
+                .ok_or(DocumentError::AnimationNotInDocument)?;
+
+            let animation_frame = animation
+                .get_frame(index)
+                .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+
+            animation_frame.get_duration()
+        };
+
+        self.timeline_frame_being_scaled = Some(index);
+        self.timeline_frame_scale_initial_duration = old_duration;
+        self.timeline_frame_scale_initial_clock = self.timeline_clock;
+
         Ok(())
     }
 
     pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
-        let animation_name = match &self.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
+        let frame_start_time = {
+            let animation_name = match &self.workbench_item {
+                Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
+                _ => None,
+            }
+            .ok_or(DocumentError::NotEditingAnyAnimation)?;
+
+            let index = self
+                .timeline_frame_being_scaled
+                .ok_or(DocumentError::NotDraggingATimelineFrame)?;
+
+            let animation = self
+                .get_sheet_mut()
+                .get_animation_mut(&animation_name)
+                .ok_or(DocumentError::AnimationNotInDocument)?;
+
+            let animation_frame = animation
+                .get_frame_mut(index)
+                .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+
+            animation_frame.set_duration(new_duration);
+
+            let frame_times = animation.get_frame_times();
+
+            *frame_times
+                .get(index)
+                .ok_or(DocumentError::InvalidAnimationFrameIndex)?
+        };
+
+        if !self.timeline_playing {
+            let initial_clock = self.timeline_frame_scale_initial_clock.as_millis();
+            let initial_duration = self.timeline_frame_scale_initial_duration as u128;
+            if initial_clock >= frame_start_time as u128 + initial_duration {
+                self.timeline_clock = Duration::from_millis(
+                    initial_clock as u64 + new_duration as u64 - initial_duration as u64,
+                );
+            }
         }
-        .ok_or(DocumentError::NotEditingAnyAnimation)?;
 
-        let animation_index = self
-            .timeline_frame_being_scaled
-            .ok_or(DocumentError::NotDraggingATimelineFrame)?;
-
-        let animation_frame = self
-            .get_sheet_mut()
-            .get_animation_mut(animation_name)
-            .ok_or(DocumentError::AnimationNotInDocument)?
-            .get_frame_mut(animation_index)
-            .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-
-        animation_frame.set_duration(new_duration);
         Ok(())
     }
 

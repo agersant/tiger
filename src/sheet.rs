@@ -250,6 +250,17 @@ impl Animation {
         )) // TODO no unwrap
     }
 
+    pub fn get_frame_times(&self) -> Vec<u64> {
+        let mut cursor = 0;
+        self.frames_iter()
+            .map(|f| {
+                let t = cursor;
+                cursor += u64::from(f.get_duration());
+                t
+            })
+            .collect()
+    }
+
     pub fn insert_frame<T: AsRef<Path>>(&mut self, frame: T, index: usize) -> Result<(), Error> {
         // TODO validate that frame exists in sheet!
         if index > self.timeline.len() {

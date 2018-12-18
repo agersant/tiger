@@ -510,7 +510,7 @@ impl State {
                 .begin_timeline_scrub(),
             Command::UpdateScrub(t) => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_timeline_scrub(*t),
+                .update_timeline_scrub(*t)?,
             Command::EndScrub => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_timeline_scrub(),
