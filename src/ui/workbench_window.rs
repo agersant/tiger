@@ -8,12 +8,18 @@ use crate::state::{self, Document, ResizeAxis, State};
 use crate::streamer::TextureCache;
 use crate::ui::Rect;
 
-fn screen_to_workbench(screen_coords: (f32, f32), document: &Document, rect: &Rect) -> (f32, f32) {
+fn screen_to_workbench<'a>(
+    ui: &Ui<'a>,
+    screen_coords: (f32, f32),
+    document: &Document,
+) -> (f32, f32) {
+    let window_position = ui.get_window_pos();
+    let window_size = ui.get_window_size();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     (
-        (screen_coords.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
-        (screen_coords.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
+        (screen_coords.0 - (offset.0 + window_position.0 + window_size.0 / 2.0)) / zoom,
+        (screen_coords.1 - (offset.1 + window_position.1 + window_size.1 / 2.0)) / zoom,
     )
 }
 
@@ -57,22 +63,22 @@ fn draw_resize_handle<'a>(
 
 fn draw_hitbox_controls<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
     document: &Document,
     commands: &mut CommandBuffer,
     hitbox: &Hitbox,
     is_scaling: &mut bool,
     is_dragging: &mut bool,
 ) {
+    let space = ui.get_window_size();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-    let mouse_position_in_workbench = screen_to_workbench(ui.imgui().mouse_pos(), document, rect);
+    let mouse_position_in_workbench = screen_to_workbench(ui, ui.imgui().mouse_pos(), document);
 
     let rectangle = hitbox.get_rectangle();
-    let cursor_x = offset.0 + rect.size.0 / 2.0 + zoom * rectangle.top_left.0 as f32;
-    let cursor_y = offset.1 + rect.size.1 / 2.0 + zoom * rectangle.top_left.1 as f32;
+    let cursor_x = offset.0 + space.0 / 2.0 + zoom * rectangle.top_left.0 as f32;
+    let cursor_y = offset.1 + space.1 / 2.0 + zoom * rectangle.top_left.1 as f32;
 
     ui.set_cursor_pos((cursor_x, cursor_y));
     let top_left = ui.get_cursor_screen_pos();
@@ -245,121 +251,111 @@ fn draw_hitbox_controls<'a>(
     }
 }
 
-fn draw_hitbox<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, hitbox: &Hitbox, offset: (i32, i32)) {
-    if let (Ok(zoom), Ok(workbench_offset)) = (
-        state.get_workbench_zoom_factor(),
-        state.get_workbench_offset(),
-    ) {
-        let rectangle = hitbox.get_rectangle();
-        let cursor_x = workbench_offset.0
-            + (rect.size.0 / 2.0).floor()
-            + zoom * rectangle.top_left.0 as f32
-            + zoom * offset.0 as f32;
-        let cursor_y = workbench_offset.1
-            + (rect.size.1 / 2.0).floor()
-            + zoom * rectangle.top_left.1 as f32
-            + zoom * offset.1 as f32;
-        ui.set_cursor_pos((cursor_x, cursor_y));
+fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: (i32, i32)) {
+    let zoom = document.get_workbench_zoom_factor();
+    let workbench_offset = document.get_workbench_offset();
+    let space = ui.get_window_size();
+    let rectangle = hitbox.get_rectangle();
+    let cursor_x = workbench_offset.0
+        + (space.0 / 2.0).floor()
+        + zoom * rectangle.top_left.0 as f32
+        + zoom * offset.0 as f32;
+    let cursor_y = workbench_offset.1
+        + (space.1 / 2.0).floor()
+        + zoom * rectangle.top_left.1 as f32
+        + zoom * offset.1 as f32;
+    ui.set_cursor_pos((cursor_x, cursor_y));
 
-        let top_left = ui.get_cursor_screen_pos();
-        let bottom_right = (
-            top_left.0 + zoom * rectangle.size.0 as f32,
-            top_left.1 + zoom * rectangle.size.1 as f32,
-        );
-        let draw_list = ui.get_window_draw_list();
-        let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
-        draw_list
-            .add_rect(top_left, bottom_right, outline_color)
-            .build();
-    }
+    let top_left = ui.get_cursor_screen_pos();
+    let bottom_right = (
+        top_left.0 + zoom * rectangle.size.0 as f32,
+        top_left.1 + zoom * rectangle.size.1 as f32,
+    );
+    let draw_list = ui.get_window_draw_list();
+    let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
+    draw_list
+        .add_rect(top_left, bottom_right, outline_color)
+        .build();
 }
 
 fn draw_frame<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
-    state: &State,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
     document: &Document,
     frame: &Frame,
 ) {
+    let zoom = document.get_workbench_zoom_factor();
+    let offset = document.get_workbench_offset();
+    let window_position = ui.get_window_pos();
+    let space = ui.get_window_size();
     if let Some(texture) = texture_cache.get(&frame.get_source()) {
-        if let (Ok(zoom), Ok(offset)) = (
-            state.get_workbench_zoom_factor(),
-            state.get_workbench_offset(),
-        ) {
-            {
-                let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-                let cursor_x = offset.0 + (rect.size.0 / 2.0).floor()
-                    - zoom * (draw_size.0 / zoom / 2.0).floor();
-                let cursor_y = offset.1 + (rect.size.1 / 2.0).floor()
-                    - zoom * (draw_size.1 / zoom / 2.0).floor();
-                ui.set_cursor_pos((cursor_x, cursor_y));
-                ui.image(texture.id, draw_size).build();
-            }
+        {
+            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+            let cursor_x =
+                offset.0 + (space.0 / 2.0).floor() - zoom * (draw_size.0 / zoom / 2.0).floor();
+            let cursor_y =
+                offset.1 + (space.1 / 2.0).floor() - zoom * (draw_size.1 / zoom / 2.0).floor();
+            ui.set_cursor_pos((cursor_x, cursor_y));
+            ui.image(texture.id, draw_size).build();
+        }
 
-            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-            let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
-            let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
+        let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+        let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
+        let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
 
-            let mouse_pos = ui.imgui().mouse_pos();
-            let mouse_position_in_workbench = (
-                (mouse_pos.0 - (offset.0 + rect.position.0 + rect.size.0 / 2.0)) / zoom,
-                (mouse_pos.1 - (offset.1 + rect.position.1 + rect.size.1 / 2.0)) / zoom,
+        let mouse_pos = ui.imgui().mouse_pos();
+        let mouse_position_in_workbench = (
+            (mouse_pos.0 - (offset.0 + window_position.0 + space.0 / 2.0)) / zoom,
+            (mouse_pos.1 - (offset.1 + window_position.1 + space.1 / 2.0)) / zoom,
+        );
+
+        for hitbox in frame.hitboxes_iter() {
+            draw_hitbox(ui, document, hitbox, (0, 0));
+            draw_hitbox_controls(
+                ui,
+                document,
+                commands,
+                hitbox,
+                &mut is_scaling_hitbox,
+                &mut is_dragging_hitbox,
             );
+        }
 
-            for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, rect, state, hitbox, (0, 0));
-                draw_hitbox_controls(
-                    ui,
-                    rect,
-                    document,
-                    commands,
-                    hitbox,
-                    &mut is_scaling_hitbox,
-                    &mut is_dragging_hitbox,
-                );
-            }
-
-            if !is_scaling_hitbox
-                && !is_dragging_hitbox
-                && ui.is_window_hovered()
-                && is_mouse_down
-                && !is_mouse_dragging
-            {
-                commands.create_hitbox(mouse_position_in_workbench);
-            }
+        if !is_scaling_hitbox
+            && !is_dragging_hitbox
+            && ui.is_window_hovered()
+            && is_mouse_down
+            && !is_mouse_dragging
+        {
+            commands.create_hitbox(mouse_position_in_workbench);
         }
     }
 }
 
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
-    state: &State,
     texture_cache: &TextureCache,
     document: &Document,
     animation_frame: &AnimationFrame,
 ) {
-    if let (Ok(zoom), Ok(offset)) = (
-        state.get_workbench_zoom_factor(),
-        state.get_workbench_offset(),
-    ) {
-        if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-            let frame_offset = animation_frame.get_offset();
-            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-            let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (rect.size.0 / 2.0).floor()
-                - zoom * (draw_size.0 / zoom / 2.0).floor();
-            let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (rect.size.1 / 2.0).floor()
-                - zoom * (draw_size.1 / zoom / 2.0).floor();
-            ui.set_cursor_pos((cursor_x, cursor_y));
-            ui.image(texture.id, draw_size).build();
+    let zoom = document.get_workbench_zoom_factor();
+    let offset = document.get_workbench_offset();
+    if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
+        let space = ui.get_window_size();
+        let frame_offset = animation_frame.get_offset();
+        let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+        let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (space.0 / 2.0).floor()
+            - zoom * (draw_size.0 / zoom / 2.0).floor();
+        let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (space.1 / 2.0).floor()
+            - zoom * (draw_size.1 / zoom / 2.0).floor();
+        ui.set_cursor_pos((cursor_x, cursor_y));
+        ui.image(texture.id, draw_size).build();
 
-            if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
-                for hitbox in frame.hitboxes_iter() {
-                    draw_hitbox(ui, rect, state, hitbox, frame_offset);
-                }
+        if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
+            for hitbox in frame.hitboxes_iter() {
+                draw_hitbox(ui, document, hitbox, frame_offset);
             }
         }
     }
@@ -367,8 +363,6 @@ fn draw_animation_frame<'a>(
 
 fn draw_animation<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
-    state: &State,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
     document: &Document,
@@ -376,7 +370,7 @@ fn draw_animation<'a>(
 ) {
     let now = document.get_timeline_clock();
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        draw_animation_frame(ui, rect, state, texture_cache, document, animation_frame);
+        draw_animation_frame(ui, texture_cache, document, animation_frame);
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
@@ -399,14 +393,7 @@ fn draw_animation<'a>(
                 if *dragged_frame_index != frame_index {
                     if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
-                            draw_animation_frame(
-                                ui,
-                                rect,
-                                state,
-                                texture_cache,
-                                document,
-                                animation_frame,
-                            );
+                            draw_animation_frame(ui, texture_cache, document, animation_frame);
                         });
                     }
                 }
@@ -415,43 +402,104 @@ fn draw_animation<'a>(
     }
 }
 
-fn draw_origin<'a>(ui: &Ui<'a>, state: &State) {
-    if let Ok(offset) = state.get_workbench_offset() {
-        let size = 10.0;
-        let thickness = 1.0;
+fn draw_grid<'a>(ui: &Ui<'a>, state: &State) {
+    let draw_list = ui.get_window_draw_list();
+    let thickness = 0.5; // TODO DPI?
+    let spacing = 16; // TODO DPI?
+    let grain = 4;
 
-        let draw_list = ui.get_window_draw_list();
+    ui.set_cursor_pos((0.0, 0.0));
 
-        let fill_color = [0.0 / 255.0, 200.0 / 255.0, 200.0 / 255.0]; // TODO.style
-        ui.set_cursor_pos((0.0, 0.0));
+    let top_left = ui.get_cursor_screen_pos();
+    let offset = state
+        .get_current_document()
+        .map(Document::get_workbench_offset)
+        .unwrap_or((0.0, 0.0));
+    let space = ui.get_window_size();
 
-        let top_left = ui.get_cursor_screen_pos();
-        let space = ui.get_window_size();
-        let mut center = (
-            top_left.0 + (space.0 / 2.0).floor(),
-            top_left.1 + (space.1 / 2.0).floor(),
-        );
-        center.0 += offset.0;
-        center.1 += offset.1;
+    let line_color_main = [1.0, 1.0, 1.0, 0.02]; // TODO.style
+    let line_color_dim = [1.0, 1.0, 1.0, 0.004]; // TODO.style
+
+    let origin = (
+        top_left.0 + (space.0 / 2.0).floor() + offset.0,
+        top_left.1 + (space.1 / 2.0).floor() + offset.1,
+    );
+    let grid_start = (
+        origin.0 - spacing as f32 * ((origin.0 - top_left.0) / spacing as f32).floor(),
+        origin.1 - spacing as f32 * ((origin.1 - top_left.1) / spacing as f32).floor(),
+    );
+
+    let num_lines = (space.0 as i32 / spacing + 1, space.1 as i32 / spacing + 1);
+
+    for n in 0..num_lines.0 {
+        let x = grid_start.0 + n as f32 * spacing as f32;
+        let color = if (x - origin.0) as i32 % (grain * spacing) == 0 {
+            line_color_main
+        } else {
+            line_color_dim
+        };
 
         draw_list.add_rect_filled_multicolor(
-            (center.0 - thickness, center.1 - size),
-            (center.0 + thickness, center.1 + size),
-            fill_color,
-            fill_color,
-            fill_color,
-            fill_color,
-        );
-
-        draw_list.add_rect_filled_multicolor(
-            (center.0 - size, center.1 - thickness),
-            (center.0 + size, center.1 + thickness),
-            fill_color,
-            fill_color,
-            fill_color,
-            fill_color,
+            (x as f32 - thickness, top_left.1),
+            (x as f32 + thickness, top_left.1 + space.1),
+            color,
+            color,
+            color,
+            color,
         );
     }
+
+    for n in 0..num_lines.1 {
+        let y = grid_start.1 + n as f32 * spacing as f32;
+        let color = if (y - origin.1) as i32 % (grain * spacing) == 0 {
+            line_color_main
+        } else {
+            line_color_dim
+        };
+        draw_list.add_rect_filled_multicolor(
+            (top_left.0, y as f32 - thickness),
+            (top_left.0 + space.0, y as f32 + thickness),
+            color,
+            color,
+            color,
+            color,
+        );
+    }
+}
+
+fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
+    let offset = document.get_workbench_offset();
+    let size = 10.0; // TODO DPI?
+    let thickness = 1.0; // TODO DPI?
+
+    let draw_list = ui.get_window_draw_list();
+
+    let fill_color = [0.0 / 255.0, 200.0 / 255.0, 200.0 / 255.0]; // TODO.style
+    ui.set_cursor_pos((0.0, 0.0));
+
+    let top_left = ui.get_cursor_screen_pos();
+    let space = ui.get_window_size();
+    let center = (
+        top_left.0 + offset.0 + (space.0 / 2.0).floor(),
+        top_left.1 + offset.1 + (space.1 / 2.0).floor(),
+    );
+    draw_list.add_rect_filled_multicolor(
+        (center.0 - thickness, center.1 - size),
+        (center.0 + thickness, center.1 + size),
+        fill_color,
+        fill_color,
+        fill_color,
+        fill_color,
+    );
+
+    draw_list.add_rect_filled_multicolor(
+        (center.0 - size, center.1 - thickness),
+        (center.0 + size, center.1 + thickness),
+        fill_color,
+        fill_color,
+        fill_color,
+        fill_color,
+    );
 }
 
 pub fn draw<'a>(
@@ -474,35 +522,19 @@ pub fn draw<'a>(
             .scroll_bar(false)
             .no_bring_to_front_on_focus(true)
             .build(|| {
-                if let Some(document) = state.get_current_document() {
-                    // TODO draw grid
+                draw_grid(ui, state);
 
+                if let Some(document) = state.get_current_document() {
                     match document.get_workbench_item() {
                         Some(state::WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
-                                draw_frame(
-                                    ui,
-                                    rect,
-                                    state,
-                                    commands,
-                                    texture_cache,
-                                    document,
-                                    frame,
-                                );
+                                draw_frame(ui, commands, texture_cache, document, frame);
                             }
                         }
                         Some(state::WorkbenchItem::Animation(name)) => {
                             if let Some(animation) = document.get_sheet().get_animation(name) {
-                                draw_animation(
-                                    ui,
-                                    rect,
-                                    state,
-                                    commands,
-                                    texture_cache,
-                                    document,
-                                    animation,
-                                );
-                                draw_origin(ui, state);
+                                draw_animation(ui, commands, texture_cache, document, animation);
+                                draw_origin(ui, document);
                             }
                         }
                         None => (),

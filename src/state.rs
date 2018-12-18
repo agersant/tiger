@@ -350,25 +350,11 @@ impl State {
         Ok(())
     }
 
-    pub fn get_workbench_zoom_factor(&self) -> Result<f32, Error> {
-        let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
-        Ok(document.get_workbench_zoom_factor())
-    }
-
     pub fn get_timeline_zoom_factor(&self) -> Result<f32, Error> {
         let document = self
             .get_current_document()
             .ok_or(StateError::NoDocumentOpen)?;
         Ok(document.get_timeline_zoom_factor())
-    }
-
-    pub fn get_workbench_offset(&self) -> Result<(f32, f32), Error> {
-        let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
-        Ok(document.get_workbench_offset())
     }
 
     pub fn documents_iter(&self) -> std::slice::Iter<'_, Document> {

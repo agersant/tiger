@@ -35,9 +35,9 @@
 - [x] Begin editing animation after creating it
 - [x] Select hitbox after creating it
 - [ ] Duplicate animation / animation frame (within same sheet)
-- [ ] Grid
+- [x] Grid
 - [ ] Drag and drop frames to workbench
-- [ ] Grid snapping
+- [ ] Grid snapping?
 - [ ] Content of selection window when selecting animation frame
 - [ ] Content of selection window when selecting hitbox
 - [x] In selection window, keep origin centered to preview turnarounds
