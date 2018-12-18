@@ -43,7 +43,7 @@ pub enum Command {
     BeginAnimationFrameDrag(usize),
     EndAnimationFrameDrag,
     BeginAnimationFrameOffsetDrag(usize, (f32, f32)),
-    UpdateAnimationFrameOffsetDrag((f32, f32)),
+    UpdateAnimationFrameOffsetDrag((f32, f32), bool),
     EndAnimationFrameOffsetDrag,
     WorkbenchZoomIn,
     WorkbenchZoomOut,
@@ -54,7 +54,7 @@ pub enum Command {
     UpdateHitboxScale((f32, f32)),
     EndHitboxScale,
     BeginHitboxDrag(String, (f32, f32)),
-    UpdateHitboxDrag((f32, f32)),
+    UpdateHitboxDrag((f32, f32), bool),
     EndHitboxDrag,
     TogglePlayback,
     SnapToPreviousFrame,
@@ -282,9 +282,15 @@ impl CommandBuffer {
         ));
     }
 
-    pub fn update_animation_frame_offset_drag(&mut self, mouse_position: (f32, f32)) {
-        self.queue
-            .push(Command::UpdateAnimationFrameOffsetDrag(mouse_position));
+    pub fn update_animation_frame_offset_drag(
+        &mut self,
+        mouse_position: (f32, f32),
+        both_axis: bool,
+    ) {
+        self.queue.push(Command::UpdateAnimationFrameOffsetDrag(
+            mouse_position,
+            both_axis,
+        ));
     }
 
     pub fn end_animation_frame_offset_drag(&mut self) {
@@ -339,8 +345,9 @@ impl CommandBuffer {
         ));
     }
 
-    pub fn update_hitbox_drag(&mut self, mouse_position: (f32, f32)) {
-        self.queue.push(Command::UpdateHitboxDrag(mouse_position));
+    pub fn update_hitbox_drag(&mut self, mouse_position: (f32, f32), both_axis: bool) {
+        self.queue
+            .push(Command::UpdateHitboxDrag(mouse_position, both_axis));
     }
 
     pub fn end_hitbox_drag(&mut self) {

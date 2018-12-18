@@ -447,9 +447,9 @@ impl State {
             Command::BeginAnimationFrameOffsetDrag(a, m) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_offset_drag(*a, *m)?,
-            Command::UpdateAnimationFrameOffsetDrag(o) => document
+            Command::UpdateAnimationFrameOffsetDrag(o, b) => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_animation_frame_offset_drag(*o)?,
+                .update_animation_frame_offset_drag(*o, *b)?,
             Command::EndAnimationFrameOffsetDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_offset_drag(),
@@ -478,9 +478,9 @@ impl State {
             Command::BeginHitboxDrag(a, m) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_drag(&a, *m)?,
-            Command::UpdateHitboxDrag(o) => document
+            Command::UpdateHitboxDrag(o, b) => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_hitbox_drag(*o)?,
+                .update_hitbox_drag(*o, *b)?,
             Command::EndHitboxDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_hitbox_drag(),

@@ -863,7 +863,11 @@ impl Document {
         Ok(())
     }
 
-    pub fn update_hitbox_drag(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+    pub fn update_hitbox_drag(
+        &mut self,
+        mouse_position: (f32, f32),
+        both_axis: bool,
+    ) -> Result<(), Error> {
         let zoom = self.get_workbench_zoom_factor();
 
         let frame_path = match self.get_workbench_item() {
@@ -880,9 +884,22 @@ impl Document {
 
         let old_offset = self.workbench_hitbox_drag_initial_offset;
         let old_mouse_position = self.workbench_hitbox_drag_initial_mouse_position;
+        let mut mouse_delta = (
+            mouse_position.0 - old_mouse_position.0,
+            mouse_position.1 - old_mouse_position.1,
+        );
+
+        if !both_axis {
+            if mouse_delta.0.abs() > mouse_delta.1.abs() {
+                mouse_delta.1 = 0.0;
+            } else {
+                mouse_delta.0 = 0.0;
+            }
+        }
+
         let new_offset = (
-            (old_offset.0 as f32 + (mouse_position.0 - old_mouse_position.0) / zoom).floor() as i32,
-            (old_offset.1 as f32 + (mouse_position.1 - old_mouse_position.1) / zoom).floor() as i32,
+            (old_offset.0 as f32 + mouse_delta.0 / zoom).floor() as i32,
+            (old_offset.1 as f32 + mouse_delta.1 / zoom).floor() as i32,
         );
 
         let hitbox = self
@@ -1072,6 +1089,7 @@ impl Document {
     pub fn update_animation_frame_offset_drag(
         &mut self,
         mouse_position: (f32, f32),
+        both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.get_workbench_zoom_factor();
         let animation_name = match &self.workbench_item {
@@ -1086,9 +1104,20 @@ impl Document {
 
         let old_offset = self.workbench_animation_frame_drag_initial_offset;
         let old_mouse_position = self.workbench_animation_frame_drag_initial_mouse_position;
+        let mut mouse_delta = (
+            mouse_position.0 - old_mouse_position.0,
+            mouse_position.1 - old_mouse_position.1,
+        );
+        if !both_axis {
+            if mouse_delta.0.abs() > mouse_delta.1.abs() {
+                mouse_delta.1 = 0.0;
+            } else {
+                mouse_delta.0 = 0.0;
+            }
+        }
         let new_offset = (
-            (old_offset.0 as f32 + (mouse_position.0 - old_mouse_position.0) / zoom).floor() as i32,
-            (old_offset.1 as f32 + (mouse_position.1 - old_mouse_position.1) / zoom).floor() as i32,
+            (old_offset.0 as f32 + mouse_delta.0 / zoom).floor() as i32,
+            (old_offset.1 as f32 + mouse_delta.1 / zoom).floor() as i32,
         );
 
         let animation_frame = self

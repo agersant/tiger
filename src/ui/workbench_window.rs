@@ -74,6 +74,7 @@ fn draw_hitbox_controls<'a>(
     let offset = document.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+    let is_shift_down = ui.imgui().key_shift();
     let mouse_position_in_workbench = screen_to_workbench(ui, ui.imgui().mouse_pos(), document);
 
     let rectangle = hitbox.get_rectangle();
@@ -102,7 +103,7 @@ fn draw_hitbox_controls<'a>(
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
                     let mouse_pos = ui.imgui().mouse_pos();
-                    commands.update_hitbox_drag(mouse_pos);
+                    commands.update_hitbox_drag(mouse_pos, !is_shift_down);
                 }
             }
             _ => (),
@@ -374,6 +375,8 @@ fn draw_animation<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+        let is_shift_down = ui.imgui().key_shift();
+
         match document.get_workbench_animation_frame_being_dragged() {
             None => {
                 if ui.is_item_hovered() {
@@ -388,7 +391,7 @@ fn draw_animation<'a>(
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
                     let mouse_pos = ui.imgui().mouse_pos();
-                    commands.update_animation_frame_offset_drag(mouse_pos);
+                    commands.update_animation_frame_offset_drag(mouse_pos, !is_shift_down);
                 }
                 if *dragged_frame_index != frame_index {
                     if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
