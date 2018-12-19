@@ -53,6 +53,7 @@
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows
+- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders )
 
 ## Tiger 0.3
 - [ ] Error dialogs
@@ -60,6 +61,7 @@
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Multiple selections
 - [ ] Prettier UI
+- [ ] Better rename UX
 - [x] Jump to next/previous frame
 - [ ] Export perf fixes
 - [ ] Handle missing frame files (warning + offer to relocate)
