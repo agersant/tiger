@@ -89,6 +89,7 @@
 
 ## Post 1.0
 - [ ] Tiger CLI
+- [ ] Projects
 - [ ] Sheet splitter tool
 - [ ] Anchor points (like hitbox but point)
 - [ ] Place arbitrary markers ("events") on timeline
