@@ -507,15 +507,15 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
 
 pub fn draw<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
+    rect: &Rect<f32>,
     state: &State,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Workbench"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
+            .size(rect.size.to_tuple(), ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .title_bar(false)

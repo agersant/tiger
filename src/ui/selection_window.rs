@@ -88,11 +88,11 @@ fn draw_animation_frame<'a>(
         }
     }
 }
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &TextureCache) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
+            .size(rect.size.to_tuple(), ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .movable(false)

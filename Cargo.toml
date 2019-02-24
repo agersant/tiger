@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 dunce = "0.1.1"
+euclid = { git = "https://github.com/agersant/euclid" }
 failure = "0.1.3"
 gfx = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
 gfx_core = { git = "https://github.com/gfx-rs/gfx", branch="pre-ll" }
