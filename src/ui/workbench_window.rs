@@ -5,7 +5,7 @@ use std::cmp::{max, min};
 use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
 use crate::state::{self, Document, ResizeAxis, State};
-use crate::streamer::TextureCache;
+use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::Rect;
 
 fn screen_to_workbench<'a>(
@@ -290,47 +290,55 @@ fn draw_frame<'a>(
     let offset = document.get_workbench_offset();
     let window_position = ui.get_window_pos();
     let space = ui.get_window_size();
-    if let Some(texture) = texture_cache.get(&frame.get_source()) {
-        {
-            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-            let cursor_x =
-                offset.0 + (space.0 / 2.0).floor() - zoom * (draw_size.0 / zoom / 2.0).floor();
-            let cursor_y =
-                offset.1 + (space.1 / 2.0).floor() - zoom * (draw_size.1 / zoom / 2.0).floor();
-            ui.set_cursor_pos((cursor_x, cursor_y));
-            ui.image(texture.id, draw_size).build();
-        }
+    match texture_cache.get(&frame.get_source()) {
+        Some(TextureCacheResult::Loaded(texture)) => {
+            {
+                let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+                let cursor_x =
+                    offset.0 + (space.0 / 2.0).floor() - zoom * (draw_size.0 / zoom / 2.0).floor();
+                let cursor_y =
+                    offset.1 + (space.1 / 2.0).floor() - zoom * (draw_size.1 / zoom / 2.0).floor();
+                ui.set_cursor_pos((cursor_x, cursor_y));
+                ui.image(texture.id, draw_size).build();
+            }
 
-        let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
-        let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+            let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
+            let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
 
-        let mouse_pos = ui.imgui().mouse_pos();
-        let mouse_position_in_workbench = (
-            (mouse_pos.0 - (offset.0 + window_position.0 + space.0 / 2.0)) / zoom,
-            (mouse_pos.1 - (offset.1 + window_position.1 + space.1 / 2.0)) / zoom,
-        );
-
-        for hitbox in frame.hitboxes_iter() {
-            draw_hitbox(ui, document, hitbox, (0, 0));
-            draw_hitbox_controls(
-                ui,
-                document,
-                commands,
-                hitbox,
-                &mut is_scaling_hitbox,
-                &mut is_dragging_hitbox,
+            let mouse_pos = ui.imgui().mouse_pos();
+            let mouse_position_in_workbench = (
+                (mouse_pos.0 - (offset.0 + window_position.0 + space.0 / 2.0)) / zoom,
+                (mouse_pos.1 - (offset.1 + window_position.1 + space.1 / 2.0)) / zoom,
             );
-        }
 
-        if !is_scaling_hitbox
-            && !is_dragging_hitbox
-            && ui.is_window_hovered()
-            && is_mouse_down
-            && !is_mouse_dragging
-        {
-            commands.create_hitbox(mouse_position_in_workbench);
+            for hitbox in frame.hitboxes_iter() {
+                draw_hitbox(ui, document, hitbox, (0, 0));
+                draw_hitbox_controls(
+                    ui,
+                    document,
+                    commands,
+                    hitbox,
+                    &mut is_scaling_hitbox,
+                    &mut is_dragging_hitbox,
+                );
+            }
+
+            if !is_scaling_hitbox
+                && !is_dragging_hitbox
+                && ui.is_window_hovered()
+                && is_mouse_down
+                && !is_mouse_dragging
+            {
+                commands.create_hitbox(mouse_position_in_workbench);
+            }
+        }
+        Some(TextureCacheResult::Loading) => {
+            // TODO SPINNER
+        }
+        _ => {
+            // TODO LOG
         }
     }
 }
@@ -343,21 +351,29 @@ fn draw_animation_frame<'a>(
 ) {
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
-    if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-        let space = ui.get_window_size();
-        let frame_offset = animation_frame.get_offset();
-        let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-        let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (space.0 / 2.0).floor()
-            - zoom * (draw_size.0 / zoom / 2.0).floor();
-        let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (space.1 / 2.0).floor()
-            - zoom * (draw_size.1 / zoom / 2.0).floor();
-        ui.set_cursor_pos((cursor_x, cursor_y));
-        ui.image(texture.id, draw_size).build();
+    match texture_cache.get(&animation_frame.get_frame()) {
+        Some(TextureCacheResult::Loaded(texture)) => {
+            let space = ui.get_window_size();
+            let frame_offset = animation_frame.get_offset();
+            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
+            let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (space.0 / 2.0).floor()
+                - zoom * (draw_size.0 / zoom / 2.0).floor();
+            let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (space.1 / 2.0).floor()
+                - zoom * (draw_size.1 / zoom / 2.0).floor();
+            ui.set_cursor_pos((cursor_x, cursor_y));
+            ui.image(texture.id, draw_size).build();
 
-        if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
-            for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, frame_offset);
+            if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
+                for hitbox in frame.hitboxes_iter() {
+                    draw_hitbox(ui, document, hitbox, frame_offset);
+                }
             }
+        }
+        Some(TextureCacheResult::Loading) => {
+            // TODO SPINNER
+        }
+        _ => {
+            // TODO LOG
         }
     }
 }

@@ -2,7 +2,7 @@ use std::cmp::max;
 use std::cmp::min;
 
 use crate::sheet::Animation;
-use crate::streamer::TextureCache;
+use crate::streamer::{TextureCache, TextureCacheResult};
 
 pub struct Fill {
     pub position: (f32, f32),
@@ -87,18 +87,19 @@ pub fn get_bounding_box(
     let mut top = i32::max_value();
     let mut bottom = i32::min_value();
     for frame in animation.frames_iter() {
-        let texture = texture_cache
-            .get(frame.get_frame())
-            .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
-        let offset = frame.get_offset();
-        let frame_left = offset.0 - (texture.size.0 / 2.0).ceil() as i32;
-        let frame_right = offset.0 + (texture.size.0 / 2.0).floor() as i32;
-        let frame_top = offset.1 - (texture.size.1 / 2.0).ceil() as i32;
-        let frame_bottom = offset.1 + (texture.size.1 / 2.0).floor() as i32;
-        left = min(left, frame_left);
-        right = max(right, frame_right);
-        top = min(top, frame_top);
-        bottom = max(bottom, frame_bottom);
+        if let Some(TextureCacheResult::Loaded(texture)) = texture_cache.get(frame.get_frame()) {
+            let offset = frame.get_offset();
+            let frame_left = offset.0 - (texture.size.0 / 2.0).ceil() as i32;
+            let frame_right = offset.0 + (texture.size.0 / 2.0).floor() as i32;
+            let frame_top = offset.1 - (texture.size.1 / 2.0).ceil() as i32;
+            let frame_bottom = offset.1 + (texture.size.1 / 2.0).floor() as i32;
+            left = min(left, frame_left);
+            right = max(right, frame_right);
+            top = min(top, frame_top);
+            bottom = max(bottom, frame_bottom);
+        } else {
+            return Err(BoundingBoxError::FrameDataNotLoaded);
+        }
     }
     Ok(BoundingBox {
         left,

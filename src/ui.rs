@@ -8,7 +8,7 @@ use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
 use crate::state::{RenameItem, State};
-use crate::streamer::TextureCache;
+use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::utils;
 
 mod content_window;
@@ -292,13 +292,19 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
         if let Some(path) = document.get_content_frame_being_dragged() {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
                 ui.tooltip(|| {
-                    if let Some(texture) = texture_cache.get(path) {
-                        let tooltip_size = (128.0, 128.0); // TODO hidpi?
-                        if let Some(fill) = utils::fill(tooltip_size, texture.size) {
-                            ui.image(texture.id, fill.size).build();
+                    match texture_cache.get(path) {
+                        Some(TextureCacheResult::Loaded(texture)) => {
+                            let tooltip_size = (128.0, 128.0); // TODO hidpi?
+                            if let Some(fill) = utils::fill(tooltip_size, texture.size) {
+                                ui.image(texture.id, fill.size).build();
+                            }
                         }
-                    } else {
-                        // TODO spinner
+                        Some(TextureCacheResult::Loading) => {
+                            // TODO spinner
+                        }
+                        _ => {
+                            // TODO log
+                        }
                     }
                 });
             }

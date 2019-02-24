@@ -15,7 +15,9 @@ use crate::state::State;
 const MAX_TEXTURES_LOAD_TIME_PER_TICK: u128 = 250; // ms
 
 pub struct StreamerPayload {
+    queued_textures: HashSet<PathBuf>,
     new_textures: HashMap<PathBuf, image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
+    errored_textures: HashSet<PathBuf>,
     obsolete_textures: HashSet<PathBuf>,
 }
 
@@ -28,6 +30,7 @@ pub fn load_from_disk(
     texture_cache: Arc<Mutex<TextureCache>>,
     sender: &Sender<StreamerPayload>,
 ) {
+    // List textures we want loaded
     let mut desired_textures = HashSet::new();
     for document in state.documents_iter() {
         for frame in document.get_sheet().frames_iter() {
@@ -35,21 +38,30 @@ pub fn load_from_disk(
         }
     }
 
-    let cached_textures;
+    // List textures we already have (or have tried to load)
+    let cache_content;
     {
         let texture_cache = texture_cache.lock().unwrap();
-        cached_textures = texture_cache.dump();
+        cache_content = texture_cache.dump();
     }
-    let mut obsolete_textures = cached_textures.clone();
+    let mut obsolete_textures: HashSet<PathBuf> =
+        cache_content.keys().map(|k| k.to_owned()).collect();
 
     let mut new_textures = HashMap::new();
+    let mut errored_textures = HashSet::new();
+    let mut queued_textures = HashSet::new();
     let mut io_time = std::time::Duration::new(0, 0);
 
     for path in desired_textures.iter() {
         obsolete_textures.remove(path);
-        if cached_textures.contains(path) {
-            continue;
+
+        match cache_content.get(path) {
+            Some(TextureCacheEntry::Loaded(_)) | Some(TextureCacheEntry::Missing) => {
+                continue;
+            }
+            _ => (),
         }
+
         if io_time.as_millis() < MAX_TEXTURES_LOAD_TIME_PER_TICK {
             let start = std::time::Instant::now();
             if let Ok(file) = File::open(&path) {
@@ -57,20 +69,27 @@ pub fn load_from_disk(
                     new_textures.insert(path.clone(), image.to_rgba());
                 };
             } else {
-                // TODO log and mark as bad image in cache
-                continue;
+                errored_textures.insert(path.clone());
             }
             io_time += std::time::Instant::now() - start;
+        } else {
+            queued_textures.insert(path.clone());
         }
     }
 
-    if new_textures.is_empty() && obsolete_textures.is_empty() {
+    if queued_textures.is_empty()
+        && new_textures.is_empty()
+        && errored_textures.is_empty()
+        && obsolete_textures.is_empty()
+    {
         return;
     }
 
     if sender
         .send(StreamerPayload {
+            queued_textures,
             new_textures,
+            errored_textures,
             obsolete_textures,
         })
         .is_err()
@@ -98,13 +117,19 @@ pub fn upload(
                 &[&texture_data],
             ) {
                 let id = renderer.textures().insert((texture, sampler));
-                texture_cache.insert(path, id, (width, height));
+                texture_cache.insert_entry(path, id, (width, height));
             } else {
-                // TODO log and mark as bad image in cache
+                texture_cache.insert_error(path);
             }
         }
+        for path in payload.queued_textures {
+            texture_cache.insert_pending(path);
+        }
+        for path in payload.errored_textures {
+            texture_cache.insert_error(path);
+        }
         for path in payload.obsolete_textures {
-            if let Some(texture) = texture_cache.get(&path) {
+            if let Some(TextureCacheResult::Loaded(texture)) = texture_cache.get(&path) {
                 renderer.textures().remove(texture.id);
                 texture_cache.remove(path);
             }
@@ -113,22 +138,41 @@ pub fn upload(
 }
 
 #[derive(Clone)]
-struct TextureCacheEntry {
+struct TextureCacheImage {
     pub id: ImTexture,
     pub size: (u32, u32),
     // TODO dirty flag and file watches
 }
 
-pub struct TextureCacheResult {
+#[derive(Clone)]
+enum TextureCacheEntry {
+    Loading,
+    Loaded(TextureCacheImage),
+    Missing,
+}
+
+#[derive(Clone)]
+pub struct TextureCacheResultImage {
     pub id: ImTexture,
     pub size: (f32, f32),
 }
 
+#[derive(Clone)]
+pub enum TextureCacheResult {
+    Loading,
+    Loaded(TextureCacheResultImage),
+    Missing,
+}
+
 impl From<&TextureCacheEntry> for TextureCacheResult {
     fn from(entry: &TextureCacheEntry) -> TextureCacheResult {
-        TextureCacheResult {
-            id: entry.id,
-            size: (entry.size.0 as f32, entry.size.1 as f32),
+        match entry {
+            TextureCacheEntry::Loading => TextureCacheResult::Loading,
+            TextureCacheEntry::Missing => TextureCacheResult::Missing,
+            TextureCacheEntry::Loaded(t) => TextureCacheResult::Loaded(TextureCacheResultImage {
+                id: t.id,
+                size: (t.size.0 as f32, t.size.1 as f32),
+            }),
         }
     }
 }
@@ -144,17 +188,31 @@ impl TextureCache {
         }
     }
 
-    fn dump(&self) -> HashSet<PathBuf> {
-        self.cache.keys().map(|k| k.to_owned()).collect()
+    fn dump(&self) -> HashMap<PathBuf, TextureCacheEntry> {
+        self.cache.clone()
     }
 
     pub fn get<T: AsRef<Path>>(&self, path: T) -> Option<TextureCacheResult> {
         self.cache.get(path.as_ref()).map(|e| e.into())
     }
 
-    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: (u32, u32)) {
+    pub fn insert_entry<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: (u32, u32)) {
+        self.cache.insert(
+            path.as_ref().to_owned(),
+            TextureCacheEntry::Loaded(TextureCacheImage { id, size }),
+        );
+    }
+
+    pub fn insert_error<T: AsRef<Path>>(&mut self, path: T) {
         self.cache
-            .insert(path.as_ref().to_owned(), TextureCacheEntry { id, size });
+            .insert(path.as_ref().to_owned(), TextureCacheEntry::Missing);
+    }
+
+    pub fn insert_pending<T: AsRef<Path>>(&mut self, path: T) {
+        if self.cache.get(path.as_ref()).is_none() {
+            self.cache
+                .insert(path.as_ref().to_owned(), TextureCacheEntry::Loading);
+        }
     }
 
     pub fn remove<T: AsRef<Path>>(&mut self, path: T) {
