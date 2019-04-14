@@ -34,7 +34,9 @@
 - [x] Keyboard shortcuts for list navigation
 - [ ] Loading spinners
 - [x] Begin editing animation after creating it
-- [x] Select hitbox after creating it
+- [x] Automatically select hitbox after creating it
+- [ ] Select hitbox when clicking it
+- [ ] When creating an animation, automatically select it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
 - [ ] Drag and drop frames to workbench
@@ -53,7 +55,7 @@
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows
-- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders )
+- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders)
 
 ## Tiger 0.3
 - [ ] Error dialogs
@@ -74,7 +76,7 @@
 - [ ] Hitbox colors
 - [ ] Default paths for NFD dialogs
 - [ ] Draw hitbox names in workbench
-- [ ] Onion skin
+- [ ] Onion skin?
 - [ ] Workbench tabs?
 - [ ] Editing hitboxes while animation is in workbench?
 
@@ -91,8 +93,9 @@
 
 ## Post 1.0
 - [ ] Tiger CLI
-- [ ] Projects
+- [ ] Open Recent
 - [ ] Sheet splitter tool
 - [ ] Anchor points (like hitbox but point)
 - [ ] Place arbitrary markers ("events") on timeline
 - [ ] Copy/paste animation or animation frame (between sheets)
+- [ ] Projects
