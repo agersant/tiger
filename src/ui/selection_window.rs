@@ -1,3 +1,4 @@
+use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
@@ -12,13 +13,12 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
     if let Some(name) = frame.get_source().file_name() {
         ui.text(&ImString::new(name.to_string_lossy()));
         if let Some(texture) = texture_cache.get(frame.get_source()) {
-            let space = ui.get_content_region_avail();
-            if let Some(fill) = utils::fill(space, texture.size) {
-                let cursor_pos = ui.get_cursor_pos();
-                let x = cursor_pos.0 + fill.position.0;
-                let y = cursor_pos.1 + fill.position.1;
-                ui.set_cursor_pos((x, y));
-                ui.image(texture.id, fill.size).build();
+            let space = ui.get_content_region_avail().into();
+            if let Some(fill) = utils::fill(space, texture.size.into()) {
+                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let draw_position = cursor_pos + fill.rect.origin.to_vector();
+                ui.set_cursor_pos(draw_position.to_tuple());
+                ui.image(texture.id, fill.rect.size.to_tuple()).build();
             }
         }
     }
@@ -33,8 +33,8 @@ fn draw_animation<'a>(
     ui.text(&ImString::new(animation.get_name().to_owned()));
     if let Ok(mut bbox) = utils::get_bounding_box(animation, texture_cache) {
         bbox.center_on_origin();
-        let space = ui.get_content_region_avail();
-        let bbox_size = (
+        let space = ui.get_content_region_avail().into();
+        let bbox_size = size2(
             (bbox.right - bbox.left) as f32,
             (bbox.bottom - bbox.top) as f32,
         );
@@ -46,11 +46,12 @@ fn draw_animation<'a>(
 
             let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
             if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
-                let x = cursor_pos.0 + fill.position.0
+                // TODO use operations on point types
+                let x = cursor_pos.0 + fill.rect.origin.x
                     - fill.zoom * bbox.left as f32
                     - fill.zoom * texture.size.0 as f32 / 2.0
                     + fill.zoom * animation_frame.get_offset().0 as f32;
-                let y = cursor_pos.1 + fill.position.1
+                let y = cursor_pos.1 + fill.rect.origin.y
                     - fill.zoom * bbox.top as f32
                     - fill.zoom * texture.size.1 as f32 / 2.0
                     + fill.zoom * animation_frame.get_offset().1 as f32;
@@ -77,13 +78,12 @@ fn draw_animation_frame<'a>(
             animation_frame.get_duration()
         )));
         if let Some(texture) = texture_cache.get(frame) {
-            let space = ui.get_content_region_avail();
-            if let Some(fill) = utils::fill(space, texture.size) {
-                let cursor_pos = ui.get_cursor_pos();
-                let x = cursor_pos.0 + fill.position.0;
-                let y = cursor_pos.1 + fill.position.1;
-                ui.set_cursor_pos((x, y));
-                ui.image(texture.id, fill.size).build();
+            let space = ui.get_content_region_avail().into();
+            if let Some(fill) = utils::fill(space, Size2D::<f32>::from(texture.size)) {
+                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let draw_position = cursor_pos + fill.rect.origin.to_vector();
+                ui.set_cursor_pos(draw_position.to_tuple());
+                ui.image(texture.id, fill.rect.size.to_tuple()).build();
             }
         }
     }

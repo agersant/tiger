@@ -115,7 +115,7 @@ pub fn upload(
 #[derive(Clone)]
 struct TextureCacheEntry {
     pub id: ImTexture,
-    pub size: (u32, u32),
+    pub size: (u32, u32), // TODO Size2D
     // TODO dirty flag and file watches
 }
 

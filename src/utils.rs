@@ -1,3 +1,4 @@
+use euclid::*;
 use std::cmp::max;
 use std::cmp::min;
 
@@ -5,43 +6,41 @@ use crate::sheet::Animation;
 use crate::streamer::TextureCache;
 
 pub struct Fill {
-    pub position: (f32, f32),
-    pub size: (f32, f32),
+    pub rect: Rect<f32>,
     pub zoom: f32,
 }
 
-pub fn fill(space: (f32, f32), content_size: (f32, f32)) -> Option<Fill> {
-    if content_size.0 <= 0.0 || content_size.1 <= 0.0 {
+pub fn fill(space: Size2D<f32>, content_size: Size2D<f32>) -> Option<Fill> {
+    if content_size.is_empty_or_negative() {
         return None;
     }
-    if space.0 <= 0.0 || space.1 <= 0.0 {
+    if space.is_empty_or_negative() {
         return None;
     }
 
-    let aspect_ratio = content_size.0 / content_size.1;
-    let fit_horizontally = (content_size.0 / space.0) >= (content_size.1 / space.1);
+    let aspect_ratio = content_size.width / content_size.height;
+    let fit_horizontally = (content_size.width / space.width) >= (content_size.height / space.height);
 
     let (w, h);
     if fit_horizontally {
-        if space.0 > content_size.0 {
-            w = content_size.0 * (space.0 / content_size.0).floor();
+        if space.width > content_size.width {
+            w = content_size.width * (space.width / content_size.width).floor();
         } else {
-            w = space.0;
+            w = space.width;
         }
         h = w / aspect_ratio;
     } else {
-        if space.1 > content_size.1 {
-            h = content_size.1 * (space.1 / content_size.1).floor();
+        if space.height > content_size.height {
+            h = content_size.height * (space.height / content_size.height).floor();
         } else {
-            h = space.1;
+            h = space.height;
         }
         w = h * aspect_ratio;
     }
 
     Some(Fill {
-        position: ((space.0 - w) / 2.0, (space.1 - h) / 2.0),
-        size: (w, h),
-        zoom: w / content_size.0,
+        rect: rect((space.width - w) / 2.0, (space.height - h) / 2.0, w, h),
+        zoom: w / content_size.width,
     })
 }
 
