@@ -9,10 +9,7 @@ pub struct Fill {
 }
 
 pub fn fill(space: Size2D<f32>, content_size: Size2D<f32>) -> Option<Fill> {
-    if content_size.is_empty_or_negative() {
-        return None;
-    }
-    if space.is_empty_or_negative() {
+    if content_size.is_empty_or_negative() || space.is_empty_or_negative() {
         return None;
     }
 
@@ -64,10 +61,8 @@ impl BoundingBox {
             self.rect.bottom_right(),
             self.rect.bottom_right() * -1,
         ]);
-        let delta_origin = self.rect.origin.clone() * -1;
-        let delta_size = self.rect.size.clone() / -2;
-        self.rect = self.rect.translate(&delta_origin.to_vector());
-        self.rect = self.rect.translate(&delta_size.to_vector());
+        let delta = self.rect.origin * -1 + self.rect.size / -2;
+        self.rect = self.rect.translate(&delta.to_vector());
     }
 }
 
@@ -83,9 +78,8 @@ pub fn get_bounding_box(
         let texture = texture_cache
             .get(frame.get_frame())
             .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
-        let frame_offset = Vector2D::<i32>::from(frame.get_offset());
-        let frame_rectangle =
-            Rect::<i32>::from_size(texture.size.to_i32()).translate(&frame_offset);
+        let frame_offset = frame.get_offset();
+        let frame_rectangle = Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32());
         bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
     }
     Ok(BoundingBox {
@@ -100,19 +94,13 @@ fn test_center_on_origin() {
             rect: rect(-50, -300, 1000, 800),
         };
         b.center_on_origin();
-        assert_eq!(
-            b.rect,
-            rect(-950, -500, 1900, 1000),
-        );
+        assert_eq!(b.rect, rect(-950, -500, 1900, 1000),);
     }
     {
         let mut b = BoundingBox {
             rect: rect(100, 100, 50, 50),
         };
         b.center_on_origin();
-        assert_eq!(
-            b.rect,
-            rect(-150, -150, 300, 300),
-        );
+        assert_eq!(b.rect, rect(-150, -150, 300, 300),);
     }
 }
