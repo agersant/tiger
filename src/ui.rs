@@ -287,7 +287,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
                 ui.tooltip(|| {
                     if let Some(texture) = texture_cache.get(path) {
                         let tooltip_size = size2(128.0, 128.0); // TODO hidpi?
-                        if let Some(fill) = utils::fill(tooltip_size, texture.size.into()) {
+                        if let Some(fill) = utils::fill(tooltip_size, texture.size) {
                             ui.image(texture.id, fill.rect.size.to_tuple()).build();
                         }
                     } else {

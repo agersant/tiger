@@ -14,7 +14,7 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
         ui.text(&ImString::new(name.to_string_lossy()));
         if let Some(texture) = texture_cache.get(frame.get_source()) {
             let space = ui.get_content_region_avail().into();
-            if let Some(fill) = utils::fill(space, texture.size.into()) {
+            if let Some(fill) = utils::fill(space, texture.size) {
                 let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
                 let draw_position = cursor_pos + fill.rect.origin.to_vector();
                 ui.set_cursor_pos(draw_position.to_tuple());
@@ -41,7 +41,7 @@ fn draw_animation<'a>(
             let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
             if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
                 let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
-                let frame_offset = Vector2D::<i32>::from(animation_frame.get_offset()).to_f32();
+                let frame_offset = animation_frame.get_offset().to_f32();
                 let draw_position = cursor_pos
                     + fill.rect.origin.to_vector()
                     + (frame_offset
@@ -72,7 +72,7 @@ fn draw_animation_frame<'a>(
         )));
         if let Some(texture) = texture_cache.get(frame) {
             let space = ui.get_content_region_avail().into();
-            if let Some(fill) = utils::fill(space, Size2D::<f32>::from(texture.size)) {
+            if let Some(fill) = utils::fill(space, texture.size) {
                 let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
                 let draw_position = cursor_pos + fill.rect.origin.to_vector();
                 ui.set_cursor_pos(draw_position.to_tuple());

@@ -76,14 +76,12 @@ fn draw_hitbox_controls<'a>(
         screen_to_workbench(ui, ui.imgui().mouse_pos().into(), document);
 
     let rectangle = hitbox.get_rectangle();
-    let cursor_pos = offset
-        + space.to_vector() / 2.0
-        + Vector2D::<i32>::from(rectangle.top_left).to_f32() * zoom;
+    let cursor_pos =
+        offset + space.to_vector() / 2.0 + rectangle.origin.to_f32().to_vector() * zoom;
 
     ui.set_cursor_pos(cursor_pos.to_tuple());
     let top_left = Point2D::<f32>::from(ui.get_cursor_screen_pos());
-    let bottom_right: Point2D<f32> =
-        top_left + Vector2D::<u32>::from(rectangle.size).to_f32() * zoom;
+    let bottom_right: Point2D<f32> = top_left + rectangle.size.to_f32() * zoom;
 
     if *is_scaling {
         match document.get_workbench_hitbox_being_scaled() {
@@ -106,14 +104,16 @@ fn draw_hitbox_controls<'a>(
             _ => (),
         };
     } else {
-        let resize_handle_size: Size2D<i32> = size2(4.0, 4.0)
-            .max(size2(16.0, 16.0).min(((bottom_right - top_left) / 3.0).ceil().to_size()))
+        let resize_handle_size = ((bottom_right - top_left) / 3.0)
+            .ceil()
+            .to_size()
+            .max(size2(4.0, 4.0))
+            .min(size2(16.0, 16.0))
             .to_i32();
-        let drag_button_size: Size2D<i32> =
-            (bottom_right - top_left - resize_handle_size.to_f32().to_vector())
-                .floor()
-                .to_i32()
-                .to_size();
+        let drag_button_size = (bottom_right - top_left - resize_handle_size.to_f32().to_vector())
+            .floor()
+            .to_i32()
+            .to_size();
         if drag_button_size.width >= 1 && drag_button_size.height >= 1 {
             ui.set_cursor_pos(
                 (cursor_pos + resize_handle_size.to_f32().to_vector() / 2.0).to_tuple(),
@@ -195,10 +195,7 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            point2(
-                cursor_pos.x - resize_handle_size.width as f32 / 2.0,
-                cursor_pos.y - resize_handle_size.height as f32 / 2.0,
-            ),
+            (cursor_pos - resize_handle_size.to_f32().to_vector() / 2.0).to_point(),
             resize_handle_size,
             ResizeAxis::NW,
             mouse_position_in_workbench,
@@ -225,14 +222,10 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            point2(
-                cursor_pos.x
-                    + drag_button_size.width as f32
-                    + resize_handle_size.width as f32 / 2.0,
-                cursor_pos.y
-                    + drag_button_size.height as f32
-                    + resize_handle_size.height as f32 / 2.0,
-            ),
+            (cursor_pos
+                + drag_button_size.to_f32().to_vector()
+                + resize_handle_size.to_f32().to_vector() / 2.0)
+                .to_point(),
             resize_handle_size,
             ResizeAxis::SE,
             mouse_position_in_workbench,
@@ -263,18 +256,15 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: Ve
     let rectangle = hitbox.get_rectangle();
     let cursor_pos = workbench_offset
         + (space / 2.0).floor().to_vector()
-        + (Vector2D::<i32>::from(rectangle.top_left).to_f32() + offset.to_f32()) * zoom;
+        + (rectangle.origin.to_f32().to_vector() + offset.to_f32()) * zoom;
     ui.set_cursor_pos(cursor_pos.to_tuple());
 
-    let top_left = ui.get_cursor_screen_pos();
-    let bottom_right = (
-        top_left.0 + zoom * rectangle.size.0 as f32,
-        top_left.1 + zoom * rectangle.size.1 as f32,
-    );
+    let top_left = Point2D::<f32>::from(ui.get_cursor_screen_pos());
+    let bottom_right = top_left + rectangle.size.to_f32() * zoom;
     let draw_list = ui.get_window_draw_list();
     let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
     draw_list
-        .add_rect(top_left, bottom_right, outline_color)
+        .add_rect(top_left.to_tuple(), bottom_right.to_tuple(), outline_color)
         .build();
 }
 
@@ -336,7 +326,7 @@ fn draw_animation_frame<'a>(
     let offset = document.get_workbench_offset();
     if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
         let space = Size2D::<f32>::from(ui.get_window_size());
-        let frame_offset = Vector2D::<i32>::from(animation_frame.get_offset()).to_f32();
+        let frame_offset = animation_frame.get_offset().to_f32();
         let draw_size = texture.size * zoom;
         let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor().to_vector()
             - ((draw_size / zoom / 2.0).floor() * zoom).to_vector();

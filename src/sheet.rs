@@ -388,9 +388,11 @@ impl Hitbox {
         &self.name
     }
 
-    pub fn get_rectangle(&self) -> &Rectangle {
+    pub fn get_rectangle(&self) -> Rect<i32> {
         match &self.geometry {
-            Shape::Rectangle(r) => &r,
+            Shape::Rectangle(r) => {
+                rect(r.top_left.0, r.top_left.1, r.size.0 as i32, r.size.1 as i32)
+            }
         }
     }
 
