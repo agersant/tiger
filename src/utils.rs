@@ -97,22 +97,22 @@ pub fn get_bounding_box(
 fn test_center_on_origin() {
     {
         let mut b = BoundingBox {
-            rect: Rect::<i32>::new(point2(-50, -300), size2(1000, 800)),
+            rect: rect(-50, -300, 1000, 800),
         };
         b.center_on_origin();
         assert_eq!(
             b.rect,
-            Rect::<i32>::new(point2(-950, -500), size2(1900, 1000))
+            rect(-950, -500, 1900, 1000),
         );
     }
     {
         let mut b = BoundingBox {
-            rect: Rect::<i32>::new(point2(100, 100), size2(50, 50)),
+            rect: rect(100, 100, 50, 50),
         };
         b.center_on_origin();
         assert_eq!(
             b.rect,
-            Rect::<i32>::new(point2(-150, -150), size2(300, 300))
+            rect(-150, -150, 300, 300),
         );
     }
 }
