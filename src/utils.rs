@@ -63,7 +63,11 @@ impl BoundingBox {
             self.rect.origin * -1,
             self.rect.bottom_right(),
             self.rect.bottom_right() * -1,
-        ])
+        ]);
+        let delta_origin = self.rect.origin.clone() * -1;
+        let delta_size = self.rect.size.clone() / -2;
+        self.rect = self.rect.translate(&delta_origin.to_vector());
+        self.rect = self.rect.translate(&delta_size.to_vector());
     }
 }
 
@@ -87,4 +91,28 @@ pub fn get_bounding_box(
     Ok(BoundingBox {
         rect: bbox_rectangle,
     })
+}
+
+#[test]
+fn test_center_on_origin() {
+    {
+        let mut b = BoundingBox {
+            rect: Rect::<i32>::new(point2(-50, -300), size2(1000, 800)),
+        };
+        b.center_on_origin();
+        assert_eq!(
+            b.rect,
+            Rect::<i32>::new(point2(-950, -500), size2(1900, 1000))
+        );
+    }
+    {
+        let mut b = BoundingBox {
+            rect: Rect::<i32>::new(point2(100, 100), size2(50, 50)),
+        };
+        b.center_on_origin();
+        assert_eq!(
+            b.rect,
+            Rect::<i32>::new(point2(-150, -150), size2(300, 300))
+        );
+    }
 }
