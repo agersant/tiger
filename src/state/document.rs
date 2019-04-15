@@ -93,8 +93,8 @@ pub struct Document {
     workbench_hitbox_being_scaled: Option<String>,
     workbench_hitbox_scale_axis: ResizeAxis,
     workbench_hitbox_scale_initial_mouse_position: Point2D<f32>,
-    workbench_hitbox_scale_initial_position: (i32, i32),
-    workbench_hitbox_scale_initial_size: (u32, u32),
+    workbench_hitbox_scale_initial_position: Point2D<i32>,
+    workbench_hitbox_scale_initial_size: Size2D<u32>,
     workbench_animation_frame_being_dragged: Option<usize>,
     workbench_animation_frame_drag_initial_mouse_position: Point2D<f32>,
     workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
@@ -128,8 +128,8 @@ impl Document {
             workbench_hitbox_being_scaled: None,
             workbench_hitbox_scale_axis: ResizeAxis::N,
             workbench_hitbox_scale_initial_mouse_position: Point2D::<f32>::zero(),
-            workbench_hitbox_scale_initial_position: (0, 0),
-            workbench_hitbox_scale_initial_size: (0, 0),
+            workbench_hitbox_scale_initial_position: point2(0, 0),
+            workbench_hitbox_scale_initial_size: size2(0, 0),
             workbench_animation_frame_being_dragged: None,
             workbench_animation_frame_drag_initial_mouse_position: Point2D::<f32>::zero(),
             workbench_animation_frame_drag_initial_offset: vec2(0, 0),
@@ -971,8 +971,8 @@ impl Document {
         self.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
         self.workbench_hitbox_scale_axis = axis;
         self.workbench_hitbox_scale_initial_mouse_position = mouse_position;
-        self.workbench_hitbox_scale_initial_position = position;
-        self.workbench_hitbox_scale_initial_size = size;
+        self.workbench_hitbox_scale_initial_position = position.into();
+        self.workbench_hitbox_scale_initial_size = size.into();
 
         Ok(())
     }
@@ -1006,42 +1006,42 @@ impl Document {
         let new_size = (
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-                    (initial_size.0 as i32 + mouse_delta.x).abs() as u32
+                    (initial_size.width as i32 + mouse_delta.x).abs() as u32
                 }
                 ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-                    (initial_size.0 as i32 - mouse_delta.x).abs() as u32
+                    (initial_size.width as i32 - mouse_delta.x).abs() as u32
                 }
-                _ => initial_size.0,
+                _ => initial_size.width,
             } as u32,
             match axis {
                 ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-                    (initial_size.1 as i32 + mouse_delta.y).abs() as u32
+                    (initial_size.height as i32 + mouse_delta.y).abs() as u32
                 }
                 ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-                    (initial_size.1 as i32 - mouse_delta.y).abs() as u32
+                    (initial_size.height as i32 - mouse_delta.y).abs() as u32
                 }
-                _ => initial_size.1,
+                _ => initial_size.height,
             } as u32,
         );
 
         let new_position = (
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-                    initial_position.0 + min(0, initial_size.0 as i32 + mouse_delta.x)
+                    initial_position.x + min(0, initial_size.width as i32 + mouse_delta.x)
                 }
                 ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-                    initial_position.0 + min(mouse_delta.x, initial_size.0 as i32)
+                    initial_position.x + min(mouse_delta.x, initial_size.width as i32)
                 }
-                _ => initial_position.0,
+                _ => initial_position.x,
             } as i32,
             match axis {
                 ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-                    initial_position.1 + min(0, initial_size.1 as i32 + mouse_delta.y)
+                    initial_position.y + min(0, initial_size.height as i32 + mouse_delta.y)
                 }
                 ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-                    initial_position.1 + min(mouse_delta.y, initial_size.1 as i32)
+                    initial_position.y + min(mouse_delta.y, initial_size.height as i32)
                 }
-                _ => initial_position.1,
+                _ => initial_position.y,
             } as i32,
         );
 
