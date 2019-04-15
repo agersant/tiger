@@ -1,3 +1,4 @@
+use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
 use std::cmp::{max, min};
@@ -287,18 +288,15 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
-    let window_position = ui.get_window_pos();
-    let space = ui.get_window_size();
+    let offset = Point2D::<f32>::from(document.get_workbench_offset());
+    let window_position = Point2D::<f32>::from(ui.get_window_pos());
+    let space = Size2D::<f32>::from(ui.get_window_size());
     if let Some(texture) = texture_cache.get(&frame.get_source()) {
         {
-            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-            let cursor_x =
-                offset.0 + (space.0 / 2.0).floor() - zoom * (draw_size.0 / zoom / 2.0).floor();
-            let cursor_y =
-                offset.1 + (space.1 / 2.0).floor() - zoom * (draw_size.1 / zoom / 2.0).floor();
-            ui.set_cursor_pos((cursor_x, cursor_y));
-            ui.image(texture.id, draw_size).build();
+            let draw_size = texture.size * zoom;
+            let cursor_pos = (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
+            ui.set_cursor_pos(cursor_pos.to_tuple());
+            ui.image(texture.id, draw_size.to_tuple()).build();
         }
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
@@ -306,12 +304,8 @@ fn draw_frame<'a>(
         let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
         let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
 
-        let mouse_pos = ui.imgui().mouse_pos();
-        let mouse_position_in_workbench = (
-            (mouse_pos.0 - (offset.0 + window_position.0 + space.0 / 2.0)) / zoom,
-            (mouse_pos.1 - (offset.1 + window_position.1 + space.1 / 2.0)) / zoom,
-        );
-
+        let mouse_pos = Point2D::<f32>::from(ui.imgui().mouse_pos());
+        let mouse_position_in_workbench = (mouse_pos - (window_position + offset.to_vector() + space / 2.0)) / zoom;
         for hitbox in frame.hitboxes_iter() {
             draw_hitbox(ui, document, hitbox, (0, 0));
             draw_hitbox_controls(
@@ -330,7 +324,7 @@ fn draw_frame<'a>(
             && is_mouse_down
             && !is_mouse_dragging
         {
-            commands.create_hitbox(mouse_position_in_workbench);
+            commands.create_hitbox(mouse_position_in_workbench.to_tuple());
         }
     }
 }
@@ -342,21 +336,18 @@ fn draw_animation_frame<'a>(
     animation_frame: &AnimationFrame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
+    let offset = Point2D::<f32>::from(document.get_workbench_offset());
     if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-        let space = ui.get_window_size();
-        let frame_offset = animation_frame.get_offset();
-        let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-        let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (space.0 / 2.0).floor()
-            - zoom * (draw_size.0 / zoom / 2.0).floor();
-        let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (space.1 / 2.0).floor()
-            - zoom * (draw_size.1 / zoom / 2.0).floor();
-        ui.set_cursor_pos((cursor_x, cursor_y));
-        ui.image(texture.id, draw_size).build();
+        let space = Size2D::<f32>::from(ui.get_window_size());
+        let frame_offset = Vector2D::<i32>::from(animation_frame.get_offset()).to_f32();
+        let draw_size = texture.size * zoom;
+        let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor() - ((draw_size / zoom / 2.0).floor() * zoom).to_vector();
+        ui.set_cursor_pos(cursor_pos.to_tuple());
+        ui.image(texture.id, draw_size.to_tuple()).build();
 
         if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
             for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, frame_offset);
+                draw_hitbox(ui, document, hitbox, frame_offset.to_i32().to_tuple());
             }
         }
     }

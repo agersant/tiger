@@ -49,15 +49,15 @@ fn draw_animation<'a>(
                 // TODO use operations on point types
                 let x = cursor_pos.0 + fill.rect.origin.x
                     - fill.zoom * bbox.left as f32
-                    - fill.zoom * texture.size.0 as f32 / 2.0
+                    - fill.zoom * texture.size.width as f32 / 2.0
                     + fill.zoom * animation_frame.get_offset().0 as f32;
                 let y = cursor_pos.1 + fill.rect.origin.y
                     - fill.zoom * bbox.top as f32
-                    - fill.zoom * texture.size.1 as f32 / 2.0
+                    - fill.zoom * texture.size.height as f32 / 2.0
                     + fill.zoom * animation_frame.get_offset().1 as f32;
+                let draw_size = texture.size * fill.zoom;
                 ui.set_cursor_pos((x, y));
-                let draw_size = (fill.zoom * texture.size.0, fill.zoom * texture.size.1);
-                ui.image(texture.id, draw_size).build();
+                ui.image(texture.id, draw_size.to_tuple()).build();
             } else {
                 // TODO
             }

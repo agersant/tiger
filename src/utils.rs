@@ -77,7 +77,7 @@ impl BoundingBox {
 pub fn get_bounding_box(
     animation: &Animation,
     texture_cache: &TextureCache,
-) -> Result<BoundingBox, BoundingBoxError> {
+) -> Result<BoundingBox, BoundingBoxError> { // Todo Rect2D
     if animation.get_num_frames() == 0 {
         return Err(BoundingBoxError::EmptyAnimation);
     }
@@ -90,10 +90,10 @@ pub fn get_bounding_box(
             .get(frame.get_frame())
             .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
         let offset = frame.get_offset();
-        let frame_left = offset.0 - (texture.size.0 / 2.0).ceil() as i32;
-        let frame_right = offset.0 + (texture.size.0 / 2.0).floor() as i32;
-        let frame_top = offset.1 - (texture.size.1 / 2.0).ceil() as i32;
-        let frame_bottom = offset.1 + (texture.size.1 / 2.0).floor() as i32;
+        let frame_left = offset.0 - (texture.size.width / 2.0).ceil() as i32;
+        let frame_right = offset.0 + (texture.size.width / 2.0).floor() as i32;
+        let frame_top = offset.1 - (texture.size.height / 2.0).ceil() as i32;
+        let frame_bottom = offset.1 + (texture.size.height / 2.0).floor() as i32;
         left = min(left, frame_left);
         right = max(right, frame_right);
         top = min(top, frame_top);

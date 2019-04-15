@@ -266,7 +266,7 @@ impl Document {
         &self.workbench_item
     }
 
-    pub fn get_workbench_offset(&self) -> (f32, f32) {
+    pub fn get_workbench_offset(&self) -> (f32, f32) { // TODO Point2D
         self.workbench_offset
     }
 
