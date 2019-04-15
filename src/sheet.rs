@@ -1,5 +1,6 @@
 use core::cmp::Ordering;
 use dunce::canonicalize;
+use euclid::*;
 use failure::Error;
 use pathdiff::diff_paths;
 use std::path::{Path, PathBuf};
@@ -393,30 +394,30 @@ impl Hitbox {
         }
     }
 
-    pub fn get_position(&self) -> (i32, i32) {
+    pub fn get_position(&self) -> Point2D<i32> {
         match &self.geometry {
-            Shape::Rectangle(r) => r.top_left,
+            Shape::Rectangle(r) => r.top_left.into(),
         }
     }
 
-    pub fn get_size(&self) -> (u32, u32) {
+    pub fn get_size(&self) -> Size2D<u32> {
         match &self.geometry {
-            Shape::Rectangle(r) => r.size,
+            Shape::Rectangle(r) => r.size.into(),
         }
     }
 
-    pub fn set_position(&mut self, new_position: (i32, i32)) {
+    pub fn set_position(&mut self, new_position: Point2D<i32>) {
         match &mut self.geometry {
             Shape::Rectangle(r) => {
-                r.top_left = new_position;
+                r.top_left = new_position.to_tuple();
             }
         }
     }
 
-    pub fn set_size(&mut self, new_size: (u32, u32)) {
+    pub fn set_size(&mut self, new_size: Size2D<u32>) {
         match &mut self.geometry {
             Shape::Rectangle(r) => {
-                r.size = new_size;
+                r.size = new_size.to_tuple();
             }
         }
     }
@@ -451,16 +452,16 @@ impl AnimationFrame {
         self.duration
     }
 
-    pub fn get_offset(&self) -> (i32, i32) {
-        self.offset
+    pub fn get_offset(&self) -> Vector2D<i32> {
+        self.offset.into()
     }
 
     pub fn set_duration(&mut self, new_duration: u32) {
         self.duration = new_duration;
     }
 
-    pub fn set_offset(&mut self, new_offset: (i32, i32)) {
-        self.offset = new_offset;
+    pub fn set_offset(&mut self, new_offset: Vector2D<i32>) {
+        self.offset = new_offset.to_tuple();
     }
 }
 

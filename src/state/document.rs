@@ -605,10 +605,7 @@ impl Document {
                 .ok_or(DocumentError::FrameNotInDocument)?;
 
             let hitbox = frame.add_hitbox();
-            hitbox.set_position((
-                mouse_position.x.round() as i32,
-                mouse_position.y.round() as i32,
-            ));
+            hitbox.set_position(mouse_position.round().to_i32());
             hitbox.get_name().to_owned()
         };
         self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;
@@ -888,7 +885,7 @@ impl Document {
 
         self.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
         self.workbench_hitbox_drag_initial_mouse_position = mouse_position;
-        self.workbench_hitbox_drag_initial_offset = hitbox_position.into();
+        self.workbench_hitbox_drag_initial_offset = hitbox_position.to_vector();
 
         Ok(())
     }
@@ -932,7 +929,7 @@ impl Document {
             .ok_or(DocumentError::FrameNotInDocument)?
             .get_hitbox_mut(&hitbox_name)
             .ok_or(DocumentError::InvalidHitboxIndex)?;
-        hitbox.set_position(new_offset.to_tuple());
+        hitbox.set_position(new_offset.to_point());
 
         Ok(())
     }
@@ -1003,7 +1000,7 @@ impl Document {
             .get_hitbox_mut(&hitbox_name)
             .ok_or(DocumentError::InvalidHitboxIndex)?;
 
-        let new_size = (
+        let new_size = size2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
                     (initial_size.width as i32 + mouse_delta.x).abs() as u32
@@ -1024,7 +1021,7 @@ impl Document {
             } as u32,
         );
 
-        let new_position = (
+        let new_position = point2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
                     initial_position.x + min(0, initial_size.width as i32 + mouse_delta.x)
@@ -1142,7 +1139,7 @@ impl Document {
             .ok_or(DocumentError::AnimationNotInDocument)?
             .get_frame_mut(animation_index)
             .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-        animation_frame.set_offset(new_offset.to_tuple());
+        animation_frame.set_offset(new_offset);
 
         Ok(())
     }

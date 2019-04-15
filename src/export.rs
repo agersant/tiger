@@ -1,3 +1,4 @@
+use euclid::*;
 use failure::Error;
 use liquid::value::{Scalar, Value};
 use pathdiff::diff_paths;
@@ -38,35 +39,35 @@ fn liquid_data_from_hitbox(
 
     map.insert(
         "left_from_frame_center".into(),
-        Value::Scalar(Scalar::new(hitbox.get_position().0)),
+        Value::Scalar(Scalar::new(hitbox.get_position().x)),
     );
 
     map.insert(
         "top_from_frame_center".into(),
-        Value::Scalar(Scalar::new(hitbox.get_position().1)),
+        Value::Scalar(Scalar::new(hitbox.get_position().y)),
     );
 
-    let hitbox_top_left_from_frame_top_left = (
-        hitbox.get_position().0 + (packed_frame.size_in_sheet.0 as f32 / 2.0).floor() as i32,
-        hitbox.get_position().1 + (packed_frame.size_in_sheet.1 as f32 / 2.0).floor() as i32,
-    );
+    let frame_size = Vector2D::<u32>::from(packed_frame.size_in_sheet);
+    let hitbox_top_left_from_frame_top_left =
+        hitbox.get_position() + (frame_size.to_f32() / 2.0).floor().to_i32();
+
     map.insert(
         "left_from_frame_left".into(),
-        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.0)),
+        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.x)),
     );
     map.insert(
         "top_from_frame_top".into(),
-        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.1)),
+        Value::Scalar(Scalar::new(hitbox_top_left_from_frame_top_left.y)),
     );
 
     map.insert(
         "width".into(),
-        Value::Scalar(Scalar::new(hitbox.get_size().0 as i32)),
+        Value::Scalar(Scalar::new(hitbox.get_size().width as i32)),
     );
 
     map.insert(
         "height".into(),
-        Value::Scalar(Scalar::new(hitbox.get_size().1 as i32)),
+        Value::Scalar(Scalar::new(hitbox.get_size().height as i32)),
     );
 
     Ok(map)
@@ -146,24 +147,23 @@ fn liquid_data_from_animation_frame(
     let center_offset = animation_frame.get_offset();
     map.insert(
         "center_offset_x".into(),
-        Value::Scalar(Scalar::new(center_offset.0)),
+        Value::Scalar(Scalar::new(center_offset.x)),
     );
     map.insert(
         "center_offset_y".into(),
-        Value::Scalar(Scalar::new(center_offset.1)),
+        Value::Scalar(Scalar::new(center_offset.y)),
     );
 
-    let top_left_offset = (
-        center_offset.0 - (packed_frame.size_in_sheet.0 as f32 / 2.0).floor() as i32,
-        center_offset.1 - (packed_frame.size_in_sheet.1 as f32 / 2.0).floor() as i32,
-    );
+    let frame_size = Vector2D::<u32>::from(packed_frame.size_in_sheet);
+    let top_left_offset = center_offset - (frame_size.to_f32() / 2.0).floor().to_i32();
+
     map.insert(
         "top_left_offset_x".into(),
-        Value::Scalar(Scalar::new(top_left_offset.0)),
+        Value::Scalar(Scalar::new(top_left_offset.x)),
     );
     map.insert(
         "top_left_offset_y".into(),
-        Value::Scalar(Scalar::new(top_left_offset.1)),
+        Value::Scalar(Scalar::new(top_left_offset.y)),
     );
 
     let frame = sheet
