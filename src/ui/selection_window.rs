@@ -42,7 +42,11 @@ fn draw_animation<'a>(
             if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
                 let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
                 let frame_offset = Vector2D::<i32>::from(animation_frame.get_offset()).to_f32();
-                let draw_position = cursor_pos + fill.rect.origin.to_vector() + (frame_offset - bbox.rect.origin.to_vector().to_f32() - texture.size.to_vector() / 2.0);
+                let draw_position = cursor_pos
+                    + fill.rect.origin.to_vector()
+                    + (frame_offset
+                        - bbox.rect.origin.to_vector().to_f32()
+                        - texture.size.to_vector() / 2.0);
                 let draw_size = texture.size * fill.zoom;
                 ui.set_cursor_pos(draw_position.to_tuple());
                 ui.image(texture.id, draw_size.to_tuple()).build();

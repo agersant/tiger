@@ -17,7 +17,8 @@ pub fn fill(space: Size2D<f32>, content_size: Size2D<f32>) -> Option<Fill> {
     }
 
     let aspect_ratio = content_size.width / content_size.height;
-    let fit_horizontally = (content_size.width / space.width) >= (content_size.height / space.height);
+    let fit_horizontally =
+        (content_size.width / space.width) >= (content_size.height / space.height);
 
     let (w, h);
     if fit_horizontally {
@@ -79,7 +80,8 @@ pub fn get_bounding_box(
             .get(frame.get_frame())
             .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
         let frame_offset = Vector2D::<i32>::from(frame.get_offset());
-        let frame_rectangle = Rect::<i32>::from_size(texture.size.to_i32()).translate(&frame_offset);
+        let frame_rectangle =
+            Rect::<i32>::from_size(texture.size.to_i32()).translate(&frame_offset);
         bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
     }
     Ok(BoundingBox {
