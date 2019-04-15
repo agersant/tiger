@@ -1,6 +1,4 @@
 use euclid::*;
-use std::cmp::max;
-use std::cmp::min;
 
 use crate::sheet::Animation;
 use crate::streamer::TextureCache;
@@ -54,55 +52,37 @@ pub enum BoundingBoxError {
 
 #[derive(Debug)]
 pub struct BoundingBox {
-    pub left: i32,
-    pub right: i32,
-    pub top: i32,
-    pub bottom: i32,
+    pub rect: Rect<i32>,
 }
 
 impl BoundingBox {
     pub fn center_on_origin(&mut self) {
-        self.left = min(self.left, 0);
-        self.right = max(self.right, 0);
-        self.top = min(self.top, 0);
-        self.bottom = max(self.bottom, 0);
-
-        self.left = -max(self.left.abs(), self.right);
-        self.right = max(self.left.abs(), self.right);
-        self.top = -max(self.top.abs(), self.bottom);
-        self.bottom = max(self.top.abs(), self.bottom);
+        self.rect = Rect::<i32>::from_points(&[
+            self.rect.origin,
+            self.rect.origin * -1,
+            self.rect.bottom_right(),
+            self.rect.bottom_right() * -1,
+        ])
     }
 }
 
 pub fn get_bounding_box(
     animation: &Animation,
     texture_cache: &TextureCache,
-) -> Result<BoundingBox, BoundingBoxError> { // Todo Rect2D
+) -> Result<BoundingBox, BoundingBoxError> {
     if animation.get_num_frames() == 0 {
         return Err(BoundingBoxError::EmptyAnimation);
     }
-    let mut left = i32::max_value();
-    let mut right = i32::min_value();
-    let mut top = i32::max_value();
-    let mut bottom = i32::min_value();
+    let mut bbox_rectangle = Rect::<i32>::zero();
     for frame in animation.frames_iter() {
         let texture = texture_cache
             .get(frame.get_frame())
             .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
-        let offset = frame.get_offset();
-        let frame_left = offset.0 - (texture.size.width / 2.0).ceil() as i32;
-        let frame_right = offset.0 + (texture.size.width / 2.0).floor() as i32;
-        let frame_top = offset.1 - (texture.size.height / 2.0).ceil() as i32;
-        let frame_bottom = offset.1 + (texture.size.height / 2.0).floor() as i32;
-        left = min(left, frame_left);
-        right = max(right, frame_right);
-        top = min(top, frame_top);
-        bottom = max(bottom, frame_bottom);
+        let frame_offset = Vector2D::<i32>::from(frame.get_offset());
+        let frame_rectangle = Rect::<i32>::from_size(texture.size.to_i32()).translate(&frame_offset);
+        bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
     }
     Ok(BoundingBox {
-        left,
-        right,
-        top,
-        bottom,
+        rect: bbox_rectangle,
     })
 }

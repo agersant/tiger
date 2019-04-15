@@ -34,29 +34,17 @@ fn draw_animation<'a>(
     if let Ok(mut bbox) = utils::get_bounding_box(animation, texture_cache) {
         bbox.center_on_origin();
         let space = ui.get_content_region_avail().into();
-        let bbox_size = size2(
-            (bbox.right - bbox.left) as f32,
-            (bbox.bottom - bbox.top) as f32,
-        );
-        if let Some(fill) = utils::fill(space, bbox_size) {
-            let cursor_pos = ui.get_cursor_pos();
+        if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32()) {
             let duration = animation.get_duration().unwrap(); // TODO no unwrap
             let time =
                 Duration::from_millis(state.get_clock().as_millis() as u64 % u64::from(duration)); // TODO pause on first and last frame for non looping animation?
-
             let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
             if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
-                // TODO use operations on point types
-                let x = cursor_pos.0 + fill.rect.origin.x
-                    - fill.zoom * bbox.left as f32
-                    - fill.zoom * texture.size.width as f32 / 2.0
-                    + fill.zoom * animation_frame.get_offset().0 as f32;
-                let y = cursor_pos.1 + fill.rect.origin.y
-                    - fill.zoom * bbox.top as f32
-                    - fill.zoom * texture.size.height as f32 / 2.0
-                    + fill.zoom * animation_frame.get_offset().1 as f32;
+                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let frame_offset = Vector2D::<i32>::from(animation_frame.get_offset()).to_f32();
+                let draw_position = cursor_pos + fill.rect.origin.to_vector() + (frame_offset - bbox.rect.origin.to_vector().to_f32() - texture.size.to_vector() / 2.0);
                 let draw_size = texture.size * fill.zoom;
-                ui.set_cursor_pos((x, y));
+                ui.set_cursor_pos(draw_position.to_tuple());
                 ui.image(texture.id, draw_size.to_tuple()).build();
             } else {
                 // TODO
