@@ -1099,7 +1099,8 @@ impl Document {
             let animation_frame = animation
                 .get_frame(index)
                 .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-            self.workbench_animation_frame_drag_initial_offset = animation_frame.get_offset().into();
+            self.workbench_animation_frame_drag_initial_offset =
+                animation_frame.get_offset().into();
         }
 
         self.workbench_animation_frame_being_dragged = Some(index);

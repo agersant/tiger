@@ -46,7 +46,8 @@ fn draw_animation<'a>(
                     + fill.rect.origin.to_vector()
                     + (frame_offset
                         - bbox.rect.origin.to_vector().to_f32()
-                        - texture.size.to_vector() / 2.0) * fill.zoom;
+                        - texture.size.to_vector() / 2.0)
+                        * fill.zoom;
                 let draw_size = texture.size * fill.zoom;
                 ui.set_cursor_pos(draw_position.to_tuple());
                 ui.image(texture.id, draw_size.to_tuple()).build();
