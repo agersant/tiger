@@ -968,8 +968,8 @@ impl Document {
         self.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
         self.workbench_hitbox_scale_axis = axis;
         self.workbench_hitbox_scale_initial_mouse_position = mouse_position;
-        self.workbench_hitbox_scale_initial_position = position.into();
-        self.workbench_hitbox_scale_initial_size = size.into();
+        self.workbench_hitbox_scale_initial_position = position;
+        self.workbench_hitbox_scale_initial_size = size;
 
         Ok(())
     }

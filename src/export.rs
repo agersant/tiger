@@ -47,7 +47,7 @@ fn liquid_data_from_hitbox(
         Value::Scalar(Scalar::new(hitbox.get_position().y)),
     );
 
-    let frame_size = Vector2D::<u32>::from(packed_frame.size_in_sheet);
+    let frame_size: Vector2D<u32> = packed_frame.size_in_sheet.into();
     let hitbox_top_left_from_frame_top_left =
         hitbox.get_position() + (frame_size.to_f32() / 2.0).floor().to_i32();
 
@@ -154,7 +154,7 @@ fn liquid_data_from_animation_frame(
         Value::Scalar(Scalar::new(center_offset.y)),
     );
 
-    let frame_size = Vector2D::<u32>::from(packed_frame.size_in_sheet);
+    let frame_size: Vector2D<u32> = packed_frame.size_in_sheet.into();
     let top_left_offset = center_offset - (frame_size.to_f32() / 2.0).floor().to_i32();
 
     map.insert(

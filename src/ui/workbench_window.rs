@@ -13,8 +13,8 @@ fn screen_to_workbench<'a>(
     screen_coords: Vector2D<f32>,
     document: &Document,
 ) -> Vector2D<f32> {
-    let window_position = Vector2D::<f32>::from(ui.get_window_pos());
-    let window_size = Vector2D::<f32>::from(ui.get_window_size());
+    let window_position: Vector2D<f32> = ui.get_window_pos().into();
+    let window_size: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     screen_coords - (offset + window_position + window_size / 2.0) / zoom
@@ -66,7 +66,7 @@ fn draw_hitbox_controls<'a>(
     is_scaling: &mut bool,
     is_dragging: &mut bool,
 ) {
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let space: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
@@ -79,8 +79,8 @@ fn draw_hitbox_controls<'a>(
     let cursor_pos = offset + space / 2.0 + rectangle.origin.to_f32().to_vector() * zoom;
 
     ui.set_cursor_pos(cursor_pos.to_tuple());
-    let top_left = Vector2D::<f32>::from(ui.get_cursor_screen_pos());
-    let bottom_right: Vector2D<f32> = top_left + rectangle.size.to_f32().to_vector() * zoom;
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
     if *is_scaling {
         match document.get_workbench_hitbox_being_scaled() {
@@ -133,7 +133,7 @@ fn draw_hitbox_controls<'a>(
                     cursor_pos.x + resize_handle_size.x as f32 / 2.0,
                     cursor_pos.y - resize_handle_size.y as f32 / 2.0,
                 ),
-                (drag_button_size.x, resize_handle_size.y).into(),
+                vec2(drag_button_size.x, resize_handle_size.y),
                 ResizeAxis::N,
                 mouse_position_in_workbench,
             );
@@ -147,7 +147,7 @@ fn draw_hitbox_controls<'a>(
                     cursor_pos.x + resize_handle_size.x as f32 / 2.0,
                     cursor_pos.y + resize_handle_size.y as f32 / 2.0 + drag_button_size.y as f32,
                 ),
-                (drag_button_size.x, resize_handle_size.y).into(),
+                vec2(drag_button_size.x, resize_handle_size.y),
                 ResizeAxis::S,
                 mouse_position_in_workbench,
             );
@@ -161,7 +161,7 @@ fn draw_hitbox_controls<'a>(
                     cursor_pos.x - resize_handle_size.x as f32 / 2.0,
                     cursor_pos.y + resize_handle_size.y as f32 / 2.0,
                 ),
-                (resize_handle_size.x, drag_button_size.y).into(),
+                vec2(resize_handle_size.x, drag_button_size.y),
                 ResizeAxis::W,
                 mouse_position_in_workbench,
             );
@@ -175,7 +175,7 @@ fn draw_hitbox_controls<'a>(
                     cursor_pos.x + resize_handle_size.x as f32 / 2.0 + drag_button_size.x as f32,
                     cursor_pos.y + resize_handle_size.y as f32 / 2.0,
                 ),
-                (resize_handle_size.x, drag_button_size.y).into(),
+                vec2(resize_handle_size.x, drag_button_size.y),
                 ResizeAxis::E,
                 mouse_position_in_workbench,
             );
@@ -236,14 +236,14 @@ fn draw_hitbox_controls<'a>(
 fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: Vector2D<i32>) {
     let zoom = document.get_workbench_zoom_factor();
     let workbench_offset = document.get_workbench_offset();
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
     let cursor_pos = workbench_offset
         + (space / 2.0).floor()
         + (rectangle.origin.to_f32().to_vector() + offset.to_f32()) * zoom;
     ui.set_cursor_pos(cursor_pos.to_tuple());
 
-    let top_left = Vector2D::<f32>::from(ui.get_cursor_screen_pos());
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
     let draw_list = ui.get_window_draw_list();
     let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
@@ -260,7 +260,7 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let space: Vector2D<f32> = ui.get_window_size().into();
     if let Some(texture) = texture_cache.get(&frame.get_source()) {
         {
             let draw_size = texture.size * zoom;
@@ -274,7 +274,7 @@ fn draw_frame<'a>(
         let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
         let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
 
-        let mouse_pos = Vector2D::<f32>::from(ui.imgui().mouse_pos());
+        let mouse_pos = ui.imgui().mouse_pos().into();
         let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
 
         for hitbox in frame.hitboxes_iter() {
@@ -376,12 +376,12 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &State) {
 
     ui.set_cursor_pos((0.0, 0.0));
 
-    let top_left = Vector2D::<f32>::from(ui.get_cursor_screen_pos());
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let offset = state
         .get_current_document()
         .map(Document::get_workbench_offset)
         .unwrap_or(Vector2D::<f32>::zero());
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let space: Vector2D<f32> = ui.get_window_size().into();
 
     let line_color_main = [1.0, 1.0, 1.0, 0.02]; // TODO.style
     let line_color_dim = [1.0, 1.0, 1.0, 0.004]; // TODO.style
@@ -436,8 +436,8 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
     let fill_color = [0.0 / 255.0, 200.0 / 255.0, 200.0 / 255.0]; // TODO.style
     ui.set_cursor_pos((0.0, 0.0));
 
-    let top_left = Vector2D::<f32>::from(ui.get_cursor_screen_pos());
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let space: Vector2D<f32> = ui.get_window_size().into();
     let center = top_left + offset + (space / 2.0).floor();
     draw_list.add_rect_filled_multicolor(
         (center.x - thickness, center.y - size),

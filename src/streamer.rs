@@ -90,7 +90,7 @@ pub fn upload(
         for (path, texture_data) in payload.new_textures {
             let sampler =
                 factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
-            let size = Vector2D::<u32>::from(texture_data.dimensions());
+            let size: Vector2D<u32> = texture_data.dimensions().into();
             let kind =
                 gfx::texture::Kind::D2(size.x as u16, size.y as u16, gfx::texture::AaMode::Single);
             if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
