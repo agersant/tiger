@@ -1,6 +1,6 @@
+use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
-use std::cmp::{max, min};
 
 use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
@@ -10,17 +10,14 @@ use crate::ui::Rect;
 
 fn screen_to_workbench<'a>(
     ui: &Ui<'a>,
-    screen_coords: (f32, f32),
+    screen_coords: Vector2D<f32>,
     document: &Document,
-) -> (f32, f32) {
-    let window_position = ui.get_window_pos();
-    let window_size = ui.get_window_size();
+) -> Vector2D<f32> {
+    let window_position: Vector2D<f32> = ui.get_window_pos().into();
+    let window_size: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
-    (
-        (screen_coords.0 - (offset.0 + window_position.0 + window_size.0 / 2.0)) / zoom,
-        (screen_coords.1 - (offset.1 + window_position.1 + window_size.1 / 2.0)) / zoom,
-    )
+    (screen_coords - offset - window_position - window_size / 2.0) / zoom
 }
 
 fn axis_to_cursor(axis: ResizeAxis) -> ImGuiMouseCursor {
@@ -40,16 +37,16 @@ fn draw_resize_handle<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
     hitbox: &Hitbox,
-    position: (f32, f32),
-    size: (f32, f32),
+    position: Vector2D<f32>,
+    size: Vector2D<i32>,
     axis: ResizeAxis,
-    mouse_pos: (f32, f32),
+    mouse_pos: Vector2D<f32>,
 ) -> bool {
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
 
-    ui.set_cursor_pos(position);
+    ui.set_cursor_pos(position.to_tuple());
     let id = format!("hitbox_handle_{}_resize_{:?}", hitbox.get_name(), axis);
-    ui.invisible_button(&ImString::new(id), size);
+    ui.invisible_button(&ImString::new(id), size.to_f32().to_tuple());
     if ui.is_item_hovered() {
         ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
         if is_mouse_down {
@@ -69,24 +66,21 @@ fn draw_hitbox_controls<'a>(
     is_scaling: &mut bool,
     is_dragging: &mut bool,
 ) {
-    let space = ui.get_window_size();
+    let space: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_shift_down = ui.imgui().key_shift();
-    let mouse_position_in_workbench = screen_to_workbench(ui, ui.imgui().mouse_pos(), document);
+    let mouse_position_in_workbench =
+        screen_to_workbench(ui, ui.imgui().mouse_pos().into(), document);
 
     let rectangle = hitbox.get_rectangle();
-    let cursor_x = offset.0 + space.0 / 2.0 + zoom * rectangle.top_left.0 as f32;
-    let cursor_y = offset.1 + space.1 / 2.0 + zoom * rectangle.top_left.1 as f32;
+    let cursor_pos = offset + space / 2.0 + rectangle.origin.to_f32().to_vector() * zoom;
 
-    ui.set_cursor_pos((cursor_x, cursor_y));
-    let top_left = ui.get_cursor_screen_pos();
-    let bottom_right = (
-        top_left.0 + zoom * rectangle.size.0 as f32,
-        top_left.1 + zoom * rectangle.size.1 as f32,
-    );
+    ui.set_cursor_pos(cursor_pos.to_tuple());
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
     if *is_scaling {
         match document.get_workbench_hitbox_being_scaled() {
@@ -102,36 +96,29 @@ fn draw_hitbox_controls<'a>(
             Some(n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
-                    let mouse_pos = ui.imgui().mouse_pos();
+                    let mouse_pos = ui.imgui().mouse_pos().into();
                     commands.update_hitbox_drag(mouse_pos, !is_shift_down);
                 }
             }
             _ => (),
         };
     } else {
-        let resize_handle_width = max(
-            4,
-            min(16, ((bottom_right.0 - top_left.0) / 3.0).ceil() as i32),
-        ) as f32;
-        let resize_handle_height = max(
-            4,
-            min(16, ((bottom_right.1 - top_left.1) / 3.0).ceil() as i32),
-        ) as f32;
-        let drag_button_size = (
-            bottom_right.0 - top_left.0 - resize_handle_width,
-            bottom_right.1 - top_left.1 - resize_handle_height,
-        );
-        if drag_button_size.0 >= 1.0 && drag_button_size.1 >= 1.0 {
-            ui.set_cursor_pos((
-                cursor_x + resize_handle_width / 2.0,
-                cursor_y + resize_handle_height / 2.0,
-            ));
+        let resize_handle_size = ((bottom_right - top_left) / 3.0)
+            .ceil()
+            .max(vec2(4.0, 4.0))
+            .min(vec2(16.0, 16.0))
+            .to_i32();
+        let drag_button_size = (bottom_right - top_left - resize_handle_size.to_f32())
+            .floor()
+            .to_i32();
+        if drag_button_size.x >= 1 && drag_button_size.y >= 1 {
+            ui.set_cursor_pos((cursor_pos + resize_handle_size.to_f32() / 2.0).to_tuple());
             let id = format!("hitbox_handle_{}", hitbox.get_name());
-            ui.invisible_button(&ImString::new(id), drag_button_size);
+            ui.invisible_button(&ImString::new(id), drag_button_size.to_f32().to_tuple());
             if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_down {
-                    let mouse_pos = ui.imgui().mouse_pos();
+                    let mouse_pos = ui.imgui().mouse_pos().into();
                     commands.begin_hitbox_drag(hitbox, mouse_pos);
                     *is_dragging = true;
                 }
@@ -142,11 +129,11 @@ fn draw_hitbox_controls<'a>(
                 ui,
                 commands,
                 hitbox,
-                (
-                    cursor_x + resize_handle_width / 2.0,
-                    cursor_y - resize_handle_height / 2.0,
+                vec2(
+                    cursor_pos.x + resize_handle_size.x as f32 / 2.0,
+                    cursor_pos.y - resize_handle_size.y as f32 / 2.0,
                 ),
-                (drag_button_size.0, resize_handle_height),
+                vec2(drag_button_size.x, resize_handle_size.y),
                 ResizeAxis::N,
                 mouse_position_in_workbench,
             );
@@ -156,11 +143,11 @@ fn draw_hitbox_controls<'a>(
                 ui,
                 commands,
                 hitbox,
-                (
-                    cursor_x + resize_handle_width / 2.0,
-                    cursor_y + resize_handle_height / 2.0 + drag_button_size.1,
+                vec2(
+                    cursor_pos.x + resize_handle_size.x as f32 / 2.0,
+                    cursor_pos.y + resize_handle_size.y as f32 / 2.0 + drag_button_size.y as f32,
                 ),
-                (drag_button_size.0, resize_handle_height),
+                vec2(drag_button_size.x, resize_handle_size.y),
                 ResizeAxis::S,
                 mouse_position_in_workbench,
             );
@@ -170,11 +157,11 @@ fn draw_hitbox_controls<'a>(
                 ui,
                 commands,
                 hitbox,
-                (
-                    cursor_x - resize_handle_width / 2.0,
-                    cursor_y + resize_handle_height / 2.0,
+                vec2(
+                    cursor_pos.x - resize_handle_size.x as f32 / 2.0,
+                    cursor_pos.y + resize_handle_size.y as f32 / 2.0,
                 ),
-                (resize_handle_width, drag_button_size.1),
+                vec2(resize_handle_size.x, drag_button_size.y),
                 ResizeAxis::W,
                 mouse_position_in_workbench,
             );
@@ -184,11 +171,11 @@ fn draw_hitbox_controls<'a>(
                 ui,
                 commands,
                 hitbox,
-                (
-                    cursor_x + resize_handle_width / 2.0 + drag_button_size.0,
-                    cursor_y + resize_handle_height / 2.0,
+                vec2(
+                    cursor_pos.x + resize_handle_size.x as f32 / 2.0 + drag_button_size.x as f32,
+                    cursor_pos.y + resize_handle_size.y as f32 / 2.0,
                 ),
-                (resize_handle_width, drag_button_size.1),
+                vec2(resize_handle_size.x, drag_button_size.y),
                 ResizeAxis::E,
                 mouse_position_in_workbench,
             );
@@ -199,11 +186,8 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            (
-                cursor_x - resize_handle_width / 2.0,
-                cursor_y - resize_handle_height / 2.0,
-            ),
-            (resize_handle_width, resize_handle_height),
+            cursor_pos - resize_handle_size.to_f32() / 2.0,
+            resize_handle_size,
             ResizeAxis::NW,
             mouse_position_in_workbench,
         );
@@ -213,11 +197,11 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            (
-                cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
-                cursor_y - resize_handle_height / 2.0,
+            vec2(
+                cursor_pos.x + drag_button_size.x as f32 + resize_handle_size.x as f32 / 2.0,
+                cursor_pos.y - resize_handle_size.y as f32 / 2.0,
             ),
-            (resize_handle_width, resize_handle_height),
+            resize_handle_size,
             ResizeAxis::NE,
             mouse_position_in_workbench,
         );
@@ -227,11 +211,8 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            (
-                cursor_x + drag_button_size.0 + resize_handle_width / 2.0,
-                cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
-            ),
-            (resize_handle_width, resize_handle_height),
+            cursor_pos + drag_button_size.to_f32() + resize_handle_size.to_f32() / 2.0,
+            resize_handle_size,
             ResizeAxis::SE,
             mouse_position_in_workbench,
         );
@@ -241,41 +222,33 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            (
-                cursor_x - resize_handle_width / 2.0,
-                cursor_y + drag_button_size.1 + resize_handle_height / 2.0,
+            vec2(
+                cursor_pos.x - resize_handle_size.x as f32 / 2.0,
+                cursor_pos.y + drag_button_size.y as f32 + resize_handle_size.y as f32 / 2.0,
             ),
-            (resize_handle_width, resize_handle_height),
+            resize_handle_size,
             ResizeAxis::SW,
             mouse_position_in_workbench,
         );
     }
 }
 
-fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: (i32, i32)) {
+fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: Vector2D<i32>) {
     let zoom = document.get_workbench_zoom_factor();
     let workbench_offset = document.get_workbench_offset();
-    let space = ui.get_window_size();
+    let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
-    let cursor_x = workbench_offset.0
-        + (space.0 / 2.0).floor()
-        + zoom * rectangle.top_left.0 as f32
-        + zoom * offset.0 as f32;
-    let cursor_y = workbench_offset.1
-        + (space.1 / 2.0).floor()
-        + zoom * rectangle.top_left.1 as f32
-        + zoom * offset.1 as f32;
-    ui.set_cursor_pos((cursor_x, cursor_y));
+    let cursor_pos = workbench_offset
+        + (space / 2.0).floor()
+        + (rectangle.origin.to_f32().to_vector() + offset.to_f32()) * zoom;
+    ui.set_cursor_pos(cursor_pos.to_tuple());
 
-    let top_left = ui.get_cursor_screen_pos();
-    let bottom_right = (
-        top_left.0 + zoom * rectangle.size.0 as f32,
-        top_left.1 + zoom * rectangle.size.1 as f32,
-    );
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
     let draw_list = ui.get_window_draw_list();
     let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
     draw_list
-        .add_rect(top_left, bottom_right, outline_color)
+        .add_rect(top_left.to_tuple(), bottom_right.to_tuple(), outline_color)
         .build();
 }
 
@@ -287,18 +260,13 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
-    let window_position = ui.get_window_pos();
-    let space = ui.get_window_size();
+    let space: Vector2D<f32> = ui.get_window_size().into();
     if let Some(texture) = texture_cache.get(&frame.get_source()) {
         {
-            let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-            let cursor_x =
-                offset.0 + (space.0 / 2.0).floor() - zoom * (draw_size.0 / zoom / 2.0).floor();
-            let cursor_y =
-                offset.1 + (space.1 / 2.0).floor() - zoom * (draw_size.1 / zoom / 2.0).floor();
-            ui.set_cursor_pos((cursor_x, cursor_y));
-            ui.image(texture.id, draw_size).build();
+            let draw_size = texture.size * zoom;
+            let cursor_pos = (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
+            ui.set_cursor_pos(cursor_pos.to_tuple());
+            ui.image(texture.id, draw_size.to_tuple()).build();
         }
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
@@ -306,14 +274,11 @@ fn draw_frame<'a>(
         let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
         let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
 
-        let mouse_pos = ui.imgui().mouse_pos();
-        let mouse_position_in_workbench = (
-            (mouse_pos.0 - (offset.0 + window_position.0 + space.0 / 2.0)) / zoom,
-            (mouse_pos.1 - (offset.1 + window_position.1 + space.1 / 2.0)) / zoom,
-        );
+        let mouse_pos = ui.imgui().mouse_pos().into();
+        let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
 
         for hitbox in frame.hitboxes_iter() {
-            draw_hitbox(ui, document, hitbox, (0, 0));
+            draw_hitbox(ui, document, hitbox, vec2(0, 0));
             draw_hitbox_controls(
                 ui,
                 document,
@@ -344,19 +309,17 @@ fn draw_animation_frame<'a>(
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-        let space = ui.get_window_size();
-        let frame_offset = animation_frame.get_offset();
-        let draw_size = (zoom * texture.size.0, zoom * texture.size.1);
-        let cursor_x = offset.0 + zoom * frame_offset.0 as f32 + (space.0 / 2.0).floor()
-            - zoom * (draw_size.0 / zoom / 2.0).floor();
-        let cursor_y = offset.1 + zoom * frame_offset.1 as f32 + (space.1 / 2.0).floor()
-            - zoom * (draw_size.1 / zoom / 2.0).floor();
-        ui.set_cursor_pos((cursor_x, cursor_y));
-        ui.image(texture.id, draw_size).build();
+        let space = Vector2D::<f32>::from(ui.get_window_size());
+        let frame_offset = animation_frame.get_offset().to_f32();
+        let draw_size = texture.size * zoom;
+        let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
+            - ((draw_size / zoom / 2.0).floor() * zoom);
+        ui.set_cursor_pos(cursor_pos.to_tuple());
+        ui.image(texture.id, draw_size.to_tuple()).build();
 
         if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
             for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, frame_offset);
+                draw_hitbox(ui, document, hitbox, frame_offset.to_i32());
             }
         }
     }
@@ -382,7 +345,7 @@ fn draw_animation<'a>(
                 if ui.is_item_hovered() {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                     if is_mouse_down && !is_mouse_dragging {
-                        let mouse_pos = ui.imgui().mouse_pos();
+                        let mouse_pos = ui.imgui().mouse_pos().into();
                         commands.begin_animation_frame_offset_drag(frame_index, mouse_pos);
                     }
                 }
@@ -390,7 +353,7 @@ fn draw_animation<'a>(
             Some(dragged_frame_index) => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
-                    let mouse_pos = ui.imgui().mouse_pos();
+                    let mouse_pos = ui.imgui().mouse_pos().into();
                     commands.update_animation_frame_offset_drag(mouse_pos, !is_shift_down);
                 }
                 if *dragged_frame_index != frame_index {
@@ -413,38 +376,31 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &State) {
 
     ui.set_cursor_pos((0.0, 0.0));
 
-    let top_left = ui.get_cursor_screen_pos();
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let offset = state
         .get_current_document()
         .map(Document::get_workbench_offset)
-        .unwrap_or((0.0, 0.0));
-    let space = ui.get_window_size();
+        .unwrap_or(Vector2D::<f32>::zero());
+    let space: Vector2D<f32> = ui.get_window_size().into();
 
     let line_color_main = [1.0, 1.0, 1.0, 0.02]; // TODO.style
     let line_color_dim = [1.0, 1.0, 1.0, 0.004]; // TODO.style
 
-    let origin = (
-        top_left.0 + (space.0 / 2.0).floor() + offset.0,
-        top_left.1 + (space.1 / 2.0).floor() + offset.1,
-    );
-    let grid_start = (
-        origin.0 - spacing as f32 * ((origin.0 - top_left.0) / spacing as f32).floor(),
-        origin.1 - spacing as f32 * ((origin.1 - top_left.1) / spacing as f32).floor(),
-    );
+    let origin = top_left + offset + (space / 2.0).floor();
+    let grid_start = origin - ((origin - top_left) / spacing as f32).floor() * spacing as f32;
+    let num_lines = space.to_i32() / spacing + vec2(1, 1);
 
-    let num_lines = (space.0 as i32 / spacing + 1, space.1 as i32 / spacing + 1);
-
-    for n in 0..num_lines.0 {
-        let x = grid_start.0 + n as f32 * spacing as f32;
-        let color = if (x - origin.0) as i32 % (grain * spacing) == 0 {
+    for n in 0..num_lines.x {
+        let x = grid_start.x + n as f32 * spacing as f32;
+        let color = if (x - origin.x) as i32 % (grain * spacing) == 0 {
             line_color_main
         } else {
             line_color_dim
         };
 
         draw_list.add_rect_filled_multicolor(
-            (x as f32 - thickness, top_left.1),
-            (x as f32 + thickness, top_left.1 + space.1),
+            (x as f32 - thickness, top_left.y),
+            (x as f32 + thickness, top_left.y + space.y),
             color,
             color,
             color,
@@ -452,16 +408,16 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &State) {
         );
     }
 
-    for n in 0..num_lines.1 {
-        let y = grid_start.1 + n as f32 * spacing as f32;
-        let color = if (y - origin.1) as i32 % (grain * spacing) == 0 {
+    for n in 0..num_lines.y {
+        let y = grid_start.y + n as f32 * spacing as f32;
+        let color = if (y - origin.y) as i32 % (grain * spacing) == 0 {
             line_color_main
         } else {
             line_color_dim
         };
         draw_list.add_rect_filled_multicolor(
-            (top_left.0, y as f32 - thickness),
-            (top_left.0 + space.0, y as f32 + thickness),
+            (top_left.x, y as f32 - thickness),
+            (top_left.x + space.x, y as f32 + thickness),
             color,
             color,
             color,
@@ -480,15 +436,12 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
     let fill_color = [0.0 / 255.0, 200.0 / 255.0, 200.0 / 255.0]; // TODO.style
     ui.set_cursor_pos((0.0, 0.0));
 
-    let top_left = ui.get_cursor_screen_pos();
-    let space = ui.get_window_size();
-    let center = (
-        top_left.0 + offset.0 + (space.0 / 2.0).floor(),
-        top_left.1 + offset.1 + (space.1 / 2.0).floor(),
-    );
+    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let space: Vector2D<f32> = ui.get_window_size().into();
+    let center = top_left + offset + (space / 2.0).floor();
     draw_list.add_rect_filled_multicolor(
-        (center.0 - thickness, center.1 - size),
-        (center.0 + thickness, center.1 + size),
+        (center.x - thickness, center.y - size),
+        (center.x + thickness, center.y + size),
         fill_color,
         fill_color,
         fill_color,
@@ -496,8 +449,8 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
     );
 
     draw_list.add_rect_filled_multicolor(
-        (center.0 - size, center.1 - thickness),
-        (center.0 + size, center.1 + thickness),
+        (center.x - size, center.y - thickness),
+        (center.x + size, center.y + thickness),
         fill_color,
         fill_color,
         fill_color,
@@ -507,15 +460,15 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
 
 pub fn draw<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
+    rect: &Rect<f32>,
     state: &State,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Workbench"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
+            .size(rect.size.to_tuple(), ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .title_bar(false)
@@ -553,7 +506,7 @@ pub fn draw<'a>(
                             }
                         }
                         if ui.imgui().is_mouse_dragging(ImMouseButton::Right) {
-                            commands.pan(ui.imgui().mouse_delta());
+                            commands.pan(ui.imgui().mouse_delta().into());
                         }
                         if ui.imgui().is_mouse_down(ImMouseButton::Right) {
                             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);

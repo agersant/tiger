@@ -1,3 +1,4 @@
+use euclid::*;
 use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
 use gfx::Factory;
 use gfx_device_gl::Resources;
@@ -89,16 +90,16 @@ pub fn upload(
         for (path, texture_data) in payload.new_textures {
             let sampler =
                 factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
-            let (width, height) = texture_data.dimensions();
+            let size: Vector2D<u32> = texture_data.dimensions().into();
             let kind =
-                gfx::texture::Kind::D2(width as u16, height as u16, gfx::texture::AaMode::Single);
+                gfx::texture::Kind::D2(size.x as u16, size.y as u16, gfx::texture::AaMode::Single);
             if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
                 kind,
                 gfx::texture::Mipmap::Allocated,
                 &[&texture_data],
             ) {
                 let id = renderer.textures().insert((texture, sampler));
-                texture_cache.insert(path, id, (width, height));
+                texture_cache.insert(path, id, size);
             } else {
                 // TODO log and mark as bad image in cache
             }
@@ -115,20 +116,20 @@ pub fn upload(
 #[derive(Clone)]
 struct TextureCacheEntry {
     pub id: ImTexture,
-    pub size: (u32, u32),
+    pub size: Vector2D<u32>,
     // TODO dirty flag and file watches
 }
 
 pub struct TextureCacheResult {
     pub id: ImTexture,
-    pub size: (f32, f32),
+    pub size: Vector2D<f32>,
 }
 
 impl From<&TextureCacheEntry> for TextureCacheResult {
     fn from(entry: &TextureCacheEntry) -> TextureCacheResult {
         TextureCacheResult {
             id: entry.id,
-            size: (entry.size.0 as f32, entry.size.1 as f32),
+            size: entry.size.to_f32(),
         }
     }
 }
@@ -152,7 +153,7 @@ impl TextureCache {
         self.cache.get(path.as_ref()).map(|e| e.into())
     }
 
-    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: (u32, u32)) {
+    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: Vector2D<u32>) {
         self.cache
             .insert(path.as_ref().to_owned(), TextureCacheEntry { id, size });
     }

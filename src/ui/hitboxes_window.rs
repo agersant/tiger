@@ -32,11 +32,11 @@ fn draw_hitboxes<'a>(
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Hitboxes"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
+            .size(rect.size.to_tuple(), ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .movable(false)
