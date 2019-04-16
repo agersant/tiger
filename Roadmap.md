@@ -50,7 +50,7 @@
 - [x] Sort content panel entries by name
 - [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
-- [ ] Use rect and point structs consistently instead of tuples everywhere
+- [x] Use rect and point structs consistently instead of tuples everywhere
 - [x] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
