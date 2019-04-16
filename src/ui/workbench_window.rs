@@ -76,8 +76,7 @@ fn draw_hitbox_controls<'a>(
         screen_to_workbench(ui, ui.imgui().mouse_pos().into(), document);
 
     let rectangle = hitbox.get_rectangle();
-    let cursor_pos =
-        offset + space / 2.0 + rectangle.origin.to_f32().to_vector() * zoom;
+    let cursor_pos = offset + space / 2.0 + rectangle.origin.to_f32().to_vector() * zoom;
 
     ui.set_cursor_pos(cursor_pos.to_tuple());
     let top_left = Vector2D::<f32>::from(ui.get_cursor_screen_pos());
@@ -113,9 +112,7 @@ fn draw_hitbox_controls<'a>(
             .floor()
             .to_i32();
         if drag_button_size.x >= 1 && drag_button_size.y >= 1 {
-            ui.set_cursor_pos(
-                (cursor_pos + resize_handle_size.to_f32() / 2.0).to_tuple(),
-            );
+            ui.set_cursor_pos((cursor_pos + resize_handle_size.to_f32() / 2.0).to_tuple());
             let id = format!("hitbox_handle_{}", hitbox.get_name());
             ui.invisible_button(&ImString::new(id), drag_button_size.to_f32().to_tuple());
             if ui.is_item_hovered() {
@@ -148,9 +145,7 @@ fn draw_hitbox_controls<'a>(
                 hitbox,
                 vec2(
                     cursor_pos.x + resize_handle_size.x as f32 / 2.0,
-                    cursor_pos.y
-                        + resize_handle_size.y as f32 / 2.0
-                        + drag_button_size.y as f32,
+                    cursor_pos.y + resize_handle_size.y as f32 / 2.0 + drag_button_size.y as f32,
                 ),
                 (drag_button_size.x, resize_handle_size.y).into(),
                 ResizeAxis::S,
@@ -177,9 +172,7 @@ fn draw_hitbox_controls<'a>(
                 commands,
                 hitbox,
                 vec2(
-                    cursor_pos.x
-                        + resize_handle_size.x as f32 / 2.0
-                        + drag_button_size.x as f32,
+                    cursor_pos.x + resize_handle_size.x as f32 / 2.0 + drag_button_size.x as f32,
                     cursor_pos.y + resize_handle_size.y as f32 / 2.0,
                 ),
                 (resize_handle_size.x, drag_button_size.y).into(),
@@ -205,9 +198,7 @@ fn draw_hitbox_controls<'a>(
             commands,
             hitbox,
             vec2(
-                cursor_pos.x
-                    + drag_button_size.x as f32
-                    + resize_handle_size.x as f32 / 2.0,
+                cursor_pos.x + drag_button_size.x as f32 + resize_handle_size.x as f32 / 2.0,
                 cursor_pos.y - resize_handle_size.y as f32 / 2.0,
             ),
             resize_handle_size,
@@ -220,10 +211,7 @@ fn draw_hitbox_controls<'a>(
             ui,
             commands,
             hitbox,
-            cursor_pos
-                + drag_button_size.to_f32()
-                + resize_handle_size.to_f32() / 2.0
-                ,
+            cursor_pos + drag_button_size.to_f32() + resize_handle_size.to_f32() / 2.0,
             resize_handle_size,
             ResizeAxis::SE,
             mouse_position_in_workbench,
@@ -236,9 +224,7 @@ fn draw_hitbox_controls<'a>(
             hitbox,
             vec2(
                 cursor_pos.x - resize_handle_size.x as f32 / 2.0,
-                cursor_pos.y
-                    + drag_button_size.y as f32
-                    + resize_handle_size.y as f32 / 2.0,
+                cursor_pos.y + drag_button_size.y as f32 + resize_handle_size.y as f32 / 2.0,
             ),
             resize_handle_size,
             ResizeAxis::SW,

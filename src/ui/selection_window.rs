@@ -44,9 +44,7 @@ fn draw_animation<'a>(
                 let frame_offset = animation_frame.get_offset().to_f32();
                 let draw_position = cursor_pos
                     + fill.rect.origin.to_vector()
-                    + (frame_offset
-                        - bbox.rect.origin.to_f32().to_vector()
-                        - texture.size / 2.0)
+                    + (frame_offset - bbox.rect.origin.to_f32().to_vector() - texture.size / 2.0)
                         * fill.zoom;
                 let draw_size = texture.size * fill.zoom;
                 ui.set_cursor_pos(draw_position.to_tuple());

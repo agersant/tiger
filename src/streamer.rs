@@ -91,11 +91,8 @@ pub fn upload(
             let sampler =
                 factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
             let size = Vector2D::<u32>::from(texture_data.dimensions());
-            let kind = gfx::texture::Kind::D2(
-                size.x as u16,
-                size.y as u16,
-                gfx::texture::AaMode::Single,
-            );
+            let kind =
+                gfx::texture::Kind::D2(size.x as u16, size.y as u16, gfx::texture::AaMode::Single);
             if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
                 kind,
                 gfx::texture::Mipmap::Allocated,
