@@ -991,7 +991,7 @@ impl Document {
         let initial_size = self.workbench_hitbox_scale_initial_size;
         let axis = self.workbench_hitbox_scale_axis;
         let initial_mouse_position = self.workbench_hitbox_scale_initial_mouse_position;
-        let mouse_delta = (mouse_position - initial_mouse_position).to_i32();
+        let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
 
         let hitbox = self
             .get_sheet_mut()

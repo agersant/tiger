@@ -17,7 +17,7 @@ fn screen_to_workbench<'a>(
     let window_size: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
-    screen_coords - (offset + window_position + window_size / 2.0) / zoom
+    (screen_coords - offset - window_position - window_size / 2.0) / zoom
 }
 
 fn axis_to_cursor(axis: ResizeAxis) -> ImGuiMouseCursor {
