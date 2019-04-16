@@ -396,19 +396,19 @@ impl Hitbox {
         }
     }
 
-    pub fn get_position(&self) -> Point2D<i32> {
+    pub fn get_position(&self) -> Vector2D<i32> {
         match &self.geometry {
             Shape::Rectangle(r) => r.top_left.into(),
         }
     }
 
-    pub fn get_size(&self) -> Size2D<u32> {
+    pub fn get_size(&self) -> Vector2D<u32> {
         match &self.geometry {
             Shape::Rectangle(r) => r.size.into(),
         }
     }
 
-    pub fn set_position(&mut self, new_position: Point2D<i32>) {
+    pub fn set_position(&mut self, new_position: Vector2D<i32>) {
         match &mut self.geometry {
             Shape::Rectangle(r) => {
                 r.top_left = new_position.to_tuple();
@@ -416,7 +416,7 @@ impl Hitbox {
         }
     }
 
-    pub fn set_size(&mut self, new_size: Size2D<u32>) {
+    pub fn set_size(&mut self, new_size: Vector2D<u32>) {
         match &mut self.geometry {
             Shape::Rectangle(r) => {
                 r.size = new_size.to_tuple();

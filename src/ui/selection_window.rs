@@ -15,7 +15,7 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
         if let Some(texture) = texture_cache.get(frame.get_source()) {
             let space = ui.get_content_region_avail().into();
             if let Some(fill) = utils::fill(space, texture.size) {
-                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let cursor_pos = Vector2D::<f32>::from(ui.get_cursor_pos());
                 let draw_position = cursor_pos + fill.rect.origin.to_vector();
                 ui.set_cursor_pos(draw_position.to_tuple());
                 ui.image(texture.id, fill.rect.size.to_tuple()).build();
@@ -34,19 +34,19 @@ fn draw_animation<'a>(
     if let Ok(mut bbox) = utils::get_bounding_box(animation, texture_cache) {
         bbox.center_on_origin();
         let space = ui.get_content_region_avail().into();
-        if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32()) {
+        if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32().to_vector()) {
             let duration = animation.get_duration().unwrap(); // TODO no unwrap
             let time =
                 Duration::from_millis(state.get_clock().as_millis() as u64 % u64::from(duration)); // TODO pause on first and last frame for non looping animation?
             let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
             if let Some(texture) = texture_cache.get(animation_frame.get_frame()) {
-                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let cursor_pos = Vector2D::<f32>::from(ui.get_cursor_pos());
                 let frame_offset = animation_frame.get_offset().to_f32();
                 let draw_position = cursor_pos
                     + fill.rect.origin.to_vector()
                     + (frame_offset
-                        - bbox.rect.origin.to_vector().to_f32()
-                        - texture.size.to_vector() / 2.0)
+                        - bbox.rect.origin.to_f32().to_vector()
+                        - texture.size / 2.0)
                         * fill.zoom;
                 let draw_size = texture.size * fill.zoom;
                 ui.set_cursor_pos(draw_position.to_tuple());
@@ -73,7 +73,7 @@ fn draw_animation_frame<'a>(
         if let Some(texture) = texture_cache.get(frame) {
             let space = ui.get_content_region_avail().into();
             if let Some(fill) = utils::fill(space, texture.size) {
-                let cursor_pos = Point2D::<f32>::from(ui.get_cursor_pos());
+                let cursor_pos = Vector2D::<f32>::from(ui.get_cursor_pos());
                 let draw_position = cursor_pos + fill.rect.origin.to_vector();
                 ui.set_cursor_pos(draw_position.to_tuple());
                 ui.image(texture.id, fill.rect.size.to_tuple()).build();

@@ -62,12 +62,12 @@ fn liquid_data_from_hitbox(
 
     map.insert(
         "width".into(),
-        Value::Scalar(Scalar::new(hitbox.get_size().width as i32)),
+        Value::Scalar(Scalar::new(hitbox.get_size().x as i32)),
     );
 
     map.insert(
         "height".into(),
-        Value::Scalar(Scalar::new(hitbox.get_size().height as i32)),
+        Value::Scalar(Scalar::new(hitbox.get_size().y as i32)),
     );
 
     Ok(map)

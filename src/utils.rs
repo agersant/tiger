@@ -8,35 +8,35 @@ pub struct Fill {
     pub zoom: f32,
 }
 
-pub fn fill(space: Size2D<f32>, content_size: Size2D<f32>) -> Option<Fill> {
-    if content_size.is_empty_or_negative() || space.is_empty_or_negative() {
+pub fn fill(space: Vector2D<f32>, content_size: Vector2D<f32>) -> Option<Fill> {
+    if content_size.to_size().is_empty_or_negative() || space.to_size().is_empty_or_negative() {
         return None;
     }
 
-    let aspect_ratio = content_size.width / content_size.height;
+    let aspect_ratio = content_size.x / content_size.y;
     let fit_horizontally =
-        (content_size.width / space.width) >= (content_size.height / space.height);
+        (content_size.x / space.x) >= (content_size.y / space.y);
 
     let (w, h);
     if fit_horizontally {
-        if space.width > content_size.width {
-            w = content_size.width * (space.width / content_size.width).floor();
+        if space.x > content_size.x {
+            w = content_size.x * (space.x / content_size.x).floor();
         } else {
-            w = space.width;
+            w = space.x;
         }
         h = w / aspect_ratio;
     } else {
-        if space.height > content_size.height {
-            h = content_size.height * (space.height / content_size.height).floor();
+        if space.y > content_size.y {
+            h = content_size.y * (space.y / content_size.y).floor();
         } else {
-            h = space.height;
+            h = space.y;
         }
         w = h * aspect_ratio;
     }
 
     Some(Fill {
-        rect: rect((space.width - w) / 2.0, (space.height - h) / 2.0, w, h),
-        zoom: w / content_size.width,
+        rect: rect((space.x - w) / 2.0, (space.y - h) / 2.0, w, h),
+        zoom: w / content_size.x,
     })
 }
 
@@ -79,7 +79,7 @@ pub fn get_bounding_box(
             .get(frame.get_frame())
             .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
         let frame_offset = frame.get_offset();
-        let frame_rectangle = Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32());
+        let frame_rectangle = Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32().to_size());
         bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
     }
     Ok(BoundingBox {

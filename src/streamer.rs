@@ -90,10 +90,10 @@ pub fn upload(
         for (path, texture_data) in payload.new_textures {
             let sampler =
                 factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
-            let size = Size2D::<u32>::from(texture_data.dimensions());
+            let size = Vector2D::<u32>::from(texture_data.dimensions());
             let kind = gfx::texture::Kind::D2(
-                size.width as u16,
-                size.height as u16,
+                size.x as u16,
+                size.y as u16,
                 gfx::texture::AaMode::Single,
             );
             if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
@@ -119,13 +119,13 @@ pub fn upload(
 #[derive(Clone)]
 struct TextureCacheEntry {
     pub id: ImTexture,
-    pub size: Size2D<u32>,
+    pub size: Vector2D<u32>,
     // TODO dirty flag and file watches
 }
 
 pub struct TextureCacheResult {
     pub id: ImTexture,
-    pub size: Size2D<f32>,
+    pub size: Vector2D<f32>,
 }
 
 impl From<&TextureCacheEntry> for TextureCacheResult {
@@ -156,7 +156,7 @@ impl TextureCache {
         self.cache.get(path.as_ref()).map(|e| e.into())
     }
 
-    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: Size2D<u32>) {
+    pub fn insert<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: Vector2D<u32>) {
         self.cache
             .insert(path.as_ref().to_owned(), TextureCacheEntry { id, size });
     }
