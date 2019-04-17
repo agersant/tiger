@@ -571,6 +571,7 @@ impl Document {
             self.begin_animation_rename(&animation_name)?;
             animation_name
         };
+        self.select_animation(&animation_name)?;
         self.edit_animation(animation_name)
     }
 
