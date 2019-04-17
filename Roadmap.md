@@ -62,6 +62,7 @@
 - [ ] In-place tutorials instead of blank data
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Multiple selections
+- [ ] Document tabs (imgui 1.67+)
 - [ ] Prettier UI
 - [ ] Better rename UX
 - [x] Jump to next/previous frame
