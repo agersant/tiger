@@ -36,7 +36,7 @@
 - [x] Begin editing animation after creating it
 - [x] Automatically select hitbox after creating it
 - [ ] Select hitbox when clicking it
-- [ ] When creating an animation, automatically select it
+- [x] When creating an animation, automatically select it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
 - [ ] Drag and drop frames to workbench
