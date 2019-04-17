@@ -1,3 +1,4 @@
+use euclid::*;
 use failure::Error;
 use glutin::VirtualKeyCode;
 use imgui::StyleVar::*;
@@ -16,11 +17,6 @@ mod hitboxes_window;
 mod selection_window;
 mod timeline_window;
 mod workbench_window;
-
-pub struct Rect {
-    position: (f32, f32),
-    size: (f32, f32),
-}
 
 pub fn init(window: &glutin::GlWindow) -> ImGui {
     let mut imgui_instance = ImGui::init();
@@ -94,18 +90,12 @@ pub fn run<'a>(
 
     {
         // TODO Don't overlap other windows
-        let workbench_rect = Rect {
-            position: (0.0, menu_height),
-            size: (window_width, window_height - menu_height),
-        };
+        let workbench_rect = rect(0.0, menu_height, window_width, window_height - menu_height);
         workbench_window::draw(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 
     {
-        let documents_rect = Rect {
-            position: (content_width, menu_height),
-            size: (window_width, 0.0),
-        };
+        let documents_rect = rect(content_width, menu_height, window_width, 0.0);
         draw_documents_window(ui, &documents_rect, state, &mut commands);
     }
 
@@ -113,10 +103,7 @@ pub fn run<'a>(
     let content_height = 0.80 * panels_height;
 
     {
-        let content_rect = Rect {
-            position: (0.0, menu_height),
-            size: (content_width, content_height),
-        };
+        let content_rect = rect(0.0, menu_height, content_width, content_height);
         content_window::draw(ui, &content_rect, state, &mut commands);
     }
 
@@ -124,29 +111,35 @@ pub fn run<'a>(
         let selection_width = content_width;
         let selection_height = panels_height - content_height;
 
-        let selection_rect = Rect {
-            position: (0.0, window_height - selection_height),
-            size: (selection_width, selection_height),
-        };
+        let selection_rect = rect(
+            0.0,
+            window_height - selection_height,
+            selection_width,
+            selection_height,
+        );
         selection_window::draw(ui, &selection_rect, state, texture_cache);
     }
 
     {
         let timeline_width = window_width - content_width;
         let timeline_height = panels_height - content_height;
-        let timeline_rect = Rect {
-            position: (content_width, window_height - timeline_height),
-            size: (timeline_width, timeline_height),
-        };
+        let timeline_rect = rect(
+            content_width,
+            window_height - timeline_height,
+            timeline_width,
+            timeline_height,
+        );
         timeline_window::draw(ui, &timeline_rect, state, &mut commands);
     }
 
     {
         let hitboxes_height = content_height;
-        let hitboxes_rect = Rect {
-            position: (window_width - hitboxes_width, menu_height),
-            size: (hitboxes_width, hitboxes_height),
-        };
+        let hitboxes_rect = rect(
+            window_width - hitboxes_width,
+            menu_height,
+            hitboxes_width,
+            hitboxes_height,
+        );
         hitboxes_window::draw(ui, &hitboxes_rect, state, &mut commands);
     }
 
@@ -227,7 +220,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
 
 fn draw_documents_window<'a>(
     ui: &Ui<'a>,
-    rect: &Rect,
+    rect: &Rect<f32>,
     state: &State,
     commands: &mut CommandBuffer,
 ) -> (f32, f32) {
@@ -235,7 +228,7 @@ fn draw_documents_window<'a>(
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Documents"))
-            .position(rect.position, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
             .always_auto_resize(true)
             .collapsible(false)
             .resizable(false)
@@ -294,17 +287,17 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
                 ui.tooltip(|| {
                     match texture_cache.get(path) {
                         Some(TextureCacheResult::Loaded(texture)) => {
-                            let tooltip_size = (128.0, 128.0); // TODO hidpi?
+                            let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
                             if let Some(fill) = utils::fill(tooltip_size, texture.size) {
-                                ui.image(texture.id, fill.size).build();
+                                ui.image(texture.id, fill.rect.size.to_tuple()).build();
                             }
-                        }
+                        },
                         Some(TextureCacheResult::Loading) => {
                             // TODO spinner
-                        }
+                        },
                         _ => {
                             // TODO log
-                        }
+                        },
                     }
                 });
             }

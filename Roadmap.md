@@ -34,7 +34,9 @@
 - [x] Keyboard shortcuts for list navigation
 - [ ] Loading spinners
 - [x] Begin editing animation after creating it
-- [x] Select hitbox after creating it
+- [x] Automatically select hitbox after creating it
+- [ ] Select hitbox when clicking it
+- [x] When creating an animation, automatically select it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
 - [ ] Drag and drop frames to workbench
@@ -48,18 +50,19 @@
 - [x] Sort content panel entries by name
 - [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
-- [ ] Use rect and point structs consistently instead of tuples everywhere
+- [x] Use rect and point structs consistently instead of tuples everywhere
 - [x] Fix bug where origin is not consistent within one animation in selection window (is ok in workbench)
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows
-- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders )
+- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders)
 
 ## Tiger 0.3
 - [ ] Error dialogs
 - [ ] In-place tutorials instead of blank data
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Multiple selections
+- [ ] Document tabs (imgui 1.67+)
 - [ ] Prettier UI
 - [ ] Better rename UX
 - [x] Jump to next/previous frame
@@ -74,7 +77,7 @@
 - [ ] Hitbox colors
 - [ ] Default paths for NFD dialogs
 - [ ] Draw hitbox names in workbench
-- [ ] Onion skin
+- [ ] Onion skin?
 - [ ] Workbench tabs?
 - [ ] Editing hitboxes while animation is in workbench?
 
@@ -91,8 +94,9 @@
 
 ## Post 1.0
 - [ ] Tiger CLI
-- [ ] Projects
+- [ ] Open Recent
 - [ ] Sheet splitter tool
 - [ ] Anchor points (like hitbox but point)
 - [ ] Place arbitrary markers ("events") on timeline
 - [ ] Copy/paste animation or animation frame (between sheets)
+- [ ] Projects

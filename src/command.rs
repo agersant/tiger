@@ -1,3 +1,4 @@
+use euclid::*;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -42,19 +43,19 @@ pub enum Command {
     EndAnimationFrameDurationDrag,
     BeginAnimationFrameDrag(usize),
     EndAnimationFrameDrag,
-    BeginAnimationFrameOffsetDrag(usize, (f32, f32)),
-    UpdateAnimationFrameOffsetDrag((f32, f32), bool),
+    BeginAnimationFrameOffsetDrag(usize, Vector2D<f32>),
+    UpdateAnimationFrameOffsetDrag(Vector2D<f32>, bool),
     EndAnimationFrameOffsetDrag,
     WorkbenchZoomIn,
     WorkbenchZoomOut,
     WorkbenchResetZoom,
-    Pan((f32, f32)),
-    CreateHitbox((f32, f32)),
-    BeginHitboxScale(String, ResizeAxis, (f32, f32)),
-    UpdateHitboxScale((f32, f32)),
+    Pan(Vector2D<f32>),
+    CreateHitbox(Vector2D<f32>),
+    BeginHitboxScale(String, ResizeAxis, Vector2D<f32>),
+    UpdateHitboxScale(Vector2D<f32>),
     EndHitboxScale,
-    BeginHitboxDrag(String, (f32, f32)),
-    UpdateHitboxDrag((f32, f32), bool),
+    BeginHitboxDrag(String, Vector2D<f32>),
+    UpdateHitboxDrag(Vector2D<f32>, bool),
     EndHitboxDrag,
     TogglePlayback,
     SnapToPreviousFrame,
@@ -274,7 +275,7 @@ impl CommandBuffer {
     pub fn begin_animation_frame_offset_drag(
         &mut self,
         frame_index: usize,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
     ) {
         self.queue.push(Command::BeginAnimationFrameOffsetDrag(
             frame_index,
@@ -284,7 +285,7 @@ impl CommandBuffer {
 
     pub fn update_animation_frame_offset_drag(
         &mut self,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
         both_axis: bool,
     ) {
         self.queue.push(Command::UpdateAnimationFrameOffsetDrag(
@@ -309,11 +310,11 @@ impl CommandBuffer {
         self.queue.push(Command::WorkbenchResetZoom);
     }
 
-    pub fn pan(&mut self, delta: (f32, f32)) {
+    pub fn pan(&mut self, delta: Vector2D<f32>) {
         self.queue.push(Command::Pan(delta));
     }
 
-    pub fn create_hitbox(&mut self, mouse_position: (f32, f32)) {
+    pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) {
         self.queue.push(Command::CreateHitbox(mouse_position));
     }
 
@@ -321,7 +322,7 @@ impl CommandBuffer {
         &mut self,
         hitbox: &Hitbox,
         axis: ResizeAxis,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
     ) {
         self.queue.push(Command::BeginHitboxScale(
             hitbox.get_name().to_owned(),
@@ -330,7 +331,7 @@ impl CommandBuffer {
         ));
     }
 
-    pub fn update_hitbox_scale(&mut self, mouse_position: (f32, f32)) {
+    pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) {
         self.queue.push(Command::UpdateHitboxScale(mouse_position));
     }
 
@@ -338,14 +339,14 @@ impl CommandBuffer {
         self.queue.push(Command::EndHitboxScale);
     }
 
-    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox, mouse_position: (f32, f32)) {
+    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox, mouse_position: Vector2D<f32>) {
         self.queue.push(Command::BeginHitboxDrag(
             hitbox.get_name().to_owned(),
             mouse_position,
         ));
     }
 
-    pub fn update_hitbox_drag(&mut self, mouse_position: (f32, f32), both_axis: bool) {
+    pub fn update_hitbox_drag(&mut self, mouse_position: Vector2D<f32>, both_axis: bool) {
         self.queue
             .push(Command::UpdateHitboxDrag(mouse_position, both_axis));
     }

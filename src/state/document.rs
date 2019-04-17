@@ -1,3 +1,4 @@
+use euclid::*;
 use failure::Error;
 use std::cmp::min;
 use std::path::{Path, PathBuf};
@@ -84,19 +85,19 @@ pub struct Document {
     rename_buffer: String,
     content_frame_being_dragged: Option<PathBuf>,
     workbench_item: Option<WorkbenchItem>,
-    workbench_offset: (f32, f32),
+    workbench_offset: Vector2D<f32>,
     workbench_zoom_level: i32,
     workbench_hitbox_being_dragged: Option<String>,
-    workbench_hitbox_drag_initial_mouse_position: (f32, f32),
-    workbench_hitbox_drag_initial_offset: (i32, i32),
+    workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
+    workbench_hitbox_drag_initial_offset: Vector2D<i32>,
     workbench_hitbox_being_scaled: Option<String>,
     workbench_hitbox_scale_axis: ResizeAxis,
-    workbench_hitbox_scale_initial_mouse_position: (f32, f32),
-    workbench_hitbox_scale_initial_position: (i32, i32),
-    workbench_hitbox_scale_initial_size: (u32, u32),
+    workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
+    workbench_hitbox_scale_initial_position: Vector2D<i32>,
+    workbench_hitbox_scale_initial_size: Vector2D<u32>,
     workbench_animation_frame_being_dragged: Option<usize>,
-    workbench_animation_frame_drag_initial_mouse_position: (f32, f32),
-    workbench_animation_frame_drag_initial_offset: (i32, i32),
+    workbench_animation_frame_drag_initial_mouse_position: Vector2D<f32>,
+    workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
     timeline_zoom_level: i32,
     timeline_frame_being_scaled: Option<usize>,
     timeline_frame_scale_initial_duration: u32,
@@ -119,19 +120,19 @@ impl Document {
             rename_buffer: "".to_owned(),
             content_frame_being_dragged: None,
             workbench_item: None,
-            workbench_offset: (0.0, 0.0),
+            workbench_offset: Vector2D::<f32>::zero(),
             workbench_zoom_level: 1,
             workbench_hitbox_being_dragged: None,
-            workbench_hitbox_drag_initial_mouse_position: (0.0, 0.0),
-            workbench_hitbox_drag_initial_offset: (0, 0),
+            workbench_hitbox_drag_initial_mouse_position: Vector2D::<f32>::zero(),
+            workbench_hitbox_drag_initial_offset: vec2(0, 0),
             workbench_hitbox_being_scaled: None,
             workbench_hitbox_scale_axis: ResizeAxis::N,
-            workbench_hitbox_scale_initial_mouse_position: (0.0, 0.0),
-            workbench_hitbox_scale_initial_position: (0, 0),
-            workbench_hitbox_scale_initial_size: (0, 0),
+            workbench_hitbox_scale_initial_mouse_position: Vector2D::<f32>::zero(),
+            workbench_hitbox_scale_initial_position: vec2(0, 0),
+            workbench_hitbox_scale_initial_size: vec2(0, 0),
             workbench_animation_frame_being_dragged: None,
-            workbench_animation_frame_drag_initial_mouse_position: (0.0, 0.0),
-            workbench_animation_frame_drag_initial_offset: (0, 0),
+            workbench_animation_frame_drag_initial_mouse_position: Vector2D::<f32>::zero(),
+            workbench_animation_frame_drag_initial_offset: vec2(0, 0),
             timeline_zoom_level: 1,
             timeline_frame_being_scaled: None,
             timeline_frame_scale_initial_duration: 0,
@@ -266,7 +267,7 @@ impl Document {
         &self.workbench_item
     }
 
-    pub fn get_workbench_offset(&self) -> (f32, f32) {
+    pub fn get_workbench_offset(&self) -> Vector2D<f32> {
         self.workbench_offset
     }
 
@@ -304,9 +305,8 @@ impl Document {
         self.workbench_zoom_level = 1;
     }
 
-    pub fn pan(&mut self, delta: (f32, f32)) {
-        self.workbench_offset.0 += delta.0;
-        self.workbench_offset.1 += delta.1;
+    pub fn pan(&mut self, delta: Vector2D<f32>) {
+        self.workbench_offset += delta
     }
 
     pub fn get_export_settings(&self) -> &Option<ExportSettings> {
@@ -547,7 +547,7 @@ impl Document {
             return Err(DocumentError::FrameNotInDocument.into());
         }
         self.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
-        self.workbench_offset = (0.0, 0.0);
+        self.workbench_offset = Vector2D::zero();
         Ok(())
     }
 
@@ -557,7 +557,7 @@ impl Document {
             return Err(DocumentError::AnimationNotInDocument.into());
         }
         self.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
-        self.workbench_offset = (0.0, 0.0);
+        self.workbench_offset = Vector2D::zero();
         self.timeline_playing = false;
         self.timeline_clock = Duration::new(0, 0);
         Ok(())
@@ -571,6 +571,7 @@ impl Document {
             self.begin_animation_rename(&animation_name)?;
             animation_name
         };
+        self.select_animation(&animation_name)?;
         self.edit_animation(animation_name)
     }
 
@@ -591,7 +592,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn create_hitbox(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+    pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
         let hitbox_name = {
             let frame_path = match &self.workbench_item {
                 Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -605,10 +606,7 @@ impl Document {
                 .ok_or(DocumentError::FrameNotInDocument)?;
 
             let hitbox = frame.add_hitbox();
-            hitbox.set_position((
-                mouse_position.0.round() as i32,
-                mouse_position.1.round() as i32,
-            ));
+            hitbox.set_position(mouse_position.round().to_i32());
             hitbox.get_name().to_owned()
         };
         self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;
@@ -866,7 +864,7 @@ impl Document {
     pub fn begin_hitbox_drag<T: AsRef<str>>(
         &mut self,
         hitbox_name: T,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let frame_path = match &self.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -895,7 +893,7 @@ impl Document {
 
     pub fn update_hitbox_drag(
         &mut self,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.get_workbench_zoom_factor();
@@ -914,23 +912,17 @@ impl Document {
 
         let old_offset = self.workbench_hitbox_drag_initial_offset;
         let old_mouse_position = self.workbench_hitbox_drag_initial_mouse_position;
-        let mut mouse_delta = (
-            mouse_position.0 - old_mouse_position.0,
-            mouse_position.1 - old_mouse_position.1,
-        );
+        let mut mouse_delta = mouse_position - old_mouse_position;
 
         if !both_axis {
-            if mouse_delta.0.abs() > mouse_delta.1.abs() {
-                mouse_delta.1 = 0.0;
+            if mouse_delta.x.abs() > mouse_delta.y.abs() {
+                mouse_delta.y = 0.0;
             } else {
-                mouse_delta.0 = 0.0;
+                mouse_delta.x = 0.0;
             }
         }
 
-        let new_offset = (
-            (old_offset.0 as f32 + mouse_delta.0 / zoom).floor() as i32,
-            (old_offset.1 as f32 + mouse_delta.1 / zoom).floor() as i32,
-        );
+        let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
 
         let hitbox = self
             .get_sheet_mut()
@@ -951,7 +943,7 @@ impl Document {
         &mut self,
         hitbox_name: T,
         axis: ResizeAxis,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let frame_path = match self.get_workbench_item() {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -983,7 +975,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn update_hitbox_scale(&mut self, mouse_position: (f32, f32)) -> Result<(), Error> {
+    pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
         let frame_path = match self.get_workbench_item() {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
@@ -1000,10 +992,7 @@ impl Document {
         let initial_size = self.workbench_hitbox_scale_initial_size;
         let axis = self.workbench_hitbox_scale_axis;
         let initial_mouse_position = self.workbench_hitbox_scale_initial_mouse_position;
-        let mouse_delta = (
-            (mouse_position.0 - initial_mouse_position.0).round() as i32,
-            (mouse_position.1 - initial_mouse_position.1).round() as i32,
-        );
+        let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
 
         let hitbox = self
             .get_sheet_mut()
@@ -1012,45 +1001,45 @@ impl Document {
             .get_hitbox_mut(&hitbox_name)
             .ok_or(DocumentError::InvalidHitboxIndex)?;
 
-        let new_size = (
+        let new_size = vec2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-                    (initial_size.0 as i32 + mouse_delta.0).abs() as u32
+                    (initial_size.x as i32 + mouse_delta.x).abs() as u32
                 }
                 ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-                    (initial_size.0 as i32 - mouse_delta.0).abs() as u32
+                    (initial_size.x as i32 - mouse_delta.x).abs() as u32
                 }
-                _ => initial_size.0,
+                _ => initial_size.x,
             } as u32,
             match axis {
                 ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-                    (initial_size.1 as i32 + mouse_delta.1).abs() as u32
+                    (initial_size.y as i32 + mouse_delta.y).abs() as u32
                 }
                 ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-                    (initial_size.1 as i32 - mouse_delta.1).abs() as u32
+                    (initial_size.y as i32 - mouse_delta.y).abs() as u32
                 }
-                _ => initial_size.1,
+                _ => initial_size.y,
             } as u32,
         );
 
-        let new_position = (
+        let new_position = vec2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-                    initial_position.0 + min(0, initial_size.0 as i32 + mouse_delta.0)
+                    initial_position.x + min(0, initial_size.x as i32 + mouse_delta.x)
                 }
                 ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-                    initial_position.0 + min(mouse_delta.0, initial_size.0 as i32)
+                    initial_position.x + min(mouse_delta.x, initial_size.x as i32)
                 }
-                _ => initial_position.0,
+                _ => initial_position.x,
             } as i32,
             match axis {
                 ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-                    initial_position.1 + min(0, initial_size.1 as i32 + mouse_delta.1)
+                    initial_position.y + min(0, initial_size.y as i32 + mouse_delta.y)
                 }
                 ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-                    initial_position.1 + min(mouse_delta.1, initial_size.1 as i32)
+                    initial_position.y + min(mouse_delta.y, initial_size.y as i32)
                 }
-                _ => initial_position.1,
+                _ => initial_position.y,
             } as i32,
         );
 
@@ -1091,7 +1080,7 @@ impl Document {
     pub fn begin_animation_frame_offset_drag(
         &mut self,
         index: usize,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let animation_name = match &self.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
@@ -1118,7 +1107,7 @@ impl Document {
 
     pub fn update_animation_frame_offset_drag(
         &mut self,
-        mouse_position: (f32, f32),
+        mouse_position: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.get_workbench_zoom_factor();
@@ -1134,21 +1123,15 @@ impl Document {
 
         let old_offset = self.workbench_animation_frame_drag_initial_offset;
         let old_mouse_position = self.workbench_animation_frame_drag_initial_mouse_position;
-        let mut mouse_delta = (
-            mouse_position.0 - old_mouse_position.0,
-            mouse_position.1 - old_mouse_position.1,
-        );
+        let mut mouse_delta = mouse_position - old_mouse_position;
         if !both_axis {
-            if mouse_delta.0.abs() > mouse_delta.1.abs() {
-                mouse_delta.1 = 0.0;
+            if mouse_delta.x.abs() > mouse_delta.y.abs() {
+                mouse_delta.y = 0.0;
             } else {
-                mouse_delta.0 = 0.0;
+                mouse_delta.x = 0.0;
             }
         }
-        let new_offset = (
-            (old_offset.0 as f32 + mouse_delta.0 / zoom).floor() as i32,
-            (old_offset.1 as f32 + mouse_delta.1 / zoom).floor() as i32,
-        );
+        let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
 
         let animation_frame = self
             .get_sheet_mut()

@@ -1,3 +1,4 @@
+use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
@@ -11,24 +12,23 @@ use crate::utils;
 fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
     if let Some(name) = frame.get_source().file_name() {
         ui.text(&ImString::new(name.to_string_lossy()));
-        let space = ui.get_content_region_avail();
+        let space = ui.get_content_region_avail().into();
         match texture_cache.get(frame.get_source()) {
             Some(TextureCacheResult::Loaded(texture)) => {
                 if let Some(fill) = utils::fill(space, texture.size) {
-                    let cursor_pos = ui.get_cursor_pos();
-                    let x = cursor_pos.0 + fill.position.0;
-                    let y = cursor_pos.1 + fill.position.1;
-                    ui.set_cursor_pos((x, y));
-                    ui.image(texture.id, fill.size).build();
+                    let cursor_pos = Vector2D::<f32>::from(ui.get_cursor_pos());
+                    let draw_position = cursor_pos + fill.rect.origin.to_vector();
+                    ui.set_cursor_pos(draw_position.to_tuple());
+                    ui.image(texture.id, fill.rect.size.to_tuple()).build();
                 }
             }
             Some(TextureCacheResult::Loading) => {
                 let draw_list = ui.get_window_draw_list();
-                let top_left = ui.get_cursor_screen_pos();
+                let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
                 let color = [1.0, 1.0, 1.0, 0.5]; // TODO.style
                 draw_list
                     .add_circle(
-                        (top_left.0 + space.0 / 2.0, top_left.1 + space.1 / 2.0),
+                        (top_left + space / 2.0).to_tuple(),
                         20.0,
                         color,
                     )
@@ -50,31 +50,23 @@ fn draw_animation<'a>(
     ui.text(&ImString::new(animation.get_name().to_owned()));
     if let Ok(mut bbox) = utils::get_bounding_box(animation, texture_cache) {
         bbox.center_on_origin();
-        let space = ui.get_content_region_avail();
-        let bbox_size = (
-            (bbox.right - bbox.left) as f32,
-            (bbox.bottom - bbox.top) as f32,
-        );
-        if let Some(fill) = utils::fill(space, bbox_size) {
-            let cursor_pos = ui.get_cursor_pos();
+        let space = ui.get_content_region_avail().into();
+        if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32().to_vector()) {
             let duration = animation.get_duration().unwrap(); // TODO no unwrap
             let time =
                 Duration::from_millis(state.get_clock().as_millis() as u64 % u64::from(duration)); // TODO pause on first and last frame for non looping animation?
-
             let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
             match texture_cache.get(animation_frame.get_frame()) {
                 Some(TextureCacheResult::Loaded(texture)) => {
-                    let x = cursor_pos.0 + fill.position.0
-                        - fill.zoom * bbox.left as f32
-                        - fill.zoom * texture.size.0 as f32 / 2.0
-                        + fill.zoom * animation_frame.get_offset().0 as f32;
-                    let y = cursor_pos.1 + fill.position.1
-                        - fill.zoom * bbox.top as f32
-                        - fill.zoom * texture.size.1 as f32 / 2.0
-                        + fill.zoom * animation_frame.get_offset().1 as f32;
-                    ui.set_cursor_pos((x, y));
-                    let draw_size = (fill.zoom * texture.size.0, fill.zoom * texture.size.1);
-                    ui.image(texture.id, draw_size).build();
+                    let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
+                    let frame_offset = animation_frame.get_offset().to_f32();
+                    let draw_position = cursor_pos
+                        + fill.rect.origin.to_vector()
+                        + (frame_offset - bbox.rect.origin.to_f32().to_vector() - texture.size / 2.0)
+                            * fill.zoom;
+                    let draw_size = texture.size * fill.zoom;
+                    ui.set_cursor_pos(draw_position.to_tuple());
+                    ui.image(texture.id, draw_size.to_tuple()).build();
                 }
                 Some(TextureCacheResult::Loading) => {
                     // TODO SPINNER
@@ -101,13 +93,12 @@ fn draw_animation_frame<'a>(
         )));
         match texture_cache.get(frame) {
             Some(TextureCacheResult::Loaded(texture)) => {
-                let space = ui.get_content_region_avail();
+                let space = ui.get_content_region_avail().into();
                 if let Some(fill) = utils::fill(space, texture.size) {
-                    let cursor_pos = ui.get_cursor_pos();
-                    let x = cursor_pos.0 + fill.position.0;
-                    let y = cursor_pos.1 + fill.position.1;
-                    ui.set_cursor_pos((x, y));
-                    ui.image(texture.id, fill.size).build();
+                    let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
+                    let draw_position = cursor_pos + fill.rect.origin.to_vector();
+                    ui.set_cursor_pos(draw_position.to_tuple());
+                    ui.image(texture.id, fill.rect.size.to_tuple()).build();
                 }
             }
             Some(TextureCacheResult::Loading) => {
@@ -119,11 +110,11 @@ fn draw_animation_frame<'a>(
         }
     }
 }
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect, state: &State, texture_cache: &TextureCache) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
-            .position(rect.position, ImGuiCond::Always)
-            .size(rect.size, ImGuiCond::Always)
+            .position(rect.origin.to_tuple(), ImGuiCond::Always)
+            .size(rect.size.to_tuple(), ImGuiCond::Always)
             .collapsible(false)
             .resizable(false)
             .movable(false)
