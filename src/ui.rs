@@ -19,7 +19,7 @@ mod spinner;
 mod timeline_window;
 mod workbench_window;
 
-pub fn init(window: &glutin::GlWindow) -> ImGui {
+pub fn init(window: &glutin::Window) -> ImGui {
     let mut imgui_instance = ImGui::init();
     imgui_instance.set_ini_filename(None);
 
