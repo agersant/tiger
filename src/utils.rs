@@ -76,7 +76,8 @@ pub fn get_bounding_box(
     for frame in animation.frames_iter() {
         if let Some(TextureCacheResult::Loaded(texture)) = texture_cache.get(frame.get_frame()) {
             let frame_offset = frame.get_offset();
-            let frame_rectangle = Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32().to_size());
+            let frame_rectangle =
+                Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32().to_size());
             bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
         } else {
             return Err(BoundingBoxError::FrameDataNotLoaded);
