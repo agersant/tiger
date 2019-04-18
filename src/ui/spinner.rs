@@ -19,9 +19,8 @@ pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vect
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_millis()
-        % 50_000_000) as f32
+        - 1555564915622) as f32
         / 1000.0;
-    let time = time % cycle_duration;
 
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     if let Some(fill) = utils::fill(space, vec2(size, size)) {
@@ -38,6 +37,7 @@ pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vect
         }
 
         let half_cycle_duration = cycle_duration / 2.0;
+        let time = time % cycle_duration;
         let draw_start = if time < half_cycle_duration {
             0.0
         } else {
