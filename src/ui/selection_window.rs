@@ -27,7 +27,7 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
                 draw_spinner(ui, &ui.get_window_draw_list(), space);
             }
             _ => {
-                // TODO log
+                // TODO
             }
         }
     }
@@ -68,7 +68,7 @@ fn draw_animation<'a>(
                         draw_spinner(ui, &ui.get_window_draw_list(), space);
                     }
                     _ => {
-                        // TODO LOG
+                        // TODO
                     }
                 }
             }
@@ -92,9 +92,9 @@ fn draw_animation_frame<'a>(
             "Duration: {}ms",
             animation_frame.get_duration()
         )));
+        let space = ui.get_content_region_avail().into();
         match texture_cache.get(frame) {
             Some(TextureCacheResult::Loaded(texture)) => {
-                let space = ui.get_content_region_avail().into();
                 if let Some(fill) = utils::fill(space, texture.size) {
                     let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
                     let draw_position = cursor_pos + fill.rect.origin.to_vector();
@@ -103,10 +103,10 @@ fn draw_animation_frame<'a>(
                 }
             }
             Some(TextureCacheResult::Loading) => {
-                // TODO SPINNER
+                draw_spinner(ui, &ui.get_window_draw_list(), space);
             }
             _ => {
-                // TODO LOG
+                // TODO
             }
         }
     }

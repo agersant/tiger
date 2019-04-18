@@ -260,12 +260,13 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
+    let offset = document.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&frame.get_source()) {
         Some(TextureCacheResult::Loaded(texture)) => {
             {
                 let draw_size = texture.size * zoom;
-                let cursor_pos = (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
+                let cursor_pos = offset + (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
                 ui.set_cursor_pos(cursor_pos.to_tuple());
                 ui.image(texture.id, draw_size.to_tuple()).build();
             }
@@ -290,18 +291,6 @@ fn draw_frame<'a>(
                 );
             }
 
-            for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, vec2(0, 0));
-                draw_hitbox_controls(
-                    ui,
-                    document,
-                    commands,
-                    hitbox,
-                    &mut is_scaling_hitbox,
-                    &mut is_dragging_hitbox,
-                );
-            }
-
             if !is_scaling_hitbox
                 && !is_dragging_hitbox
                 && ui.is_window_hovered()
@@ -312,10 +301,11 @@ fn draw_frame<'a>(
             }
         }
         Some(TextureCacheResult::Loading) => {
-            // TODO SPINNER
+            ui.set_cursor_pos(offset.to_tuple());
+            draw_spinner(ui, &ui.get_window_draw_list(), space);
         }
         _ => {
-            // TODO LOG
+            // TODO
         }
     }
 }
@@ -349,7 +339,7 @@ fn draw_animation_frame<'a>(
             draw_spinner(ui, &ui.get_window_draw_list(), space);
         }
         _ => {
-            // TODO LOG
+            // TODO
         }
     }
 }

@@ -70,6 +70,7 @@ pub fn load_from_disk(
                     new_textures.insert(path.clone(), image.to_rgba());
                 };
             } else {
+                // TODO Log
                 errored_textures.insert(path.clone());
             }
             io_time += std::time::Instant::now() - start;

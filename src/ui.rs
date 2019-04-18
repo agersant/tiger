@@ -298,7 +298,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
                             spinner::draw_spinner(ui, &ui.get_window_draw_list(), tooltip_size);
                         }
                         _ => {
-                            // TODO log
+                            // TODO
                         }
                     }
                 });

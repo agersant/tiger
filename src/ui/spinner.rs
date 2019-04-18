@@ -4,16 +4,15 @@ use std::f32::consts::PI;
 
 use crate::utils;
 
-// TODO size hidpi?
 pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vector2D<f32>) {
-    let size = 20.0;
+    let size = 20.0; // TODO dpi?
     let color = [0.8, 1.0, 0.1, 1.0]; // TODO.style
     let spin_duration = 3.0; // seconds
     let cycle_duration = 2.0; // seconds
-    let thickness = 1.0;
+    let thickness = 1.0; // TODO dpi?
     let num_control_points = 4;
 
-    // TODO use imgui's get_time() and remove the modulus
+    // TODO use imgui's get_time() and remove jank offset
     use std::time::SystemTime;
     let time = (SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
