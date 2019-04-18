@@ -32,7 +32,7 @@
 - [ ] Keyboard shortcuts menu entries
 - [ ] Keyboard shortcuts for moving hitbox / animation frame
 - [x] Keyboard shortcuts for list navigation
-- [ ] Loading spinners
+- [x] Loading spinners
 - [x] Begin editing animation after creating it
 - [x] Automatically select hitbox after creating it
 - [ ] Select hitbox when clicking it

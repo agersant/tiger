@@ -5,8 +5,8 @@ use imgui::*;
 use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
 use crate::state::{self, Document, ResizeAxis, State};
-use crate::streamer::TextureCache;
-use crate::ui::Rect;
+use crate::streamer::{TextureCache, TextureCacheResult};
+use crate::ui::spinner::*;
 
 fn screen_to_workbench<'a>(
     ui: &Ui<'a>,
@@ -260,42 +260,52 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.get_workbench_zoom_factor();
+    let offset = document.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
-    if let Some(texture) = texture_cache.get(&frame.get_source()) {
-        {
-            let draw_size = texture.size * zoom;
-            let cursor_pos = (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
-            ui.set_cursor_pos(cursor_pos.to_tuple());
-            ui.image(texture.id, draw_size.to_tuple()).build();
+    match texture_cache.get(&frame.get_source()) {
+        Some(TextureCacheResult::Loaded(texture)) => {
+            {
+                let draw_size = texture.size * zoom;
+                let cursor_pos = offset + (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
+                ui.set_cursor_pos(cursor_pos.to_tuple());
+                ui.image(texture.id, draw_size.to_tuple()).build();
+            }
+
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+            let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
+            let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
+
+            let mouse_pos = ui.imgui().mouse_pos().into();
+            let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
+
+            for hitbox in frame.hitboxes_iter() {
+                draw_hitbox(ui, document, hitbox, vec2(0, 0));
+                draw_hitbox_controls(
+                    ui,
+                    document,
+                    commands,
+                    hitbox,
+                    &mut is_scaling_hitbox,
+                    &mut is_dragging_hitbox,
+                );
+            }
+
+            if !is_scaling_hitbox
+                && !is_dragging_hitbox
+                && ui.is_window_hovered()
+                && is_mouse_down
+                && !is_mouse_dragging
+            {
+                commands.create_hitbox(mouse_position_in_workbench);
+            }
         }
-
-        let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
-        let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
-
-        let mouse_pos = ui.imgui().mouse_pos().into();
-        let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
-
-        for hitbox in frame.hitboxes_iter() {
-            draw_hitbox(ui, document, hitbox, vec2(0, 0));
-            draw_hitbox_controls(
-                ui,
-                document,
-                commands,
-                hitbox,
-                &mut is_scaling_hitbox,
-                &mut is_dragging_hitbox,
-            );
+        Some(TextureCacheResult::Loading) => {
+            ui.set_cursor_pos(offset.to_tuple());
+            draw_spinner(ui, &ui.get_window_draw_list(), space);
         }
-
-        if !is_scaling_hitbox
-            && !is_dragging_hitbox
-            && ui.is_window_hovered()
-            && is_mouse_down
-            && !is_mouse_dragging
-        {
-            commands.create_hitbox(mouse_position_in_workbench);
+        _ => {
+            // TODO
         }
     }
 }
@@ -308,19 +318,28 @@ fn draw_animation_frame<'a>(
 ) {
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
-    if let Some(texture) = texture_cache.get(&animation_frame.get_frame()) {
-        let space = Vector2D::<f32>::from(ui.get_window_size());
-        let frame_offset = animation_frame.get_offset().to_f32();
-        let draw_size = texture.size * zoom;
-        let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
-            - ((draw_size / zoom / 2.0).floor() * zoom);
-        ui.set_cursor_pos(cursor_pos.to_tuple());
-        ui.image(texture.id, draw_size.to_tuple()).build();
+    let space = Vector2D::<f32>::from(ui.get_window_size());
+    match texture_cache.get(&animation_frame.get_frame()) {
+        Some(TextureCacheResult::Loaded(texture)) => {
+            let frame_offset = animation_frame.get_offset().to_f32();
+            let draw_size = texture.size * zoom;
+            let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
+                - ((draw_size / zoom / 2.0).floor() * zoom);
+            ui.set_cursor_pos(cursor_pos.to_tuple());
+            ui.image(texture.id, draw_size.to_tuple()).build();
 
-        if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
-            for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, frame_offset.to_i32());
+            if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
+                for hitbox in frame.hitboxes_iter() {
+                    draw_hitbox(ui, document, hitbox, frame_offset.to_i32());
+                }
             }
+        }
+        Some(TextureCacheResult::Loading) => {
+            ui.set_cursor_pos(offset.to_tuple());
+            draw_spinner(ui, &ui.get_window_draw_list(), space);
+        }
+        _ => {
+            // TODO
         }
     }
 }

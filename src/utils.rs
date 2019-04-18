@@ -1,7 +1,7 @@
 use euclid::*;
 
 use crate::sheet::Animation;
-use crate::streamer::TextureCache;
+use crate::streamer::{TextureCache, TextureCacheResult};
 
 pub struct Fill {
     pub rect: Rect<f32>,
@@ -74,13 +74,14 @@ pub fn get_bounding_box(
     }
     let mut bbox_rectangle = Rect::<i32>::zero();
     for frame in animation.frames_iter() {
-        let texture = texture_cache
-            .get(frame.get_frame())
-            .ok_or(BoundingBoxError::FrameDataNotLoaded)?;
-        let frame_offset = frame.get_offset();
-        let frame_rectangle =
-            Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32().to_size());
-        bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
+        if let Some(TextureCacheResult::Loaded(texture)) = texture_cache.get(frame.get_frame()) {
+            let frame_offset = frame.get_offset();
+            let frame_rectangle =
+                Rect::<i32>::new(frame_offset.to_point(), texture.size.to_i32().to_size());
+            bbox_rectangle = bbox_rectangle.union(&frame_rectangle);
+        } else {
+            return Err(BoundingBoxError::FrameDataNotLoaded);
+        }
     }
     Ok(BoundingBox {
         rect: bbox_rectangle,
