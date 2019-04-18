@@ -266,7 +266,8 @@ fn draw_frame<'a>(
         Some(TextureCacheResult::Loaded(texture)) => {
             {
                 let draw_size = texture.size * zoom;
-                let cursor_pos = offset + (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
+                let cursor_pos =
+                    offset + (space / 2.0).floor() - (draw_size / zoom / 2.0).floor() * zoom;
                 ui.set_cursor_pos(cursor_pos.to_tuple());
                 ui.image(texture.id, draw_size.to_tuple()).build();
             }
