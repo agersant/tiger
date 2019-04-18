@@ -6,7 +6,7 @@ use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
 use crate::state::{self, Document, ResizeAxis, State};
 use crate::streamer::{TextureCache, TextureCacheResult};
-use crate::ui::Rect;
+use crate::ui::spinner::*;
 
 fn screen_to_workbench<'a>(
     ui: &Ui<'a>,
@@ -328,9 +328,9 @@ fn draw_animation_frame<'a>(
 ) {
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
+    let space = Vector2D::<f32>::from(ui.get_window_size());
     match texture_cache.get(&animation_frame.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
-            let space = Vector2D::<f32>::from(ui.get_window_size());
             let frame_offset = animation_frame.get_offset().to_f32();
             let draw_size = texture.size * zoom;
             let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
@@ -343,10 +343,11 @@ fn draw_animation_frame<'a>(
                     draw_hitbox(ui, document, hitbox, frame_offset.to_i32());
                 }
             }
-        },
+        }
         Some(TextureCacheResult::Loading) => {
-            // TODO SPINNER
-        },
+            ui.set_cursor_pos(offset.to_tuple());
+            draw_spinner(ui, &ui.get_window_draw_list(), space);
+        }
         _ => {
             // TODO LOG
         }
