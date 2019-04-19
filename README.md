@@ -34,7 +34,7 @@ One of the following:
 #### Dependencies
 
 1. Install GTK-3. This is most likely available from your distribution's package manager. For instance on Ubuntu, execute `sudo apt-get install libgtk-3-dev`
-2. Install the Rust nightly compiler by executing `curl https://sh.rustup.rs -sSf | sh -s --default-toolchain nightly` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
+2. Install the Rust compiler by executing `curl https://sh.rustup.rs -sSf | sh` or using an [alternative method](https://www.rust-lang.org/en-US/install.html)
 
 #### Tiger installation
 1. Download the [latest release]((https://github.com/agersant/tiger/releases/latest)) of Tiger (you want the .tar.gz file)
