@@ -160,54 +160,114 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File")).build(|| {
-                if ui.menu_item(im_str!("New Sheet…")).build() {
+                if ui
+                    .menu_item(im_str!("New Sheet…"))
+                    .shortcut(im_str!("Ctrl+N"))
+                    .build()
+                {
                     commands.new_document();
                 }
-                if ui.menu_item(im_str!("Open Sheet…")).build() {
+                if ui
+                    .menu_item(im_str!("Open Sheet…"))
+                    .shortcut(im_str!("Ctrl+O"))
+                    .build()
+                {
                     commands.open_document();
                 }
                 ui.separator();
-                if ui.menu_item(im_str!("Save")).build() {
+                if ui
+                    .menu_item(im_str!("Save"))
+                    .shortcut(im_str!("Ctrl+S"))
+                    .build()
+                {
                     commands.save();
                 }
-                if ui.menu_item(im_str!("Save As…")).build() {
+                if ui
+                    .menu_item(im_str!("Save As…"))
+                    .shortcut(im_str!("Ctrl+Shift+S"))
+                    .build()
+                {
                     commands.save_as();
                 }
-                if ui.menu_item(im_str!("Save All")).build() {
+                if ui
+                    .menu_item(im_str!("Save All"))
+                    .shortcut(im_str!("Ctrl+Alt+S"))
+                    .build()
+                {
                     commands.save_all();
                 }
-                if ui.menu_item(im_str!("Export")).build() {
+                if ui
+                    .menu_item(im_str!("Export"))
+                    .shortcut(im_str!("Ctrl+E"))
+                    .build()
+                {
                     commands.export();
                 }
-                if ui.menu_item(im_str!("Export As…")).build() {
+                if ui
+                    .menu_item(im_str!("Export As…"))
+                    .shortcut(im_str!("Ctrl+Shift+E"))
+                    .build()
+                {
                     commands.begin_export_as();
                 }
                 ui.separator();
-                if ui.menu_item(im_str!("Close")).build() {
+                if ui
+                    .menu_item(im_str!("Close"))
+                    .shortcut(im_str!("Ctrl+W"))
+                    .build()
+                {
                     commands.close_current_document();
                 }
-                if ui.menu_item(im_str!("Close All")).build() {
+                if ui
+                    .menu_item(im_str!("Close All"))
+                    .shortcut(im_str!("Ctrl+Shift+W"))
+                    .build()
+                {
                     commands.close_all_documents();
                 }
             });
             ui.menu(im_str!("View")).build(|| {
-                if ui.menu_item(im_str!("Zoom In (Workbench)")).build() {
+                if ui
+                    .menu_item(im_str!("Zoom In (Workbench)"))
+                    .shortcut(im_str!("Ctrl++"))
+                    .build()
+                {
                     commands.workbench_zoom_in();
                 }
-                if ui.menu_item(im_str!("Zoom Out (Workbench)")).build() {
+                if ui
+                    .menu_item(im_str!("Zoom Out (Workbench)"))
+                    .shortcut(im_str!("Ctrl+-"))
+                    .build()
+                {
                     commands.workbench_zoom_out();
                 }
-                if ui.menu_item(im_str!("Reset Zoom (Workbench)")).build() {
+                if ui
+                    .menu_item(im_str!("Reset Zoom (Workbench)"))
+                    .shortcut(im_str!("Ctrl+0"))
+                    .build()
+                {
                     commands.workbench_reset_zoom();
                 }
                 ui.separator();
-                if ui.menu_item(im_str!("Zoom In (Timeline)")).build() {
+                if ui
+                    .menu_item(im_str!("Zoom In (Timeline)"))
+                    .shortcut(im_str!("Ctrl+Alt++"))
+                    .build()
+                {
                     commands.timeline_zoom_in();
                 }
-                if ui.menu_item(im_str!("Zoom Out (Timeline)")).build() {
+                if ui
+                    .menu_item(im_str!("Zoom Out (Timeline)"))
+                    .shortcut(im_str!("Ctrl+Alt+-"))
+                    .build()
+                {
                     commands.timeline_zoom_out();
                 }
-                if ui.menu_item(im_str!("Reset Zoom (Timeline)")).build() {
+                if ui
+                    .menu_item(im_str!("Reset Zoom (Timeline)"))
+                    .shortcut(im_str!("Ctrl+Alt+0"))
+                    .build()
+                {
                     commands.timeline_reset_zoom();
                 }
             });
@@ -424,8 +484,7 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
         return;
     }
 
-    let delete_key_index = ui.imgui().get_key_index(ImGuiKey::Delete);
-    if ui.imgui().is_key_pressed(delete_key_index) {
+    if ui.imgui().is_key_pressed(VirtualKeyCode::Delete as _) {
         commands.delete_selection();
     }
     if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
@@ -445,5 +504,64 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     }
     if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
         commands.snap_to_next_frame();
+    }
+
+    if ui.imgui().key_ctrl() {
+        if ui.imgui().is_key_pressed(VirtualKeyCode::N as _) {
+            commands.new_document();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::O as _) {
+            commands.open_document();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
+            if ui.imgui().key_shift() {
+                commands.save_as();
+            } else if ui.imgui().key_alt() {
+                commands.save_all();
+            } else {
+                commands.save();
+            }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
+            if ui.imgui().key_shift() {
+                commands.begin_export_as();
+            } else {
+                commands.export();
+            }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::W as _) {
+            if ui.imgui().key_shift() {
+                commands.close_all_documents();
+            } else {
+                commands.close_current_document();
+            }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Add as _)
+            || ui.imgui().is_key_pressed(VirtualKeyCode::Equals as _)
+        {
+            if ui.imgui().key_alt() {
+                commands.timeline_zoom_in();
+            } else {
+                commands.workbench_zoom_in();
+            }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Subtract as _)
+            || ui.imgui().is_key_pressed(VirtualKeyCode::Minus as _)
+        {
+            if ui.imgui().key_alt() {
+                commands.timeline_zoom_out();
+            } else {
+                commands.workbench_zoom_out();
+            }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Key0 as _)
+            || ui.imgui().is_key_pressed(VirtualKeyCode::Numpad0 as _)
+        {
+            if ui.imgui().key_alt() {
+                commands.timeline_reset_zoom();
+            } else {
+                commands.workbench_reset_zoom();
+            }
+        }
     }
 }
