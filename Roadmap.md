@@ -41,7 +41,7 @@
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
 - [ ] Drag and drop frames to workbench
-- [ ] Grid snapping?
+- ~~[ ] Grid snapping?~~
 - [x] Content of selection window when selecting animation frame
 - [ ] Content of selection window when selecting hitbox
 - [x] In selection window, keep origin centered to preview turnarounds
