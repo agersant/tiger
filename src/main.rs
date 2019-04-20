@@ -164,19 +164,28 @@ fn main() -> Result<(), failure::Error> {
 
                     cvar.notify_all();
 
-                    // Keep main thread going while we wait on async thread
-
                     'async_command: loop {
+
+                        // Ignore new commands
+                        {
+                            let mut buff = command_buffer_for_worker.lock().unwrap();
+                            buff.flush();
+                        }
+
+                        // Determine if async command is complete
                         let has_result;
                         {
                             let result_mutex = async_command_result_for_worker.lock().unwrap();
                             has_result = result_mutex.deref().is_some();
                         }
+
+                        // Keep main thread going while we wait on async thread
                         if !has_result {
                             barrier_for_worker.wait();
                             continue;
                         }
 
+                        // Handle result of async command
                         let mut result_mutex = async_command_result_for_worker.lock().unwrap();
                         let result = result_mutex.deref_mut().take().unwrap();
                         state = result.new_state.clone();
