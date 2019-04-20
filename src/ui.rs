@@ -487,25 +487,44 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     if ui.imgui().is_key_pressed(VirtualKeyCode::Delete as _) {
         commands.delete_selection();
     }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
-        commands.select_previous(); // TODO autoscroll somehow?
-    }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
-        commands.select_next(); // TODO autoscroll somehow?
-    }
     if ui.imgui().is_key_pressed(VirtualKeyCode::F2 as _) {
         commands.begin_rename_selection();
     }
     if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
         commands.toggle_playback();
     }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
-        commands.snap_to_previous_frame();
-    }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
-        commands.snap_to_next_frame();
+
+    // Arrow shortcuts
+    if ui.imgui().key_ctrl() {
+        let large_nudge = ui.imgui().key_shift();
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
+            commands.nudge_selection_left(large_nudge);
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
+            commands.nudge_selection_right(large_nudge);
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
+            commands.nudge_selection_up(large_nudge);
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
+            commands.nudge_selection_down(large_nudge);
+        }
+    } else {
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
+            commands.snap_to_previous_frame();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
+            commands.snap_to_next_frame();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
+            commands.select_previous(); // TODO autoscroll somehow?
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
+            commands.select_next(); // TODO autoscroll somehow?
+        }
     }
 
+    // Menu commands
     if ui.imgui().key_ctrl() {
         if ui.imgui().is_key_pressed(VirtualKeyCode::N as _) {
             commands.new_document();

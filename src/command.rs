@@ -67,6 +67,7 @@ pub enum Command {
     BeginScrub,
     UpdateScrub(Duration),
     EndScrub,
+    NudgeSelection(Vector2D<i32>, bool),
     DeleteSelection,
     BeginRenameSelection,
     UpdateRenameSelection(String),
@@ -393,6 +394,22 @@ impl CommandBuffer {
 
     pub fn end_scrub(&mut self) {
         self.queue.push(Command::EndScrub);
+    }
+
+    pub fn nudge_selection_left(&mut self, large: bool) {
+        self.queue.push(Command::NudgeSelection(vec2(-1, 0), large));
+    }
+
+    pub fn nudge_selection_right(&mut self, large: bool) {
+        self.queue.push(Command::NudgeSelection(vec2(1, 0), large));
+    }
+
+    pub fn nudge_selection_up(&mut self, large: bool) {
+        self.queue.push(Command::NudgeSelection(vec2(0, -1), large));
+    }
+
+    pub fn nudge_selection_down(&mut self, large: bool) {
+        self.queue.push(Command::NudgeSelection(vec2(0, 1), large));
     }
 
     pub fn delete_selection(&mut self) {

@@ -514,6 +514,9 @@ impl State {
             Command::EndScrub => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_timeline_scrub(),
+            Command::NudgeSelection(d, l) => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .nudge_selection(d, *l)?,
             Command::DeleteSelection => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .delete_selection(),

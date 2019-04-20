@@ -313,6 +313,35 @@ impl Document {
         &self.export_settings
     }
 
+    pub fn nudge_selection(&mut self, direction: &Vector2D<i32>, large: bool) -> Result<(), Error> {
+        let amplitude = if large { 10 } else { 1 };
+        let offset = *direction * amplitude;
+        match &self.selection {
+            Some(Selection::Animation(_)) => {}
+            Some(Selection::Frame(_)) => {}
+            Some(Selection::Hitbox(f, h)) => {
+                let hitbox = self
+                    .sheet
+                    .get_frame_mut(f)
+                    .ok_or(DocumentError::FrameNotInDocument)?
+                    .get_hitbox_mut(&h)
+                    .ok_or(DocumentError::InvalidHitboxIndex)?;
+                hitbox.set_position(hitbox.get_position() + offset);
+            }
+            Some(Selection::AnimationFrame(a, af)) => {
+                let animation_frame = self
+                    .sheet
+                    .get_animation_mut(a)
+                    .ok_or(DocumentError::AnimationNotInDocument)?
+                    .get_frame_mut(*af)
+                    .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+                animation_frame.set_offset(animation_frame.get_offset() + offset);
+            }
+            None => {}
+        };
+        Ok(())
+    }
+
     pub fn delete_selection(&mut self) {
         match &self.selection {
             Some(Selection::Animation(a)) => {

@@ -30,7 +30,7 @@
 - [ ] Undo/Redo
 - [x] Keyboard shortcuts for playback controls
 - [x] Keyboard shortcuts menu entries
-- [ ] Keyboard shortcuts for moving hitbox / animation frame
+- [x] Keyboard shortcuts for moving hitbox / animation frame
 - [x] Keyboard shortcuts for list navigation
 - [ ] Fix issue where O key gets stuck after using Ctrl+O shortcut (https://github.com/Gekkio/imgui-rs/pull/215)
 - [x] Loading spinners
