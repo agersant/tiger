@@ -776,7 +776,7 @@ impl Document {
     }
 
     pub fn snap_to_previous_frame(&mut self) -> Result<(), Error> {
-        let (index, clock) = {
+        let clock = {
             let animation = self.get_workbench_animation()?;
 
             if animation.get_num_frames() == 0 {
@@ -785,31 +785,29 @@ impl Document {
 
             let mut cursor = 0 as u64;
             let now = self.timeline_clock.as_millis() as u64;
-            let frame_times: Vec<(usize, u64)> = animation
+            let frame_times: Vec<u64> = animation
                 .frames_iter()
-                .enumerate()
-                .map(|(i, f)| {
+                .map(|f| {
                     let t = cursor;
                     cursor += u64::from(f.get_duration());
-                    (i, t)
+                    t
                 })
                 .collect();
 
-            match frame_times.iter().rev().find(|(_, t1)| *t1 < now) {
-                Some((i, t1)) => (*i, *t1),
+            match frame_times.iter().rev().find(|t1| **t1 < now) {
+                Some(t1) => *t1,
                 None => match frame_times.iter().next() {
-                    Some((_, t)) => (0, *t),
-                    None => (0, 0),
+                    Some(t) => *t,
+                    None => 0,
                 },
             }
         };
 
-        self.timeline_clock = Duration::from_millis(clock);
-        self.select_animation_frame(index)
+        self.update_timeline_scrub(Duration::from_millis(clock))
     }
 
     pub fn snap_to_next_frame(&mut self) -> Result<(), Error> {
-        let (index, clock) = {
+        let clock = {
             let animation = self.get_workbench_animation()?;
 
             if animation.get_num_frames() == 0 {
@@ -818,27 +816,25 @@ impl Document {
 
             let mut cursor = 0 as u64;
             let now = self.timeline_clock.as_millis() as u64;
-            let frame_times: Vec<(usize, u64)> = animation
+            let frame_times: Vec<u64> = animation
                 .frames_iter()
-                .enumerate()
-                .map(|(i, f)| {
+                .map(|f| {
                     let t = cursor;
                     cursor += u64::from(f.get_duration());
-                    (i, t)
+                    t
                 })
                 .collect();
 
-            match frame_times.iter().find(|(_, t1)| *t1 > now) {
-                Some((i, t1)) => (*i, *t1),
-                None => match frame_times.iter().enumerate().last() {
-                    Some((i, (_, t))) => (i, *t),
-                    None => (0, 0),
+            match frame_times.iter().find(|t1| **t1 > now) {
+                Some(t1) => *t1,
+                None => match frame_times.iter().last() {
+                    Some(t) => *t,
+                    None => 0,
                 },
             }
         };
 
-        self.timeline_clock = Duration::from_millis(clock);
-        self.select_animation_frame(index)
+        self.update_timeline_scrub(Duration::from_millis(clock))
     }
 
     pub fn reorder_animation_frame(
