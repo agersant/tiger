@@ -101,10 +101,6 @@ impl CommandBuffer {
         CommandBuffer { queue: vec![] }
     }
 
-    pub fn append(&mut self, mut other: CommandBuffer) {
-        self.queue.append(&mut other.queue);
-    }
-
     pub fn flush(&mut self) -> Vec<Command> {
         std::mem::replace(&mut self.queue, vec![])
     }
