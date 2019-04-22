@@ -28,6 +28,7 @@
 ## Tiger 0.2
 - [ ] Unsaved file marker and warnings
 - [ ] Undo/Redo
+- [x] Allow interactions while file dialogs are open or I/O is in progress
 - [x] Keyboard shortcuts for playback controls
 - [x] Keyboard shortcuts menu entries
 - [x] Keyboard shortcuts for moving hitbox / animation frame
@@ -36,7 +37,8 @@
 - [x] Loading spinners
 - [x] Begin editing animation after creating it
 - [x] Automatically select hitbox after creating it
-- [ ] Select hitbox when clicking it
+- [x] Select hitbox when clicking it
+- [x] Select animation frame when clicking it
 - [x] When creating an animation, automatically select it
 - [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
@@ -47,7 +49,7 @@
 - [x] In selection window, keep origin centered to preview turnarounds
 - [x] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
-- [ ] Content window and workbench should say what the current workbench item is
+- [ ] Content window and workbench indicate what the current workbench item is
 - [x] Sort content panel entries by name
 - [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
@@ -56,37 +58,45 @@
 - [x] Fix bug where frame name can go outside frame bound in timeline
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows
-- [ ] Workbench should illustrate selected hitbox or animation frame (w/ borders)
+- [x] Workbench should illustrate selected hitbox or animation frame (w/ borders)
+- [ ] Clicking blank space within the workbench gets rid of the current selection
 
 ## Tiger 0.3
 - [ ] Error dialogs
-- [ ] In-place tutorials instead of blank data
-- [ ] View animations and frames at the same time for faster browsing?
+- [ ] Selected hitbox should have 8 handles for resizing instead of using borders
+- [ ] Add option to hide hitboxes while looking at animations in workbench
 - [ ] Multiple selections
-- [ ] Document tabs (imgui 1.67+)
-- [ ] Prettier UI
-- [ ] Better rename UX
 - [x] Jump to next/previous frame
 - [ ] Export perf fixes
 - [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] Copy/paste hitboxes
-- [ ] Auto reload on frame edit
-- [ ] Timeline follows playback
-- [ ] Timeline follows frame selection (or double click?)
-- [ ] Timeline snapping
-- [ ] Playback speed
+- [ ] Auto reload images on frame edit
+- [ ] Timeline scrolling follows playback
+- [ ] Timeline scrolling follows frame selection (or double click?)
+- [ ] Time snapping of animation frames
+- [ ] Playback speed controls
 - [ ] Hitbox colors
 - [ ] Default paths for NFD dialogs
 - [ ] Draw hitbox names in workbench
 - [ ] Onion skin?
+- [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
+
+## Tiger 0.4
+- [ ] Review TODO dpi
 - [ ] Workbench tabs?
-- [ ] Editing hitboxes while animation is in workbench?
+- [ ] Text filtering of frames/animations
+- [ ] View animations and frames at the same time for faster browsing?
+- [ ] Prettier UI and review TODO.style
+- [ ] Better rename UX
+- [ ] Document tabs (imgui 1.67+)
+- [ ] In-place tutorials instead of blank data
+- [ ] Unit-test all the things
 
 ## Tiger 1.0
 - [ ] Review all TODO
 - [ ] Provide export templates for some common formats (TBD)
 - [ ] Compile on Rust Stable
-- [ ] Remove commands threads (keep long commands thread)
+- [x] Remove commands threads (keep long commands thread)
 - [ ] Get rid of failure crate
 - [ ] Document template format
 - [ ] About dialog
@@ -97,6 +107,7 @@
 - [ ] Tiger CLI
 - [ ] Open Recent
 - [ ] Sheet splitter tool
+- [ ] Import animation data from other software (TBD)
 - [ ] Anchor points (like hitbox but point)
 - [ ] Place arbitrary markers ("events") on timeline
 - [ ] Copy/paste animation or animation frame (between sheets)

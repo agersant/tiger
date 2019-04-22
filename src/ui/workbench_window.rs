@@ -232,7 +232,14 @@ fn draw_hitbox_controls<'a>(
     }
 }
 
-fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: Vector2D<i32>) {
+fn draw_hitbox<'a>(
+    ui: &Ui<'a>,
+    document: &Document,
+    frame: &Frame,
+    hitbox: &Hitbox,
+    is_selectable: bool,
+    offset: Vector2D<i32>,
+) {
     let zoom = document.get_workbench_zoom_factor();
     let workbench_offset = document.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
@@ -244,10 +251,29 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, document: &Document, hitbox: &Hitbox, offset: Ve
 
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
+
+    let hitbox_rect = Rect::new(top_left.to_point(), (bottom_right - top_left).to_size());
+    let mouse_pos: Point2D<f32> = ui.imgui().mouse_pos().into();
+
+    let is_hovered = is_selectable && hitbox_rect.contains(&mouse_pos);
+    let is_selected = *document.get_selection()
+        == Some(Selection::Hitbox(
+            frame.get_source().to_path_buf(),
+            hitbox.get_name().to_owned(),
+        ));
+
     let draw_list = ui.get_window_draw_list();
-    let outline_color = [1.0, 1.0, 200.0 / 255.0]; // TODO.style
+    let outline_color = if is_selected {
+        [1.0, 0.1, 0.6, 1.0] // TODO.style
+    } else if is_hovered {
+        [0.0, 0.9, 0.9, 1.0] // TODO.style
+    } else {
+        [1.0, 1.0, 1.0, 1.0] // TODO.style
+    };
+
     draw_list
         .add_rect(top_left.to_tuple(), bottom_right.to_tuple(), outline_color)
+        .thickness(1.0) // TODO dpi
         .build();
 }
 
@@ -280,7 +306,7 @@ fn draw_frame<'a>(
             let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
 
             for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, hitbox, vec2(0, 0));
+                draw_hitbox(ui, document, frame, hitbox, true, vec2(0, 0));
                 draw_hitbox_controls(
                     ui,
                     document,
@@ -315,10 +341,11 @@ fn draw_animation_frame<'a>(
     texture_cache: &TextureCache,
     document: &Document,
     animation_frame: &AnimationFrame,
+    is_selected: bool,
 ) {
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
-    let space = Vector2D::<f32>::from(ui.get_window_size());
+    let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&animation_frame.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
             let frame_offset = animation_frame.get_offset().to_f32();
@@ -326,13 +353,32 @@ fn draw_animation_frame<'a>(
             let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
                 - ((draw_size / zoom / 2.0).floor() * zoom);
             ui.set_cursor_pos(cursor_pos.to_tuple());
+            let cursor_screen_pos: Vector2D<f32> = ui.get_cursor_screen_pos().into();
             ui.image(texture.id, draw_size.to_tuple()).build();
+            let is_hovered = ui.is_item_hovered();
 
             if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
                 for hitbox in frame.hitboxes_iter() {
-                    draw_hitbox(ui, document, hitbox, frame_offset.to_i32());
+                    draw_hitbox(ui, document, frame, hitbox, false, frame_offset.to_i32());
                 }
             }
+
+            if is_selected || is_hovered {
+                let outline_color = if is_selected {
+                    [1.0, 0.1, 0.6, 1.0] // TODO.style
+                } else {
+                    [0.0, 0.9, 0.9, 1.0] // TODO.style
+                };
+                let draw_list = ui.get_window_draw_list();
+                draw_list
+                    .add_rect(
+                        cursor_screen_pos.to_tuple(),
+                        (cursor_screen_pos + draw_size).to_tuple(),
+                        outline_color,
+                    )
+                    .thickness(1.0) // TODO dpi
+                    .build();
+            };
         }
         Some(TextureCacheResult::Loading) => {
             ui.set_cursor_pos(offset.to_tuple());
@@ -353,7 +399,13 @@ fn draw_animation<'a>(
 ) {
     let now = document.get_timeline_clock();
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        draw_animation_frame(ui, texture_cache, document, animation_frame);
+        let is_selected = *document.get_selection()
+            == Some(Selection::AnimationFrame(
+                animation.get_name().to_owned(),
+                frame_index,
+            ));
+
+        draw_animation_frame(ui, texture_cache, document, animation_frame, is_selected);
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
@@ -378,7 +430,13 @@ fn draw_animation<'a>(
                 if *dragged_frame_index != frame_index {
                     if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
-                            draw_animation_frame(ui, texture_cache, document, animation_frame);
+                            draw_animation_frame(
+                                ui,
+                                texture_cache,
+                                document,
+                                animation_frame,
+                                true,
+                            );
                         });
                     }
                 }
@@ -417,6 +475,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
             line_color_dim
         };
 
+        // TODO why isn't this using add_line?
         draw_list.add_rect_filled_multicolor(
             (x as f32 - thickness, top_left.y),
             (x as f32 + thickness, top_left.y + space.y),
@@ -434,6 +493,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
         } else {
             line_color_dim
         };
+        // TODO why isn't this using add_line?
         draw_list.add_rect_filled_multicolor(
             (top_left.x, y as f32 - thickness),
             (top_left.x + space.x, y as f32 + thickness),

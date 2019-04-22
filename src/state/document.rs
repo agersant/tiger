@@ -912,6 +912,7 @@ impl Document {
         self.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
         self.workbench_hitbox_drag_initial_mouse_position = mouse_position;
         self.workbench_hitbox_drag_initial_offset = hitbox_position;
+        self.select_hitbox(hitbox_name)?;
 
         Ok(())
     }
