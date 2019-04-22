@@ -45,7 +45,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
         let oversample = 8;
 
         imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../res/FiraSans-Regular.ttf"),
+            include_bytes!("../../res/FiraSans-Regular.ttf"),
             ImFontConfig::new()
                 .merge_mode(false)
                 .oversample_h(oversample)
@@ -56,7 +56,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
         );
 
         imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../res/FiraSans-Regular.ttf"),
+            include_bytes!("../../res/FiraSans-Regular.ttf"),
             ImFontConfig::new()
                 .merge_mode(true)
                 .oversample_h(oversample)
