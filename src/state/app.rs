@@ -4,8 +4,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::export;
-use crate::pack;
+use crate::export::*;
 use crate::sheet::{ExportFormat, ExportSettings, Sheet};
 use crate::state::*;
 
@@ -572,8 +571,8 @@ fn export(document: &Document) -> Result<(), Error> {
         .ok_or(StateError::NoExistingExportSettings)?;
 
     // TODO texture export performance is awful
-    let packed_sheet = pack::pack_sheet(document.get_sheet())?;
-    let exported_data = export::export_sheet(
+    let packed_sheet = pack_sheet(document.get_sheet())?;
+    let exported_data = export_sheet(
         document.get_sheet(),
         &export_settings,
         &packed_sheet.get_layout(),

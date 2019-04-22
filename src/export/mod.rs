@@ -6,8 +6,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::pack::PackedFrame;
 use crate::sheet::{Animation, AnimationFrame, ExportFormat, ExportSettings, Frame, Hitbox, Sheet};
+
+mod pack;
+pub use pack::*;
 
 type LiquidData = HashMap<Cow<'static, str>, Value>;
 type TextureLayout = HashMap<PathBuf, PackedFrame>;

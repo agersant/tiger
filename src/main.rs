@@ -13,7 +13,6 @@ use gfx::Device;
 use std::sync::*;
 
 mod export;
-mod pack;
 mod sheet;
 mod state;
 mod streamer;
