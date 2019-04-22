@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub use self::document::{ContentTab, Document, RenameItem, ResizeAxis, Selection, WorkbenchItem};
-use crate::command::Command;
+use crate::command::{AsyncCommand, CommandBuffer, SyncCommand};
 use crate::export;
 use crate::pack;
 use crate::sheet::{ExportFormat, ExportSettings, Sheet};
@@ -82,53 +82,52 @@ impl State {
         self.get_current_document_mut().map(|d| d.get_sheet_mut())
     }
 
+    fn get_document<T: AsRef<Path>>(&mut self, path: T) -> Option<&Document> {
+        self.documents.iter().find(|d| d.source == path.as_ref())
+    }
+
     fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
         self.documents
             .iter_mut()
             .find(|d| d.source == path.as_ref())
     }
 
-    fn new_document(&mut self) -> Result<(), Error> {
-        if let nfd::Response::Okay(path_string) =
-            nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
-        {
-            let mut path = std::path::PathBuf::from(path_string);
-            path.set_extension(SHEET_FILE_EXTENSION);
-            match self.get_document_mut(&path) {
-                Some(d) => *d = Document::new(&path),
-                None => {
-                    let document = Document::new(&path);
-                    self.add_document(document);
-                }
+    fn end_new_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
+        match self.get_document_mut(&path) {
+            Some(d) => *d = Document::new(&path),
+            None => {
+                let document = Document::new(&path);
+                self.add_document(document);
             }
-            self.current_document = Some(path.clone());
-        };
+        }
+        self.current_document = Some(path.as_ref().to_path_buf());
         Ok(())
     }
 
-    fn open_document(&mut self) -> Result<(), Error> {
-        match nfd::open_file_multiple_dialog(Some(SHEET_FILE_EXTENSION), None)? {
-            nfd::Response::Okay(path_string) => {
-                let path = std::path::PathBuf::from(path_string);
-                if self.get_document_mut(&path).is_none() {
-                    let document = Document::open(&path)?;
-                    self.add_document(document);
-                }
-                self.current_document = Some(path.clone());
-            }
-            nfd::Response::OkayMultiple(path_strings) => {
-                for path_string in path_strings {
-                    let path = std::path::PathBuf::from(path_string);
-                    if self.get_document_mut(&path).is_none() {
-                        let document = Document::open(&path)?;
-                        self.add_document(document);
-                    }
-                    self.current_document = Some(path.clone());
-                }
-            }
-            _ => (),
-        };
+    fn end_open_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
+        if self.get_document(&path).is_none() {
+            let document = Document::open(&path)?;
+            self.add_document(document);
+        }
+        self.current_document = Some(path.as_ref().to_path_buf());
         Ok(())
+    }
+
+    fn relocate_document<T: AsRef<Path>, U: AsRef<Path>>(
+        &mut self,
+        from: T,
+        to: U,
+    ) -> Result<(), Error> {
+        for document in &mut self.documents {
+            if &document.source == from.as_ref() {
+                document.source = to.as_ref().to_path_buf();
+                if Some(from.as_ref().to_path_buf()) == self.current_document {
+                    self.current_document = Some(to.as_ref().to_path_buf());
+                }
+                return Ok(());
+            }
+        }
+        Err(StateError::DocumentNotFound.into())
     }
 
     fn add_document(&mut self, added_document: Document) {
@@ -163,21 +162,6 @@ impl State {
         self.current_document = None;
     }
 
-    fn save_current_document_as(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        if let nfd::Response::Okay(path_string) =
-            nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
-        {
-            document.source = std::path::PathBuf::from(path_string);
-            document.source.set_extension(SHEET_FILE_EXTENSION);
-            document.save()?;
-            self.current_document = Some(document.source.clone());
-        };
-        Ok(())
-    }
-
     fn save_all_documents(&mut self) -> Result<(), Error> {
         for document in &mut self.documents {
             document.save()?;
@@ -200,63 +184,65 @@ impl State {
         Ok(())
     }
 
-    fn update_export_as_texture_destination(&mut self) -> Result<(), Error> {
+    fn end_set_export_texture_destination<T: AsRef<Path>, U: AsRef<Path>>(
+        &mut self,
+        document_path: T,
+        texture_destination: U,
+    ) -> Result<(), Error> {
         let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
+            .get_document_mut(document_path)
+            .ok_or(StateError::DocumentNotFound)?;
         let export_settings = &mut document
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        if let nfd::Response::Okay(path_string) =
-            nfd::open_save_dialog(Some(IMAGE_EXPORT_FILE_EXTENSIONS), None)?
-        {
-            export_settings.texture_destination = std::path::PathBuf::from(path_string);
-        };
+        export_settings.texture_destination = texture_destination.as_ref().to_path_buf();
         Ok(())
     }
 
-    fn update_export_as_metadata_destination(&mut self) -> Result<(), Error> {
+    fn end_set_export_metadata_destination<T: AsRef<Path>, U: AsRef<Path>>(
+        &mut self,
+        document_path: T,
+        metadata_destination: U,
+    ) -> Result<(), Error> {
         let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
+            .get_document_mut(document_path)
+            .ok_or(StateError::DocumentNotFound)?;
         let export_settings = &mut document
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        if let nfd::Response::Okay(path_string) = nfd::open_save_dialog(None, None)? {
-            export_settings.metadata_destination = std::path::PathBuf::from(path_string);
-        };
+        export_settings.metadata_destination = metadata_destination.as_ref().to_path_buf();
         Ok(())
     }
 
-    fn update_export_as_metadata_paths_root(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
+    fn end_set_export_metadata_paths_root<T: AsRef<Path>, U: AsRef<Path>>(
+        &mut self,
+        document_path: T,
+        metadata_paths_root: U,
+    ) -> Result<(), Error> {
+        let document = self.get_document_mut(document_path).ok_or(StateError::NoDocumentOpen)?;
         let export_settings = &mut document
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        if let nfd::Response::Okay(path_string) = nfd::open_pick_folder(None)? {
-            export_settings.metadata_paths_root = std::path::PathBuf::from(path_string);
-        };
+        export_settings.metadata_paths_root = metadata_paths_root.as_ref().to_path_buf();
         Ok(())
     }
 
-    fn update_export_as_format(&mut self) -> Result<(), Error> {
+    fn end_set_export_format<T: AsRef<Path>>(
+        &mut self,
+        document_path: T,
+        format: ExportFormat,
+    ) -> Result<(), Error> {
         let document = self
-            .get_current_document_mut()
+            .get_document_mut(document_path)
             .ok_or(StateError::NoDocumentOpen)?;
         let export_settings = &mut document
             .export_settings
             .as_mut()
             .ok_or(StateError::NotExporting)?;
-        if let nfd::Response::Okay(path_string) =
-            nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)?
-        {
-            export_settings.format = ExportFormat::Template(std::path::PathBuf::from(path_string));
-        };
+        export_settings.format = format;
         Ok(())
     }
 
@@ -268,66 +254,21 @@ impl State {
         Ok(())
     }
 
-    // TODO texture export performance is awful
-    fn export_internal(
-        &self,
-        document: &Document,
-        export_settings: &ExportSettings,
-    ) -> Result<(), Error> {
-        let packed_sheet = pack::pack_sheet(document.get_sheet())?;
-        let exported_data = export::export_sheet(
-            document.get_sheet(),
-            &export_settings,
-            &packed_sheet.get_layout(),
-        )?;
-
-        {
-            let mut file = File::create(&export_settings.metadata_destination)?;
-            file.write_all(&exported_data.into_bytes())?;
-        }
-        {
-            let mut file = File::create(&export_settings.texture_destination)?;
-            packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
-        }
-
-        Ok(())
-    }
-
     fn end_export_as(&mut self) -> Result<(), Error> {
-        let export_settings;
-        {
-            let document = self
-                .get_current_document_mut()
-                .ok_or(StateError::NoDocumentOpen)?;
-
-            export_settings = document
-                .export_settings
-                .take()
-                .ok_or(StateError::NotExporting)?;
-
-            document
-                .get_sheet_mut()
-                .set_export_settings(export_settings.clone());
-        }
-
         let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
-        self.export_internal(document, &export_settings)
-    }
-
-    fn export(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document()
+            .get_current_document_mut()
             .ok_or(StateError::NoDocumentOpen)?;
 
         let export_settings = document
-            .get_sheet()
-            .get_export_settings()
-            .as_ref()
-            .ok_or(StateError::NoExistingExportSettings)?;
+            .export_settings
+            .take()
+            .ok_or(StateError::NotExporting)?;
 
-        self.export_internal(document, export_settings)
+        document
+            .get_sheet_mut()
+            .set_export_settings(export_settings.clone());
+
+        Ok(())
     }
 
     fn import(&mut self) -> Result<(), Error> {
@@ -361,175 +302,311 @@ impl State {
         self.documents.iter()
     }
 
-    pub fn process_command(&mut self, command: &Command) -> Result<(), Error> {
-        // TODO grab current document from here and avoid tons of methods in state.rs
+    pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
         let document = self.get_current_document_mut();
 
         match command {
-            Command::NewDocument => self.new_document()?,
-            Command::OpenDocument => self.open_document()?,
-            Command::FocusDocument(p) => {
+            SyncCommand::EndNewDocument(p) => self.end_new_document(p)?,
+            SyncCommand::EndOpenDocument(p) => self.end_open_document(p)?,
+            SyncCommand::RelocateDocument(from, to) => self.relocate_document(from, to)?,
+            SyncCommand::FocusDocument(p) => {
                 if self.is_document_open(&p) {
                     self.current_document = Some(p.clone());
                 }
             }
-            Command::CloseCurrentDocument => self.close_current_document()?,
-            Command::CloseAllDocuments => self.close_all_documents(),
-            Command::SaveCurrentDocument => document.ok_or(StateError::NoDocumentOpen)?.save()?,
-            Command::SaveCurrentDocumentAs => self.save_current_document_as()?,
-            Command::SaveAllDocuments => self.save_all_documents()?,
-            Command::BeginExportAs => self.begin_export_as()?,
-            Command::CancelExportAs => self.cancel_export_as()?,
-            Command::UpdateExportAsTextureDestination => {
-                self.update_export_as_texture_destination()?
+            SyncCommand::CloseCurrentDocument => self.close_current_document()?,
+            SyncCommand::CloseAllDocuments => self.close_all_documents(),
+            SyncCommand::SaveAllDocuments => self.save_all_documents()?,
+            SyncCommand::BeginExportAs => self.begin_export_as()?,
+            SyncCommand::CancelExportAs => self.cancel_export_as()?,
+            SyncCommand::EndSetExportTextureDestination(p, d) => {
+                self.end_set_export_texture_destination(p, d)?
             }
-            Command::UpdateExportAsMetadataDestination => {
-                self.update_export_as_metadata_destination()?
+            SyncCommand::EndSetExportMetadataDestination(p, d) => {
+                self.end_set_export_metadata_destination(p, d)?
             }
-            Command::UpdateExportAsMetadataPathsRoot => {
-                self.update_export_as_metadata_paths_root()?
+            SyncCommand::EndSetExportMetadataPathsRoot(p, d) => {
+                self.end_set_export_metadata_paths_root(p, d)?
             }
-            Command::UpdateExportAsFormat => self.update_export_as_format()?,
-            Command::EndExportAs => self.end_export_as()?,
-            Command::Export => self.export()?,
-            Command::SwitchToContentTab(tab) => document
+            SyncCommand::EndSetExportFormat(p, f) => self.end_set_export_format(p, f.clone())?,
+            SyncCommand::EndExportAs => self.end_export_as()?,
+            SyncCommand::SwitchToContentTab(tab) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .switch_to_content_tab(*tab),
-            Command::Import => self.import()?,
-            Command::SelectFrame(p) => document
+            SyncCommand::Import => self.import()?,
+            SyncCommand::SelectFrame(p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_frame(&p)?,
-            Command::SelectAnimation(a) => document
+            SyncCommand::SelectAnimation(a) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation(&a)?,
-            Command::SelectHitbox(h) => document
+            SyncCommand::SelectHitbox(h) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_hitbox(&h)?,
-            Command::SelectAnimationFrame(af) => document
+            SyncCommand::SelectAnimationFrame(af) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation_frame(*af)?,
-            Command::SelectPrevious => document
+            SyncCommand::SelectPrevious => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_previous()?,
-            Command::SelectNext => document.ok_or(StateError::NoDocumentOpen)?.select_next()?,
-            Command::EditFrame(p) => document.ok_or(StateError::NoDocumentOpen)?.edit_frame(&p)?,
-            Command::EditAnimation(a) => document
+            SyncCommand::SelectNext => document.ok_or(StateError::NoDocumentOpen)?.select_next()?,
+            SyncCommand::EditFrame(p) => {
+                document.ok_or(StateError::NoDocumentOpen)?.edit_frame(&p)?
+            }
+            SyncCommand::EditAnimation(a) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .edit_animation(&a)?,
-            Command::CreateAnimation => document
+            SyncCommand::CreateAnimation => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .create_animation()?,
-            Command::BeginFrameDrag(f) => document
+            SyncCommand::BeginFrameDrag(f) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_frame_drag(f)?,
-            Command::EndFrameDrag => document.ok_or(StateError::NoDocumentOpen)?.end_frame_drag(),
-            Command::InsertAnimationFrameBefore(f, n) => document
+            SyncCommand::EndFrameDrag => {
+                document.ok_or(StateError::NoDocumentOpen)?.end_frame_drag()
+            }
+            SyncCommand::InsertAnimationFrameBefore(f, n) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .insert_animation_frame_before(f, *n)?,
-            Command::ReorderAnimationFrame(a, b) => document
+            SyncCommand::ReorderAnimationFrame(a, b) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .reorder_animation_frame(*a, *b)?,
-            Command::BeginAnimationFrameDurationDrag(a) => document
+            SyncCommand::BeginAnimationFrameDurationDrag(a) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_duration_drag(*a)?,
-            Command::UpdateAnimationFrameDurationDrag(d) => document
+            SyncCommand::UpdateAnimationFrameDurationDrag(d) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_duration_drag(*d)?,
-            Command::EndAnimationFrameDurationDrag => document
+            SyncCommand::EndAnimationFrameDurationDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_duration_drag(),
-            Command::BeginAnimationFrameDrag(a) => document
+            SyncCommand::BeginAnimationFrameDrag(a) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_drag(*a)?,
-            Command::EndAnimationFrameDrag => document
+            SyncCommand::EndAnimationFrameDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_drag(),
-            Command::BeginAnimationFrameOffsetDrag(a, m) => document
+            SyncCommand::BeginAnimationFrameOffsetDrag(a, m) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_offset_drag(*a, *m)?,
-            Command::UpdateAnimationFrameOffsetDrag(o, b) => document
+            SyncCommand::UpdateAnimationFrameOffsetDrag(o, b) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_offset_drag(*o, *b)?,
-            Command::EndAnimationFrameOffsetDrag => document
+            SyncCommand::EndAnimationFrameOffsetDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_offset_drag(),
-            Command::WorkbenchZoomIn => document
+            SyncCommand::WorkbenchZoomIn => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_zoom_in(),
-            Command::WorkbenchZoomOut => document
+            SyncCommand::WorkbenchZoomOut => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_zoom_out(),
-            Command::WorkbenchResetZoom => document
+            SyncCommand::WorkbenchResetZoom => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_reset_zoom(),
-            Command::Pan(delta) => document.ok_or(StateError::NoDocumentOpen)?.pan(*delta),
-            Command::CreateHitbox(p) => document
+            SyncCommand::Pan(delta) => document.ok_or(StateError::NoDocumentOpen)?.pan(*delta),
+            SyncCommand::CreateHitbox(p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .create_hitbox(*p)?,
-            Command::BeginHitboxScale(h, a, p) => document
+            SyncCommand::BeginHitboxScale(h, a, p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_scale(&h, *a, *p)?,
-            Command::UpdateHitboxScale(p) => document
+            SyncCommand::UpdateHitboxScale(p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_scale(*p)?,
-            Command::EndHitboxScale => document
+            SyncCommand::EndHitboxScale => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_hitbox_scale(),
-            Command::BeginHitboxDrag(a, m) => document
+            SyncCommand::BeginHitboxDrag(a, m) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_drag(&a, *m)?,
-            Command::UpdateHitboxDrag(o, b) => document
+            SyncCommand::UpdateHitboxDrag(o, b) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_drag(*o, *b)?,
-            Command::EndHitboxDrag => document
+            SyncCommand::EndHitboxDrag => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_hitbox_drag(),
-            Command::TogglePlayback => document
+            SyncCommand::TogglePlayback => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_playback()?,
-            Command::SnapToPreviousFrame => document
+            SyncCommand::SnapToPreviousFrame => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .snap_to_previous_frame()?,
-            Command::SnapToNextFrame => document
+            SyncCommand::SnapToNextFrame => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .snap_to_next_frame()?,
-            Command::ToggleLooping => document
+            SyncCommand::ToggleLooping => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_looping()?,
-            Command::TimelineZoomIn => document
+            SyncCommand::TimelineZoomIn => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_zoom_in(),
-            Command::TimelineZoomOut => document
+            SyncCommand::TimelineZoomOut => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_zoom_out(),
-            Command::TimelineResetZoom => document
+            SyncCommand::TimelineResetZoom => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_reset_zoom(),
-            Command::BeginScrub => document
+            SyncCommand::BeginScrub => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_timeline_scrub(),
-            Command::UpdateScrub(t) => document
+            SyncCommand::UpdateScrub(t) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_timeline_scrub(*t)?,
-            Command::EndScrub => document
+            SyncCommand::EndScrub => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_timeline_scrub(),
-            Command::NudgeSelection(d, l) => document
+            SyncCommand::NudgeSelection(d, l) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .nudge_selection(d, *l)?,
-            Command::DeleteSelection => document
+            SyncCommand::DeleteSelection => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .delete_selection(),
-            Command::BeginRenameSelection => document
+            SyncCommand::BeginRenameSelection => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_rename_selection()?,
-            Command::UpdateRenameSelection(n) => document
+            SyncCommand::UpdateRenameSelection(n) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_rename_selection(n),
-            Command::EndRenameSelection => document
+            SyncCommand::EndRenameSelection => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_rename_selection()?,
         };
         Ok(())
+    }
+}
+
+fn begin_new_document() -> Result<CommandBuffer, Error> {
+    let mut command_buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) =
+        nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
+    {
+        let mut path = std::path::PathBuf::from(path_string);
+        path.set_extension(SHEET_FILE_EXTENSION);
+        command_buffer.end_new_document(path);
+    };
+    Ok(command_buffer)
+}
+
+fn begin_open_document() -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    match nfd::open_file_multiple_dialog(Some(SHEET_FILE_EXTENSION), None)? {
+        nfd::Response::Okay(path_string) => {
+            let path = std::path::PathBuf::from(path_string);
+            buffer.end_open_document(path);
+        }
+        nfd::Response::OkayMultiple(path_strings) => {
+            for path_string in path_strings {
+                let path = std::path::PathBuf::from(path_string);
+                buffer.end_open_document(path);
+            }
+        }
+        _ => (),
+    };
+    Ok(buffer)
+}
+
+fn save_document_as(document: &Document) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) =
+        nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
+    {
+        let mut new_path = std::path::PathBuf::from(path_string);
+        new_path.set_extension(SHEET_FILE_EXTENSION);
+        buffer.relocate_document(&document.source, new_path);
+        buffer.save(&document);
+    };
+    Ok(buffer)
+}
+
+fn begin_set_export_texture_destination<T: AsRef<Path>>(
+    document_path: T,
+) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) =
+        nfd::open_save_dialog(Some(IMAGE_EXPORT_FILE_EXTENSIONS), None)?
+    {
+        let texture_destination = std::path::PathBuf::from(path_string);
+        buffer.end_set_export_texture_destination(document_path, texture_destination);
+    };
+    Ok(buffer)
+}
+
+fn begin_set_export_metadata_destination<T: AsRef<Path>>(
+    document_path: T,
+) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) = nfd::open_save_dialog(None, None)? {
+        let metadata_destination = std::path::PathBuf::from(path_string);
+        buffer.end_set_export_metadata_destination(document_path, metadata_destination);
+    };
+    Ok(buffer)
+}
+
+fn begin_set_export_metadata_paths_root<T: AsRef<Path>>(
+    document_path: T,
+) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) = nfd::open_pick_folder(None)? {
+        let metadata_paths_root = std::path::PathBuf::from(path_string);
+        buffer.end_set_export_metadata_paths_root(document_path, metadata_paths_root);
+    }
+    Ok(buffer)
+}
+
+fn begin_set_export_format<T: AsRef<Path>>(document_path: T) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    if let nfd::Response::Okay(path_string) =
+        nfd::open_file_dialog(Some(TEMPLATE_FILE_EXTENSION), None)?
+    {
+        let format = ExportFormat::Template(std::path::PathBuf::from(path_string));
+        buffer.end_set_export_format(document_path, format);
+    };
+    Ok(buffer)
+}
+
+fn export(document: &Document) -> Result<(), Error> {
+    let export_settings = document
+        .get_sheet()
+        .get_export_settings()
+        .as_ref()
+        .ok_or(StateError::NoExistingExportSettings)?;
+
+    // TODO texture export performance is awful
+    let packed_sheet = pack::pack_sheet(document.get_sheet())?;
+    let exported_data = export::export_sheet(
+        document.get_sheet(),
+        &export_settings,
+        &packed_sheet.get_layout(),
+    )?;
+
+    {
+        let mut file = File::create(&export_settings.metadata_destination)?;
+        file.write_all(&exported_data.into_bytes())?;
+    }
+    {
+        let mut file = File::create(&export_settings.texture_destination)?;
+        packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
+    }
+
+    Ok(())
+}
+
+pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Error> {
+    let no_commands = CommandBuffer::new();
+    match command {
+        AsyncCommand::BeginNewDocument => begin_new_document(),
+        AsyncCommand::BeginOpenDocument => begin_open_document(),
+        AsyncCommand::SaveDocument(d) => d.save().and(Ok(no_commands)),
+        AsyncCommand::SaveDocumentAs(d) => save_document_as(d),
+        AsyncCommand::BeginSetExportTextureDestination(p) => {
+            begin_set_export_texture_destination(p)
+        }
+        AsyncCommand::BeginSetExportMetadataDestination(p) => {
+            begin_set_export_metadata_destination(p)
+        }
+        AsyncCommand::BeginSetExportMetadataPathsRoot(p) => begin_set_export_metadata_paths_root(p),
+        AsyncCommand::BeginSetExportFormat(p) => begin_set_export_format(p),
+        AsyncCommand::Export(d) => export(d).and(Ok(no_commands)),
     }
 }

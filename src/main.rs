@@ -61,14 +61,12 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
 }
 
 struct AsyncCommandWork {
-    state: state::State,
-    command: command::Command,
+    command: command::AsyncCommand,
 }
 
 #[derive(Debug)]
 struct AsyncCommandResult {
-    outcome: Result<(), failure::Error>,
-    new_state: state::State,
+    outcome: Result<command::CommandBuffer, failure::Error>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -106,12 +104,10 @@ fn main() -> Result<(), failure::Error> {
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
 
-
     // Thread processing async commands without blocking the UI
     let async_command_work_for_async_worker = async_command_work.clone();
     let async_command_result_for_async_worker = async_command_result.clone();
     std::thread::spawn(move || loop {
-        let mut state;
         let command;
 
         {
@@ -121,17 +117,15 @@ fn main() -> Result<(), failure::Error> {
                 work = cvar.wait(work).unwrap();
             }
             let work = work.take().unwrap();
-            state = work.state.clone();
             command = work.command.clone();
         }
 
-        let process_result = state.process_command(&command);
+        let process_result = state::process_async_command(&command);
 
         {
             let mut result_mutex = async_command_result_for_async_worker.lock().unwrap();
             *result_mutex = Some(AsyncCommandResult {
                 outcome: process_result,
-                new_state: state,
             });
         }
     });
@@ -225,9 +219,9 @@ fn main() -> Result<(), failure::Error> {
             state.tick(delta);
 
             // Run Tiger UI frame
-            let new_commands = {
+            let mut new_commands = {
                 let texture_cache = texture_cache.lock().unwrap();
-                ui::run(&ui_frame, &state, &texture_cache)?.flush()
+                ui::run(&ui_frame, &state, &texture_cache)?
             };
 
             // Grab results from async worker
@@ -244,25 +238,38 @@ fn main() -> Result<(), failure::Error> {
                     is_async_worker_active = false;
                     let mut result_mutex = async_command_result.lock().unwrap();
                     let result = result_mutex.deref_mut().take().unwrap();
-                    state = result.new_state.clone();
-                    if let Err(e) = result.outcome {
-                        // TODO surface to user
-                        println!("Error: {}", e);
+                    match result.outcome {
+                        Ok(buffer) => {
+                            new_commands.append(buffer);
+                        }
+                        Err(e) => {
+                            // TODO surface to user
+                            println!("Error: {}", e);
+                        }
                     }
                 }
+            }
 
             // Process new commands
-            } else {
-                for command in &new_commands {
-                    // Process command
-                    if !command.is_async_command() {
-                        if let Err(e) = state.process_command(&command) {
+            use command::Command;
+            for command in &new_commands.flush() {
+                match command {
+                    Command::Sync(sync_command) => {
+                        if let Err(e) = state.process_sync_command(&sync_command) {
                             // TODO surface to user
                             println!("Error: {}", e);
                             break;
                         }
-                    // Offload command to async_worker
-                    } else {
+                    }
+                    Command::Async(async_command) => {
+                        if is_async_worker_active {
+                            // TODO Should queue unless we have an identical command
+                            println!(
+                                "Ignoring async command while already processing one: {:?}",
+                                async_command
+                            );
+                            continue;
+                        }
                         {
                             let mut result_mutex = async_command_result.lock().unwrap();
                             *result_mutex = None;
@@ -271,8 +278,7 @@ fn main() -> Result<(), failure::Error> {
                         {
                             let mut work = lock.lock().unwrap();
                             *work = Some(AsyncCommandWork {
-                                state: state.clone(),
-                                command: command.clone(),
+                                command: async_command.clone(),
                             });
                         }
                         is_async_worker_active = true;

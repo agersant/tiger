@@ -187,7 +187,7 @@ impl Document {
         Ok(document)
     }
 
-    pub fn save(&mut self) -> Result<(), Error> {
+    pub fn save(&self) -> Result<(), Error> {
         let mut directory = self.source.to_path_buf();
         directory.pop();
         let sheet = self.get_sheet().with_relative_paths(directory)?;
