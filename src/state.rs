@@ -221,7 +221,9 @@ impl State {
         document_path: T,
         metadata_paths_root: U,
     ) -> Result<(), Error> {
-        let document = self.get_document_mut(document_path).ok_or(StateError::NoDocumentOpen)?;
+        let document = self
+            .get_document_mut(document_path)
+            .ok_or(StateError::NoDocumentOpen)?;
         let export_settings = &mut document
             .export_settings
             .as_mut()

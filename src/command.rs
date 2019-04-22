@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::sheet::{Animation, ExportFormat, Frame, Hitbox};
 use crate::state::{ContentTab, Document, ResizeAxis};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
@@ -18,7 +18,7 @@ pub enum AsyncCommand {
     Export(Document),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SyncCommand {
     EndNewDocument(PathBuf),
     EndOpenDocument(PathBuf),
@@ -85,7 +85,7 @@ pub enum SyncCommand {
     EndRenameSelection,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Sync(SyncCommand),
     Async(AsyncCommand),
@@ -185,12 +185,11 @@ impl CommandBuffer {
         document_path: T,
         texture_path: U,
     ) {
-        self.queue.push(Command::Sync(
-            SyncCommand::EndSetExportTextureDestination(
+        self.queue
+            .push(Command::Sync(SyncCommand::EndSetExportTextureDestination(
                 document_path.as_ref().to_path_buf(),
                 texture_path.as_ref().to_path_buf(),
-            ),
-        ));
+            )));
     }
 
     pub fn begin_set_export_metadata_destination(&mut self, document: &Document) {
@@ -204,12 +203,11 @@ impl CommandBuffer {
         document_path: T,
         metadata_path: U,
     ) {
-        self.queue.push(Command::Sync(
-            SyncCommand::EndSetExportMetadataDestination(
+        self.queue
+            .push(Command::Sync(SyncCommand::EndSetExportMetadataDestination(
                 document_path.as_ref().to_path_buf(),
                 metadata_path.as_ref().to_path_buf(),
-            ),
-        ));
+            )));
     }
 
     pub fn begin_set_export_metadata_paths_root(&mut self, document: &Document) {
@@ -223,12 +221,11 @@ impl CommandBuffer {
         document_path: T,
         paths_root: U,
     ) {
-        self.queue.push(Command::Sync(
-            SyncCommand::EndSetExportMetadataPathsRoot(
+        self.queue
+            .push(Command::Sync(SyncCommand::EndSetExportMetadataPathsRoot(
                 document_path.as_ref().to_path_buf(),
                 paths_root.as_ref().to_path_buf(),
-            ),
-        ));
+            )));
     }
 
     pub fn begin_set_export_format(&mut self, document: &Document) {
@@ -243,12 +240,11 @@ impl CommandBuffer {
         document_path: T,
         format: ExportFormat,
     ) {
-        self.queue.push(Command::Sync(
-            SyncCommand::EndSetExportFormat(
+        self.queue
+            .push(Command::Sync(SyncCommand::EndSetExportFormat(
                 document_path.as_ref().to_path_buf(),
                 format,
-            ),
-        ));
+            )));
     }
 
     pub fn cancel_export_as(&mut self) {
@@ -257,11 +253,13 @@ impl CommandBuffer {
 
     pub fn end_export_as(&mut self, document: &Document) {
         self.queue.push(Command::Sync(SyncCommand::EndExportAs));
-        self.queue.push(Command::Async(AsyncCommand::Export(document.clone())));
+        self.queue
+            .push(Command::Async(AsyncCommand::Export(document.clone())));
     }
 
     pub fn export(&mut self, document: &Document) {
-        self.queue.push(Command::Async(AsyncCommand::Export(document.clone())));
+        self.queue
+            .push(Command::Async(AsyncCommand::Export(document.clone())));
     }
 
     pub fn switch_to_content_tab(&mut self, tab: ContentTab) {

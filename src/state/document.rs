@@ -55,7 +55,7 @@ pub enum Selection {
     AnimationFrame(String, usize),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ContentTab {
     Frames,
     Animations,
@@ -73,7 +73,7 @@ pub enum WorkbenchItem {
     Animation(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 // TODO consider replacing the various path, names and indices within this struct (and commands) with Arc to Frame/Animation/AnimationFrame/Hitbox
 // Implications for undo/redo system?
 pub struct Document {

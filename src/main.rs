@@ -10,7 +10,6 @@ use imgui_winit_support;
 extern crate serde_derive;
 
 use gfx::Device;
-use std::ops::{Deref, DerefMut};
 use std::sync::*;
 
 mod command;
@@ -60,13 +59,14 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
     }
 }
 
-struct AsyncCommandWork {
-    command: command::AsyncCommand,
+#[derive(Debug, Default)]
+struct AsyncCommands {
+    commands: Vec<command::AsyncCommand>,
 }
 
-#[derive(Debug)]
-struct AsyncCommandResult {
-    outcome: Result<command::CommandBuffer, failure::Error>,
+#[derive(Debug, Default)]
+struct AsyncResults {
+    results: Vec<Result<command::CommandBuffer, failure::Error>>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -96,38 +96,40 @@ fn main() -> Result<(), failure::Error> {
     window.set_window_icon(glutin::Icon::from_bytes(icon).ok());
 
     // Init application state
-    let async_command_work: Arc<(Mutex<Option<AsyncCommandWork>>, Condvar)> =
-        Arc::new((Mutex::new(None), Condvar::new()));
-    let async_command_result: Arc<Mutex<Option<AsyncCommandResult>>> = Arc::new(Mutex::new(None));
+    let async_commands: Arc<(Mutex<AsyncCommands>, Condvar)> =
+        Arc::new((Mutex::new(Default::default()), Condvar::new()));
+    let async_results: Arc<Mutex<AsyncResults>> = Arc::new(Mutex::new(Default::default()));
     let state_mutex = Arc::new(Mutex::new(state::State::new()));
     let texture_cache = Arc::new(Mutex::new(streamer::TextureCache::new()));
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
 
     // Thread processing async commands without blocking the UI
-    let async_command_work_for_async_worker = async_command_work.clone();
-    let async_command_result_for_async_worker = async_command_result.clone();
+    let async_commands_for_worker = async_commands.clone();
+    let async_results_for_worker = async_results.clone();
     std::thread::spawn(move || loop {
-        let command;
+        let commands;
 
         {
-            let &(ref lock, ref cvar) = &*async_command_work_for_async_worker;
-            let mut work = lock.lock().unwrap();
-            while !work.is_some() {
-                work = cvar.wait(work).unwrap();
+            let &(ref commands_mutex, ref cvar) = &*async_commands_for_worker;
+            let mut async_commands = commands_mutex.lock().unwrap();
+            while async_commands.commands.is_empty() {
+                async_commands = cvar.wait(async_commands).unwrap();
             }
-            let work = work.take().unwrap();
-            command = work.command.clone();
+            commands = async_commands.commands.clone();
         }
 
-        let process_result = state::process_async_command(&command);
-
-        {
-            let mut result_mutex = async_command_result_for_async_worker.lock().unwrap();
-            *result_mutex = Some(AsyncCommandResult {
-                outcome: process_result,
-            });
+        for command in &commands {
+            let process_result = state::process_async_command(&command);
+            {
+                let mut result_mutex = async_results_for_worker.lock().unwrap();
+                result_mutex.results.push(process_result);
+            }
         }
+
+        let &(ref commands_mutex, ref _cvar) = &*async_commands_for_worker;
+        let mut async_commands = commands_mutex.lock().unwrap();
+        async_commands.commands.drain(..commands.len());
     });
 
     // Streamer thread
@@ -161,7 +163,6 @@ fn main() -> Result<(), failure::Error> {
     // Main thread
     {
         let mut last_frame = std::time::Instant::now();
-        let mut is_async_worker_active = false;
         let mut quit = false;
 
         loop {
@@ -225,20 +226,10 @@ fn main() -> Result<(), failure::Error> {
             };
 
             // Grab results from async worker
-            if is_async_worker_active {
-                // Determine if async command is complete
-                let has_result;
-                {
-                    let result_mutex = async_command_result.lock().unwrap();
-                    has_result = result_mutex.deref().is_some();
-                }
-
-                // Handle result of async command
-                if has_result {
-                    is_async_worker_active = false;
-                    let mut result_mutex = async_command_result.lock().unwrap();
-                    let result = result_mutex.deref_mut().take().unwrap();
-                    match result.outcome {
+            {
+                let mut result_mutex = async_results.lock().unwrap();
+                for result in std::mem::replace(&mut result_mutex.results, vec![]) {
+                    match result {
                         Ok(buffer) => {
                             new_commands.append(buffer);
                         }
@@ -262,26 +253,18 @@ fn main() -> Result<(), failure::Error> {
                         }
                     }
                     Command::Async(async_command) => {
-                        if is_async_worker_active {
-                            // TODO Should queue unless we have an identical command
-                            println!(
-                                "Ignoring async command while already processing one: {:?}",
-                                async_command
-                            );
-                            continue;
-                        }
-                        {
-                            let mut result_mutex = async_command_result.lock().unwrap();
-                            *result_mutex = None;
-                        }
-                        let &(ref lock, ref cvar) = &*async_command_work;
+                        let &(ref lock, ref cvar) = &*async_commands;
                         {
                             let mut work = lock.lock().unwrap();
-                            *work = Some(AsyncCommandWork {
-                                command: async_command.clone(),
-                            });
+                            let commands = &*work.commands;
+                            if commands.contains(async_command) {
+                                // This avoids queuing redundant work or dialogs when holding shortcuts
+                                // TODO: Ignore key repeats instead (second arg of is_key_pressed, not exposed by imgui-rs)
+                                println!("Ignoring duplicate async command");
+                            } else {
+                                work.commands.push(async_command.clone());
+                            }
                         }
-                        is_async_worker_active = true;
                         cvar.notify_all();
                         break;
                     }
