@@ -10,13 +10,9 @@ use imgui_winit_support;
 extern crate serde_derive;
 
 use gfx::Device;
-use std::ops::{Deref, DerefMut};
 use std::sync::*;
-use std::time::Instant;
 
-mod command;
 mod export;
-mod pack;
 mod sheet;
 mod state;
 mod streamer;
@@ -61,15 +57,14 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
     }
 }
 
-struct AsyncCommandWork {
-    state: state::State,
-    command: command::Command,
+#[derive(Debug, Default)]
+struct AsyncCommands {
+    commands: Vec<state::AsyncCommand>,
 }
 
-#[derive(Debug)]
-struct AsyncCommandResult {
-    outcome: Result<(), failure::Error>,
-    new_state: state::State,
+#[derive(Debug, Default)]
+struct AsyncResults {
+    results: Vec<Result<state::CommandBuffer, failure::Error>>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -99,146 +94,44 @@ fn main() -> Result<(), failure::Error> {
     window.set_window_icon(glutin::Icon::from_bytes(icon).ok());
 
     // Init application state
-    let command_buffer = Arc::new(Mutex::new(command::CommandBuffer::new()));
-    let async_command_work: Arc<(Mutex<Option<AsyncCommandWork>>, Condvar)> =
-        Arc::new((Mutex::new(None), Condvar::new()));
-    let async_command_result: Arc<Mutex<Option<AsyncCommandResult>>> = Arc::new(Mutex::new(None));
-    let ui_state = Arc::new(Mutex::new(state::State::new()));
+    let async_commands: Arc<(Mutex<AsyncCommands>, Condvar)> =
+        Arc::new((Mutex::new(Default::default()), Condvar::new()));
+    let async_results: Arc<Mutex<AsyncResults>> = Arc::new(Mutex::new(Default::default()));
+    let state_mutex = Arc::new(Mutex::new(state::AppState::new()));
     let texture_cache = Arc::new(Mutex::new(streamer::TextureCache::new()));
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
-    let barrier = Arc::new(Barrier::new(2));
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
 
-    // Thread processing commands to update state
-    let command_buffer_for_worker = command_buffer.clone();
-    let ui_state_for_worker = ui_state.clone();
-    let barrier_for_worker = barrier.clone();
-    let async_command_work_for_worker = async_command_work.clone();
-    let async_command_result_for_worker = async_command_result.clone();
-
-    std::thread::spawn(move || {
-        let mut state = state::State::new();
-        let mut last_frame = Instant::now();
-
-        loop {
-            // Wait for main thread to complete its frame
-            barrier_for_worker.wait();
-
-            // Update clock
-            let now = Instant::now();
-            let delta = now - last_frame;
-            last_frame = now;
-            state.tick(delta);
-
-            // Gather new commands
-            let new_commands;
-            {
-                let mut buff = command_buffer_for_worker.lock().unwrap();
-                new_commands = buff.flush();
-            }
-
-            'commands: for command in &new_commands {
-                if !command.is_async_command() {
-                    // Process command
-                    if let Err(e) = state.process_command(&command) {
-                        // TODO surface to user
-                        println!("Error: {}", e);
-                        break 'commands;
-                    }
-                } else {
-                    // Offload command to async_worker
-
-                    {
-                        let mut result_mutex = async_command_result_for_worker.lock().unwrap();
-                        *result_mutex = None;
-                    }
-
-                    let &(ref lock, ref cvar) = &*async_command_work_for_worker;
-                    {
-                        let mut work = lock.lock().unwrap();
-                        *work = Some(AsyncCommandWork {
-                            state: state.clone(),
-                            command: command.clone(),
-                        });
-                    }
-
-                    cvar.notify_all();
-
-                    'async_command: loop {
-
-                        // Ignore new commands
-                        {
-                            let mut buff = command_buffer_for_worker.lock().unwrap();
-                            buff.flush();
-                        }
-
-                        // Determine if async command is complete
-                        let has_result;
-                        {
-                            let result_mutex = async_command_result_for_worker.lock().unwrap();
-                            has_result = result_mutex.deref().is_some();
-                        }
-
-                        // Keep main thread going while we wait on async thread
-                        if !has_result {
-                            barrier_for_worker.wait();
-                            continue;
-                        }
-
-                        // Handle result of async command
-                        let mut result_mutex = async_command_result_for_worker.lock().unwrap();
-                        let result = result_mutex.deref_mut().take().unwrap();
-                        state = result.new_state.clone();
-                        match &result.outcome {
-                            Ok(_) => break 'async_command,
-                            Err(e) => {
-                                // TODO surface to user
-                                println!("Error: {}", e);
-                                break 'commands;
-                            }
-                        };
-                    }
-                }
-            }
-
-            {
-                let mut s = ui_state_for_worker.lock().unwrap();
-                *s = state.clone();
-            }
-        }
-    });
-
     // Thread processing async commands without blocking the UI
-    let async_command_work_for_async_worker = async_command_work.clone();
-    let async_command_result_for_async_worker = async_command_result.clone();
+    let async_commands_for_worker = async_commands.clone();
+    let async_results_for_worker = async_results.clone();
     std::thread::spawn(move || loop {
-        let mut state;
-        let command;
+        let commands;
 
         {
-            let &(ref lock, ref cvar) = &*async_command_work_for_async_worker;
-            let mut work = lock.lock().unwrap();
-            while !work.is_some() {
-                work = cvar.wait(work).unwrap();
+            let &(ref commands_mutex, ref cvar) = &*async_commands_for_worker;
+            let mut async_commands = commands_mutex.lock().unwrap();
+            while async_commands.commands.is_empty() {
+                async_commands = cvar.wait(async_commands).unwrap();
             }
-            let work = work.take().unwrap();
-            state = work.state.clone();
-            command = work.command.clone();
+            commands = async_commands.commands.clone();
         }
 
-        let process_result = state.process_command(&command);
-
-        {
-            let mut result_mutex = async_command_result_for_async_worker.lock().unwrap();
-            *result_mutex = Some(AsyncCommandResult {
-                outcome: process_result,
-                new_state: state,
-            });
+        for command in &commands {
+            let process_result = state::process_async_command(&command);
+            {
+                let mut result_mutex = async_results_for_worker.lock().unwrap();
+                result_mutex.results.push(process_result);
+            }
         }
+
+        let &(ref commands_mutex, ref _cvar) = &*async_commands_for_worker;
+        let mut async_commands = commands_mutex.lock().unwrap();
+        async_commands.commands.drain(..commands.len());
     });
 
     // Streamer thread
-    let ui_state_for_streamer = ui_state.clone();
+    let state_mutex_for_streamer = state_mutex.clone();
     let texture_cache_for_streamer = texture_cache.clone();
     let main_thread_frame_for_streamer = main_thread_frame.clone();
     std::thread::spawn(move || {
@@ -255,7 +148,7 @@ fn main() -> Result<(), failure::Error> {
 
             let state;
             {
-                state = ui_state_for_streamer.lock().unwrap().clone();
+                state = state_mutex_for_streamer.lock().unwrap().clone();
             }
             streamer::load_from_disk(
                 &state,
@@ -273,6 +166,7 @@ fn main() -> Result<(), failure::Error> {
         loop {
             let rounded_hidpi_factor = window.get_hidpi_factor().round();
 
+            // Handle Windows events
             events_loop.poll_events(|event| {
                 use glutin::{
                     Event,
@@ -300,42 +194,88 @@ fn main() -> Result<(), failure::Error> {
             if quit {
                 break;
             }
+            imgui_winit_support::update_mouse_cursor(&imgui_instance, &window);
 
+            // Update delta-time
             let now = std::time::Instant::now();
             let delta = now - last_frame;
             let delta_s = delta.as_secs() as f32 + delta.subsec_nanos() as f32 / 1_000_000_000.0;
             last_frame = now;
 
+            // Begin imgui frame
             let ui_frame;
             {
-                imgui_winit_support::update_mouse_cursor(&imgui_instance, &window);
                 let frame_size = imgui_winit_support::get_frame_size(&window, rounded_hidpi_factor)
                     .ok_or(MainError::FrameSizeError)?;
                 ui_frame = imgui_instance.frame(frame_size, delta_s);
             }
 
-            // Fetch new state
-            let state;
+            // Tick state
+            let mut state;
             {
-                state = ui_state.lock().unwrap().clone();
+                state = state_mutex.lock().unwrap().clone();
             }
+            state.tick(delta);
 
-            // Run UI
-            let new_commands;
-            {
+            // Run Tiger UI frame
+            let mut new_commands = {
                 let texture_cache = texture_cache.lock().unwrap();
-                new_commands = ui::run(&ui_frame, &state, &texture_cache)?;
-            }
+                ui::run(&ui_frame, &state, &texture_cache)?
+            };
 
-            // Append commands from UI to main command buffer
+            // Grab results from async worker
             {
-                let mut buff = command_buffer.lock().unwrap();
-                buff.append(new_commands);
+                let mut result_mutex = async_results.lock().unwrap();
+                for result in std::mem::replace(&mut result_mutex.results, vec![]) {
+                    match result {
+                        Ok(buffer) => {
+                            new_commands.append(buffer);
+                        }
+                        Err(e) => {
+                            // TODO surface to user
+                            println!("Error: {}", e);
+                        }
+                    }
+                }
             }
 
-            // Allow new commands to be processed
-            barrier.wait();
+            // Process new commands
+            use state::Command;
+            for command in &new_commands.flush() {
+                match command {
+                    Command::Sync(sync_command) => {
+                        if let Err(e) = state.process_sync_command(&sync_command) {
+                            // TODO surface to user
+                            println!("Error: {}", e);
+                            break;
+                        }
+                    }
+                    Command::Async(async_command) => {
+                        let &(ref lock, ref cvar) = &*async_commands;
+                        {
+                            let mut work = lock.lock().unwrap();
+                            let commands = &*work.commands;
+                            if commands.contains(async_command) {
+                                // This avoids queuing redundant work or dialogs when holding shortcuts
+                                // TODO: Ignore key repeats instead (second arg of is_key_pressed, not exposed by imgui-rs)
+                                println!("Ignoring duplicate async command");
+                            } else {
+                                work.commands.push(async_command.clone());
+                            }
+                        }
+                        cvar.notify_all();
+                        break;
+                    }
+                }
+            }
 
+            // Commit new state
+            {
+                let mut s = state_mutex.lock().unwrap();
+                *s = state.clone();
+            }
+
+            // Render screen
             {
                 encoder.clear(&color_rt, [0.0, 0.0, 0.0, 0.0]);
                 renderer
@@ -346,7 +286,7 @@ fn main() -> Result<(), failure::Error> {
                 device.cleanup();
             }
 
-            // Upload textures
+            // Upload textures loaded by streamer thread
             {
                 let mut texture_cache = texture_cache.lock().unwrap();
                 streamer::upload(

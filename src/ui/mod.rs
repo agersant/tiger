@@ -5,10 +5,9 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::borrow::Borrow;
 
-use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
-use crate::state::{RenameItem, State};
+use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::utils;
 
@@ -46,7 +45,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
         let oversample = 8;
 
         imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../res/FiraSans-Regular.ttf"),
+            include_bytes!("../../res/FiraSans-Regular.ttf"),
             ImFontConfig::new()
                 .merge_mode(false)
                 .oversample_h(oversample)
@@ -57,7 +56,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
         );
 
         imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../res/FiraSans-Regular.ttf"),
+            include_bytes!("../../res/FiraSans-Regular.ttf"),
             ImFontConfig::new()
                 .merge_mode(true)
                 .oversample_h(oversample)
@@ -76,7 +75,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
 
 pub fn run<'a>(
     ui: &Ui<'a>,
-    state: &State,
+    state: &AppState,
     texture_cache: &TextureCache,
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
@@ -87,7 +86,7 @@ pub fn run<'a>(
     let content_width = 0.12 * window_width;
     let hitboxes_width = 0.12 * window_width;
 
-    let (_, menu_height) = draw_main_menu(ui, &mut commands);
+    let (_, menu_height) = draw_main_menu(ui, state, &mut commands);
 
     {
         // TODO Don't overlap other windows
@@ -149,12 +148,12 @@ pub fn run<'a>(
 
     update_drag_and_drop(ui, state, &mut commands);
     draw_drag_and_drop(ui, state, texture_cache);
-    process_shortcuts(ui, &mut commands);
+    process_shortcuts(ui, state, &mut commands);
 
     Ok(commands)
 }
 
-fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
+fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
@@ -165,14 +164,14 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                     .shortcut(im_str!("Ctrl+N"))
                     .build()
                 {
-                    commands.new_document();
+                    commands.begin_new_document();
                 }
                 if ui
                     .menu_item(im_str!("Open Sheet…"))
                     .shortcut(im_str!("Ctrl+O"))
                     .build()
                 {
-                    commands.open_document();
+                    commands.begin_open_document();
                 }
                 ui.separator();
                 if ui
@@ -180,14 +179,18 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                     .shortcut(im_str!("Ctrl+S"))
                     .build()
                 {
-                    commands.save();
+                    if let Some(document) = state.get_current_document() {
+                        commands.save(document);
+                    }
                 }
                 if ui
                     .menu_item(im_str!("Save As…"))
                     .shortcut(im_str!("Ctrl+Shift+S"))
                     .build()
                 {
-                    commands.save_as();
+                    if let Some(document) = state.get_current_document() {
+                        commands.save_as(document);
+                    }
                 }
                 if ui
                     .menu_item(im_str!("Save All"))
@@ -201,7 +204,9 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
                     .shortcut(im_str!("Ctrl+E"))
                     .build()
                 {
-                    commands.export();
+                    if let Some(document) = state.get_current_document() {
+                        commands.export(document);
+                    }
                 }
                 if ui
                     .menu_item(im_str!("Export As…"))
@@ -282,7 +287,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) -> (f32, f32) {
 fn draw_documents_window<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &State,
+    state: &AppState,
     commands: &mut CommandBuffer,
 ) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
@@ -310,7 +315,7 @@ fn draw_documents_window<'a>(
     *size
 }
 
-fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
             if document.get_content_frame_being_dragged().is_some() {
@@ -341,7 +346,7 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBu
     }
 }
 
-fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCache) {
+fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &TextureCache) {
     if let Some(document) = state.get_current_document() {
         if let Some(path) = document.get_content_frame_being_dragged() {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
@@ -367,7 +372,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
     }
 }
 
-fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         if let Some(settings) = document.get_export_settings() {
             let popup_id = im_str!("Export Options");
@@ -385,7 +390,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                         ui.same_line(0.0);
 
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.update_export_as_texture_destination();
+                            commands.begin_set_export_texture_destination(document);
                         }
                         ui.pop_id();
                     }
@@ -400,7 +405,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.update_export_as_metadata_destination();
+                            commands.begin_set_export_metadata_destination(document);
                         }
                         ui.pop_id();
                     }
@@ -413,7 +418,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.update_export_as_metadata_paths_root();
+                            commands.begin_set_export_metadata_paths_root(document);
                         }
                         ui.pop_id();
                     }
@@ -428,7 +433,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
                                 );
                                 ui.same_line(0.0);
                                 if ui.small_button(im_str!("Browse…")) {
-                                    commands.update_export_as_format();
+                                    commands.begin_set_export_format(document);
                                 }
                             }
                         };
@@ -437,7 +442,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
 
                     // TODO grey out and disable if bad settings
                     if ui.small_button(im_str!("Ok")) {
-                        commands.end_export_as();
+                        commands.end_export_as(document);
                     }
                     ui.same_line(0.0);
                     if ui.small_button(im_str!("Cancel")) {
@@ -449,7 +454,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
     }
 }
 
-fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         let max_length = match document.get_item_being_renamed() {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
@@ -479,7 +484,7 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
     }
 }
 
-fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
+fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if ui.want_capture_keyboard() {
         return;
     }
@@ -527,25 +532,31 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     // Menu commands
     if ui.imgui().key_ctrl() {
         if ui.imgui().is_key_pressed(VirtualKeyCode::N as _) {
-            commands.new_document();
+            commands.begin_new_document();
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::O as _) {
-            commands.open_document();
+            commands.begin_open_document();
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
-                commands.save_as();
+                if let Some(document) = state.get_current_document() {
+                    commands.save_as(document);
+                }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
             } else {
-                commands.save();
+                if let Some(document) = state.get_current_document() {
+                    commands.save(document);
+                }
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
             if ui.imgui().key_shift() {
                 commands.begin_export_as();
             } else {
-                commands.export();
+                if let Some(document) = state.get_current_document() {
+                    commands.export(document);
+                }
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::W as _) {

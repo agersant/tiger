@@ -24,7 +24,7 @@ pub fn read_file<T: AsRef<Path>>(version: Version, path: T) -> Result<Sheet, Err
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Sheet {
     pub frames: Vec<Frame>,
     pub animations: Vec<Animation>,
@@ -133,7 +133,7 @@ impl From<previous_version::Rectangle> for Rectangle {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ExportFormat {
     Template(PathBuf),
 }
@@ -146,7 +146,7 @@ impl From<previous_version::ExportFormat> for ExportFormat {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ExportSettings {
     pub format: ExportFormat,
     pub texture_destination: PathBuf,

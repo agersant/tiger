@@ -4,7 +4,7 @@ use imgui::*;
 use std::time::Duration;
 
 use crate::sheet::{Animation, AnimationFrame, Frame};
-use crate::state::{Selection, State};
+use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::spinner::*;
 use crate::utils;
@@ -35,7 +35,7 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
 
 fn draw_animation<'a>(
     ui: &Ui<'a>,
-    state: &State,
+    state: &AppState,
     texture_cache: &TextureCache,
     animation: &Animation,
 ) {
@@ -111,7 +111,7 @@ fn draw_animation_frame<'a>(
         }
     }
 }
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, texture_cache: &TextureCache) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
