@@ -12,7 +12,6 @@ extern crate serde_derive;
 use gfx::Device;
 use std::sync::*;
 
-mod command;
 mod export;
 mod pack;
 mod sheet;
@@ -61,12 +60,12 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
 
 #[derive(Debug, Default)]
 struct AsyncCommands {
-    commands: Vec<command::AsyncCommand>,
+    commands: Vec<state::AsyncCommand>,
 }
 
 #[derive(Debug, Default)]
 struct AsyncResults {
-    results: Vec<Result<command::CommandBuffer, failure::Error>>,
+    results: Vec<Result<state::CommandBuffer, failure::Error>>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -99,7 +98,7 @@ fn main() -> Result<(), failure::Error> {
     let async_commands: Arc<(Mutex<AsyncCommands>, Condvar)> =
         Arc::new((Mutex::new(Default::default()), Condvar::new()));
     let async_results: Arc<Mutex<AsyncResults>> = Arc::new(Mutex::new(Default::default()));
-    let state_mutex = Arc::new(Mutex::new(state::State::new()));
+    let state_mutex = Arc::new(Mutex::new(state::AppState::new()));
     let texture_cache = Arc::new(Mutex::new(streamer::TextureCache::new()));
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
@@ -242,7 +241,7 @@ fn main() -> Result<(), failure::Error> {
             }
 
             // Process new commands
-            use command::Command;
+            use state::Command;
             for command in &new_commands.flush() {
                 match command {
                     Command::Sync(sync_command) => {

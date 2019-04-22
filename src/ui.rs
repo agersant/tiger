@@ -5,10 +5,9 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::borrow::Borrow;
 
-use crate::command::CommandBuffer;
 use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
-use crate::state::{RenameItem, State};
+use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::utils;
 
@@ -76,7 +75,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
 
 pub fn run<'a>(
     ui: &Ui<'a>,
-    state: &State,
+    state: &AppState,
     texture_cache: &TextureCache,
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
@@ -154,7 +153,7 @@ pub fn run<'a>(
     Ok(commands)
 }
 
-fn draw_main_menu<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) -> (f32, f32) {
+fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
@@ -288,7 +287,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) 
 fn draw_documents_window<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &State,
+    state: &AppState,
     commands: &mut CommandBuffer,
 ) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
@@ -316,7 +315,7 @@ fn draw_documents_window<'a>(
     *size
 }
 
-fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
             if document.get_content_frame_being_dragged().is_some() {
@@ -347,7 +346,7 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBu
     }
 }
 
-fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCache) {
+fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &TextureCache) {
     if let Some(document) = state.get_current_document() {
         if let Some(path) = document.get_content_frame_being_dragged() {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
@@ -373,7 +372,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &State, texture_cache: &TextureCac
     }
 }
 
-fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         if let Some(settings) = document.get_export_settings() {
             let popup_id = im_str!("Export Options");
@@ -455,7 +454,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
     }
 }
 
-fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = state.get_current_document() {
         let max_length = match document.get_item_being_renamed() {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
@@ -485,7 +484,7 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffe
     }
 }
 
-fn process_shortcuts<'a>(ui: &Ui<'a>, state: &State, commands: &mut CommandBuffer) {
+fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
     if ui.want_capture_keyboard() {
         return;
     }

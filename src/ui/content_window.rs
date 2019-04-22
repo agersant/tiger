@@ -2,9 +2,8 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::ffi::OsStr;
 
-use crate::command::CommandBuffer;
 use crate::sheet::{Animation, Frame};
-use crate::state::{ContentTab, Document, Selection, State};
+use crate::state::*;
 use crate::ui::Rect;
 
 fn draw_tabs<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
@@ -92,7 +91,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)

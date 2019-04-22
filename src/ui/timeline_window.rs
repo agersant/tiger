@@ -2,14 +2,13 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
 
-use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame};
-use crate::state::{self, Document, Selection, State};
+use crate::state::*;
 use crate::ui::Rect;
 
 fn draw_timeline_ticks<'a>(
     ui: &Ui<'a>,
-    state: &State,
+    state: &AppState,
     commands: &mut CommandBuffer,
     document: &Document,
 ) {
@@ -264,7 +263,12 @@ fn draw_animation_frame<'a>(
     ui.set_cursor_screen_pos(bottom_right);
 }
 
-fn draw_playback_head<'a>(ui: &Ui<'a>, state: &State, document: &Document, animation: &Animation) {
+fn draw_playback_head<'a>(
+    ui: &Ui<'a>,
+    state: &AppState,
+    document: &Document,
+    animation: &Animation,
+) {
     let duration = animation.get_duration().unwrap_or(0);
 
     let now_ms = {
@@ -387,7 +391,7 @@ fn handle_drag_and_drop<'a>(
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Timeline"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -398,7 +402,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, commands: &mut Com
             .always_horizontal_scrollbar(true)
             .build(|| {
                 if let Some(document) = state.get_current_document() {
-                    if let Some(state::WorkbenchItem::Animation(animation_name)) =
+                    if let Some(WorkbenchItem::Animation(animation_name)) =
                         document.get_workbench_item()
                     {
                         if let Some(animation) = document.get_sheet().get_animation(animation_name)

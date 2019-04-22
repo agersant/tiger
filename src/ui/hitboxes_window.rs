@@ -1,9 +1,8 @@
 use imgui::StyleVar::*;
 use imgui::*;
 
-use crate::command::CommandBuffer;
 use crate::sheet::{Frame, Hitbox};
-use crate::state::{Document, Selection, State, WorkbenchItem};
+use crate::state::*;
 use crate::ui::Rect;
 
 fn draw_hitboxes<'a>(
@@ -32,7 +31,7 @@ fn draw_hitboxes<'a>(
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &State, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Hitboxes"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)

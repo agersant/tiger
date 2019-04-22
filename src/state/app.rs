@@ -4,13 +4,10 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-pub use self::document::{ContentTab, Document, RenameItem, ResizeAxis, Selection, WorkbenchItem};
-use crate::command::{AsyncCommand, CommandBuffer, SyncCommand};
 use crate::export;
 use crate::pack;
 use crate::sheet::{ExportFormat, ExportSettings, Sheet};
-
-mod document;
+use crate::state::*;
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
 const TEMPLATE_FILE_EXTENSION: &str = "liquid";
@@ -30,15 +27,15 @@ pub enum StateError {
 }
 
 #[derive(Clone, Debug)]
-pub struct State {
+pub struct AppState {
     documents: Vec<Document>,
     current_document: Option<PathBuf>,
     clock: Duration,
 }
 
-impl State {
-    pub fn new() -> State {
-        State {
+impl AppState {
+    pub fn new() -> AppState {
+        AppState {
             documents: vec![],
             current_document: None,
             clock: Duration::new(0, 0),

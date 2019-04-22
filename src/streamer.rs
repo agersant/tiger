@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use crate::state::State;
+use crate::state::AppState;
 
 const MAX_TEXTURES_LOAD_TIME_PER_TICK: u128 = 250; // ms
 
@@ -27,7 +27,7 @@ pub fn init() -> (Sender<StreamerPayload>, Receiver<StreamerPayload>) {
 }
 
 pub fn load_from_disk(
-    state: &State,
+    state: &AppState,
     texture_cache: Arc<Mutex<TextureCache>>,
     sender: &Sender<StreamerPayload>,
 ) {

@@ -2,9 +2,8 @@ use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
 
-use crate::command::CommandBuffer;
 use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
-use crate::state::{self, Document, ResizeAxis, State};
+use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::spinner::*;
 
@@ -388,7 +387,7 @@ fn draw_animation<'a>(
     }
 }
 
-fn draw_grid<'a>(ui: &Ui<'a>, state: &State) {
+fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
     let draw_list = ui.get_window_draw_list();
     let thickness = 0.5; // TODO DPI?
     let spacing = 16; // TODO DPI?
@@ -481,7 +480,7 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &State,
+    state: &AppState,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
@@ -502,12 +501,12 @@ pub fn draw<'a>(
 
                 if let Some(document) = state.get_current_document() {
                     match document.get_workbench_item() {
-                        Some(state::WorkbenchItem::Frame(path)) => {
+                        Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
                                 draw_frame(ui, commands, texture_cache, document, frame);
                             }
                         }
-                        Some(state::WorkbenchItem::Animation(name)) => {
+                        Some(WorkbenchItem::Animation(name)) => {
                             if let Some(animation) = document.get_sheet().get_animation(name) {
                                 draw_animation(ui, commands, texture_cache, document, animation);
                                 draw_origin(ui, document);
