@@ -49,7 +49,7 @@
 - [x] In selection window, keep origin centered to preview turnarounds
 - [x] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)
-- [ ] Content window and workbench indicate what the current workbench item is
+- [x] Workbench indicates what the current workbench item is
 - [x] Sort content panel entries by name
 - [x] Sort hitbox panel entries by name
 - [x] Dont draw origin when editing frame
@@ -88,6 +88,7 @@
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Prettier UI and review TODO.style
 - [ ] Better rename UX
+- [ ] Right click menu to rename/delete item
 - [ ] Document tabs (imgui 1.67+)
 - [ ] In-place tutorials instead of blank data
 - [ ] Unit-test all the things

@@ -89,8 +89,13 @@ pub fn run<'a>(
     let (_, menu_height) = draw_main_menu(ui, state, &mut commands);
 
     {
-        // TODO Don't overlap other windows
-        let workbench_rect = rect(0.0, menu_height, window_width, window_height - menu_height);
+        let workbench_width = window_width - content_width - hitboxes_width;
+        let workbench_rect = rect(
+            content_width,
+            menu_height,
+            workbench_width,
+            window_height - menu_height,
+        );
         workbench_window::draw(ui, &workbench_rect, state, &mut commands, texture_cache);
     }
 

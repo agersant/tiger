@@ -537,6 +537,13 @@ fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
     );
 }
 
+fn draw_item_name<'a, T: AsRef<str>>(ui: &Ui<'a>, name: T) {
+    let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
+    let text_position: Vector2D<f32> = vec2(10.0, 30.0);
+    ui.set_cursor_pos(text_position.to_tuple());
+    ui.text_colored(color, &ImString::new(name.as_ref()));
+}
+
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
@@ -564,12 +571,19 @@ pub fn draw<'a>(
                         Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.get_sheet().get_frame(path) {
                                 draw_frame(ui, commands, texture_cache, document, frame);
+                                let name = frame
+                                    .get_source()
+                                    .file_name()
+                                    .map(|s| s.to_string_lossy().into_owned())
+                                    .unwrap_or("".to_string());
+                                draw_item_name(ui, name);
                             }
                         }
                         Some(WorkbenchItem::Animation(name)) => {
                             if let Some(animation) = document.get_sheet().get_animation(name) {
                                 draw_animation(ui, commands, texture_cache, document, animation);
                                 draw_origin(ui, document);
+                                draw_item_name(ui, animation.get_name());
                             }
                         }
                         None => (),
