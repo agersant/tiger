@@ -86,11 +86,12 @@
 - [ ] Workbench tabs?
 - [ ] Text filtering of frames/animations
 - [ ] View animations and frames at the same time for faster browsing?
-- [ ] Prettier UI and review TODO.style
+- [ ] Content panel shows previews of frames and animations? (list view? grid view?)
 - [ ] Better rename UX
 - [ ] Right click menu to rename/delete item
 - [ ] Document tabs (imgui 1.67+)
 - [ ] In-place tutorials instead of blank data
+- [ ] Prettier UI and review TODO.style
 - [ ] Unit-test all the things
 
 ## Tiger 1.0
