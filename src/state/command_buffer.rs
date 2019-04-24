@@ -185,6 +185,10 @@ impl CommandBuffer {
         self.queue.push(Command::Sync(SyncCommand::Import));
     }
 
+    pub fn clear_selection(&mut self) {
+        self.queue.push(Command::Sync(SyncCommand::ClearSelection));
+    }
+
     pub fn select_frame(&mut self, frame: &Frame) {
         self.queue.push(Command::Sync(SyncCommand::SelectFrame(
             frame.get_source().to_owned(),

@@ -332,6 +332,9 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .switch_to_content_tab(*tab),
             SyncCommand::Import => self.import()?,
+            SyncCommand::ClearSelection => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .clear_selection(),
             SyncCommand::SelectFrame(p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_frame(&p)?,
@@ -414,7 +417,7 @@ impl AppState {
                 .update_hitbox_scale(*p)?,
             SyncCommand::EndHitboxScale => document
                 .ok_or(StateError::NoDocumentOpen)?
-                .end_hitbox_scale(),
+                .end_hitbox_scale()?,
             SyncCommand::BeginHitboxDrag(a, m) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_drag(&a, *m)?,

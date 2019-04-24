@@ -446,6 +446,10 @@ impl Document {
         Ok(())
     }
 
+    pub fn clear_selection(&mut self) {
+        self.selection = None;
+    }
+
     pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         let sheet = self.get_sheet();
         if !sheet.has_frame(&path) {
@@ -1027,7 +1031,7 @@ impl Document {
             .get_hitbox_mut(&hitbox_name)
             .ok_or(DocumentError::InvalidHitboxIndex)?;
 
-        let new_size = vec2(
+        let mut new_size = vec2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
                     (initial_size.x as i32 + mouse_delta.x).abs() as u32
@@ -1047,6 +1051,12 @@ impl Document {
                 _ => initial_size.y,
             } as u32,
         );
+        if new_size.x == 0 {
+            new_size.x = 1;
+        }
+        if new_size.y == 0 {
+            new_size.y = 1;
+        }
 
         let new_position = vec2(
             match axis {
@@ -1075,8 +1085,12 @@ impl Document {
         Ok(())
     }
 
-    pub fn end_hitbox_scale(&mut self) {
+    pub fn end_hitbox_scale(&mut self) -> Result<(), Error> {
+        if let Some(hitbox_name) = self.workbench_hitbox_being_scaled.clone() {
+            self.select_hitbox(hitbox_name)?;
+        }
         self.workbench_hitbox_being_scaled = None;
+        Ok(())
     }
 
     pub fn begin_animation_frame_drag(

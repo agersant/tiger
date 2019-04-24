@@ -69,7 +69,6 @@ fn draw_hitbox_controls<'a>(
     let zoom = document.get_workbench_zoom_factor();
     let offset = document.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-    let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_shift_down = ui.imgui().key_shift();
     let mouse_position_in_workbench =
         screen_to_workbench(ui, ui.imgui().mouse_pos().into(), document);
@@ -111,17 +110,6 @@ fn draw_hitbox_controls<'a>(
             .floor()
             .to_i32();
         if drag_button_size.x >= 1 && drag_button_size.y >= 1 {
-            ui.set_cursor_pos((cursor_pos + resize_handle_size.to_f32() / 2.0).to_tuple());
-            let id = format!("hitbox_handle_{}", hitbox.get_name());
-            ui.invisible_button(&ImString::new(id), drag_button_size.to_f32().to_tuple());
-            if ui.is_item_hovered() {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                if is_mouse_down {
-                    let mouse_pos = ui.imgui().mouse_pos().into();
-                    commands.begin_hitbox_drag(hitbox, mouse_pos);
-                    *is_dragging = true;
-                }
-            }
 
             // N
             *is_scaling |= draw_resize_handle(
@@ -234,11 +222,13 @@ fn draw_hitbox_controls<'a>(
 
 fn draw_hitbox<'a>(
     ui: &Ui<'a>,
+    commands: &mut CommandBuffer,
     document: &Document,
     frame: &Frame,
     hitbox: &Hitbox,
     is_selectable: bool,
     offset: Vector2D<i32>,
+    is_dragging: &mut bool,
 ) {
     let zoom = document.get_workbench_zoom_factor();
     let workbench_offset = document.get_workbench_offset();
@@ -261,6 +251,23 @@ fn draw_hitbox<'a>(
             frame.get_source().to_path_buf(),
             hitbox.get_name().to_owned(),
         ));
+
+    if is_selectable && !rectangle.size.is_empty_or_negative() {
+        let hitbox_id = ImString::new(format!("hitbox_button_{}", hitbox.get_name()));
+        if ui.invisible_button(&hitbox_id, (rectangle.size.to_f32().to_vector() * zoom).to_tuple()) {
+            commands.select_hitbox(hitbox);
+        }
+        ui.set_item_allow_overlap();
+        if ui.is_item_hovered() {
+            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+            let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+            if !*is_dragging && ui.is_item_active() && is_mouse_dragging {
+                let mouse_pos = ui.imgui().mouse_pos().into();
+                commands.begin_hitbox_drag(hitbox, mouse_pos);
+                *is_dragging = true;
+            }
+        }
+    }
 
     let draw_list = ui.get_window_draw_list();
     let outline_color = if is_selected {
@@ -306,7 +313,7 @@ fn draw_frame<'a>(
             let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
 
             for hitbox in frame.hitboxes_iter() {
-                draw_hitbox(ui, document, frame, hitbox, true, vec2(0, 0));
+                draw_hitbox(ui, commands, document, frame, hitbox, true, vec2(0, 0), &mut is_dragging_hitbox);
                 draw_hitbox_controls(
                     ui,
                     document,
@@ -321,7 +328,7 @@ fn draw_frame<'a>(
                 && !is_dragging_hitbox
                 && ui.is_window_hovered()
                 && is_mouse_down
-                && !is_mouse_dragging
+                && is_mouse_dragging
             {
                 commands.create_hitbox(mouse_position_in_workbench);
             }
@@ -338,9 +345,11 @@ fn draw_frame<'a>(
 
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
+    commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
     document: &Document,
     animation_frame: &AnimationFrame,
+    frame_index: usize,
     is_selected: bool,
 ) {
     let zoom = document.get_workbench_zoom_factor();
@@ -352,14 +361,23 @@ fn draw_animation_frame<'a>(
             let draw_size = texture.size * zoom;
             let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
                 - ((draw_size / zoom / 2.0).floor() * zoom);
+
             ui.set_cursor_pos(cursor_pos.to_tuple());
             let cursor_screen_pos: Vector2D<f32> = ui.get_cursor_screen_pos().into();
             ui.image(texture.id, draw_size.to_tuple()).build();
+
+            if !is_selected {
+                ui.set_cursor_pos(cursor_pos.to_tuple());
+                if ui.invisible_button(im_str!("current_animation_frame"), draw_size.to_tuple()) {
+                    commands.select_animation_frame(frame_index);
+                }
+            }
+
             let is_hovered = ui.is_item_hovered();
 
             if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
                 for hitbox in frame.hitboxes_iter() {
-                    draw_hitbox(ui, document, frame, hitbox, false, frame_offset.to_i32());
+                    draw_hitbox(ui, commands, document, frame, hitbox, false, frame_offset.to_i32(), &mut false);
                 }
             }
 
@@ -405,7 +423,7 @@ fn draw_animation<'a>(
                 frame_index,
             ));
 
-        draw_animation_frame(ui, texture_cache, document, animation_frame, is_selected);
+        draw_animation_frame(ui, commands, texture_cache, document, animation_frame, frame_index, is_selected);
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
@@ -415,7 +433,7 @@ fn draw_animation<'a>(
             None => {
                 if ui.is_item_hovered() {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                    if is_mouse_down && !is_mouse_dragging {
+                    if is_mouse_down && is_mouse_dragging {
                         let mouse_pos = ui.imgui().mouse_pos().into();
                         commands.begin_animation_frame_offset_drag(frame_index, mouse_pos);
                     }
@@ -432,9 +450,11 @@ fn draw_animation<'a>(
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
                             draw_animation_frame(
                                 ui,
+                                commands,
                                 texture_cache,
                                 document,
                                 animation_frame,
+                                *dragged_frame_index,
                                 true,
                             );
                         });
@@ -565,6 +585,12 @@ pub fn draw<'a>(
             .no_bring_to_front_on_focus(true)
             .build(|| {
                 draw_grid(ui, state);
+
+                ui.set_cursor_pos((0.0, 0.0));
+                if ui.invisible_button(im_str!("workbench_dead_zone"), rect.size.to_tuple()) {
+                    commands.clear_selection();
+                }
+                ui.set_item_allow_overlap();
 
                 if let Some(document) = state.get_current_document() {
                     match document.get_workbench_item() {

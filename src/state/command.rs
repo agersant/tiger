@@ -36,6 +36,7 @@ pub enum SyncCommand {
     EndExportAs,
     SwitchToContentTab(ContentTab),
     Import,
+    ClearSelection,
     SelectFrame(PathBuf),
     SelectAnimation(String),
     SelectHitbox(String),

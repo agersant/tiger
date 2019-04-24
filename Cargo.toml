@@ -13,9 +13,9 @@ gfx_core = "0.9.0"
 gfx_device_gl = "0.16"
 gfx_window_glutin = "0.30"
 image = "0.20"
-imgui = "0.0.23"
-imgui-gfx-renderer = "0.0.23"
-imgui-winit-support = "0.0.23"
+imgui = { path = "../imgui-rs" }
+imgui-gfx-renderer = { path = "../imgui-rs/imgui-gfx-renderer" }
+imgui-winit-support = { path = "../imgui-rs/imgui-winit-support" }
 liquid = "0.17"
 nfd = "0.0.4"
 pathdiff = "0.1.0"
