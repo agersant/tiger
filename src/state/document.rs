@@ -1031,7 +1031,7 @@ impl Document {
             .get_hitbox_mut(&hitbox_name)
             .ok_or(DocumentError::InvalidHitboxIndex)?;
 
-        let mut new_size = vec2(
+        let new_size = vec2(
             match axis {
                 ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
                     (initial_size.x as i32 + mouse_delta.x).abs() as u32
@@ -1051,12 +1051,6 @@ impl Document {
                 _ => initial_size.y,
             } as u32,
         );
-        if new_size.x == 0 {
-            new_size.x = 1;
-        }
-        if new_size.y == 0 {
-            new_size.y = 1;
-        }
 
         let new_position = vec2(
             match axis {

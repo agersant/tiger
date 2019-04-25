@@ -39,7 +39,7 @@
 - [x] Automatically select hitbox after creating it
 - [x] Select hitbox when clicking it
 - [x] Select animation frame when clicking it
-- [ ] Selected hitbox should have 8 handles for resizing instead of using invisible buttons along borders
+- [x] Selected hitbox should have handles for resizing instead of using invisible buttons along borders
 - [x] When creating an animation, automatically select it
 - [x] Grid
 - [ ] Drag and drop frames to workbench
@@ -60,6 +60,7 @@
 - [x] Fix bug where a console window opens alongside Tiger on Windows
 - [x] Workbench should illustrate selected hitbox or animation frame (w/ borders)
 - [x] Clicking blank space within the workbench gets rid of the current selection
+- [ ] Space to center workbench when editing frame
 
 ## Tiger 0.3
 - [ ] Error dialogs
