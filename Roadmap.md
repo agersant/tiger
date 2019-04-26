@@ -45,7 +45,7 @@
 - [ ] Drag and drop frames to workbench
 - ~~[ ] Grid snapping?~~
 - [x] Content of selection window when selecting animation frame
-- [ ] Content of selection window when selecting hitbox
+- [x] Content of selection window when selecting hitbox
 - [x] In selection window, keep origin centered to preview turnarounds
 - [x] When moving animation frame or hitbox, hold shift to move only on one axis
 - [ ] When resizing hitbox, hold shift to make square (or preserve aspect ratio?)

@@ -3,7 +3,7 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
 
-use crate::sheet::{Animation, AnimationFrame, Frame};
+use crate::sheet::*;
 use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::spinner::*;
@@ -30,6 +30,31 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
                 // TODO
             }
         }
+    }
+}
+
+fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
+    let position = hitbox.get_position();
+    let size = hitbox.get_size();
+    ui.text(&ImString::new(format!("Tag: {}", hitbox.get_name())));
+    ui.text(&ImString::new(format!("Offset: {}, {}", position.x, position.y)));
+    ui.text(&ImString::new(format!("Dimensions: {} x {}", size.x, size.y)));
+
+    let space: Vector2D<f32> = ui.get_content_region_avail().into();
+    let padding = 0.2;
+
+    if let Some(fill) = utils::fill(space * (1.0 - padding), size.to_f32()) {
+        let cursor_screen_pos: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+        let draw_list = ui.get_window_draw_list();
+        let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
+        draw_list
+            .add_rect(
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.origin.to_vector()).to_tuple(),
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.bottom_right().to_vector()).to_tuple(),
+                color,
+            )
+            .thickness(2.0) // TODO dpi
+            .build();
     }
 }
 
@@ -111,6 +136,7 @@ fn draw_animation_frame<'a>(
         }
     }
 }
+
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
@@ -139,7 +165,14 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: 
                                 }
                             }
                         }
-                        _ => (), // TODO
+                        Some(Selection::Hitbox(path, name)) => {
+                            if let Some(frame) = document.get_sheet().get_frame(path) {
+                                if let Some(hitbox) = frame.get_hitbox(name) {
+                                    draw_hitbox(ui, hitbox);
+                                }
+                            }
+                        }
+                        None => ()
                     }
                 }
             });
