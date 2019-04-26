@@ -26,6 +26,7 @@ pub enum StateError {
 
 // State preventing undo/redo while not default
 // Reset when focusing different document
+// TODO.important review places where we write to current_tab and clear transient state!
 #[derive(Clone, Debug)]
 struct TransientState {
     content_frame_being_dragged: Option<PathBuf>,
