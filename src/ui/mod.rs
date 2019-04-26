@@ -160,6 +160,7 @@ pub fn run<'a>(
 
 fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
+    let has_document = state.get_current().is_some();
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.main_menu_bar(|| {
@@ -182,24 +183,27 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                 if ui
                     .menu_item(im_str!("Save"))
                     .shortcut(im_str!("Ctrl+S"))
+                    .enabled(has_document)
                     .build()
                 {
-                    if let Some(document) = state.get_current_document() {
-                        commands.save(document);
+                    if let Some((tab, document)) = state.get_current() {
+                        commands.save(tab.get_source(), document);
                     }
                 }
                 if ui
                     .menu_item(im_str!("Save As…"))
                     .shortcut(im_str!("Ctrl+Shift+S"))
+                    .enabled(has_document)
                     .build()
                 {
-                    if let Some(document) = state.get_current_document() {
-                        commands.save_as(document);
+                    if let Some((tab, document)) = state.get_current() {
+                        commands.save_as(tab.get_source(), document);
                     }
                 }
                 if ui
                     .menu_item(im_str!("Save All"))
                     .shortcut(im_str!("Ctrl+Alt+S"))
+                    .enabled(has_document)
                     .build()
                 {
                     commands.save_all();
@@ -207,6 +211,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                 if ui
                     .menu_item(im_str!("Export"))
                     .shortcut(im_str!("Ctrl+E"))
+                    .enabled(has_document)
                     .build()
                 {
                     if let Some(document) = state.get_current_document() {
@@ -216,6 +221,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                 if ui
                     .menu_item(im_str!("Export As…"))
                     .shortcut(im_str!("Ctrl+Shift+E"))
+                    .enabled(has_document)
                     .build()
                 {
                     commands.begin_export_as();
@@ -224,6 +230,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                 if ui
                     .menu_item(im_str!("Close"))
                     .shortcut(im_str!("Ctrl+W"))
+                    .enabled(has_document)
                     .build()
                 {
                     commands.close_current_document();
@@ -231,6 +238,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                 if ui
                     .menu_item(im_str!("Close All"))
                     .shortcut(im_str!("Ctrl+Shift+W"))
+                    .enabled(has_document)
                     .build()
                 {
                     commands.close_all_documents();
@@ -307,9 +315,9 @@ fn draw_documents_window<'a>(
             .menu_bar(false)
             .movable(false)
             .build(|| {
-                for document in state.documents_iter() {
-                    if ui.small_button(&ImString::new(document.get_source().to_string_lossy())) {
-                        commands.focus_document(document);
+                for tab in state.tabs_iter() {
+                    if ui.small_button(&ImString::new(tab.get_source().to_string_lossy())) {
+                        commands.focus_tab(tab);
                     }
                     ui.same_line(0.0);
                 }
@@ -378,7 +386,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &Texture
 }
 
 fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(document) = state.get_current_document() {
+    if let Some((tab, document)) = state.get_current() {
         if let Some(settings) = document.get_export_settings() {
             let popup_id = im_str!("Export Options");
             ui.popup_modal(&popup_id)
@@ -395,7 +403,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
                         ui.same_line(0.0);
 
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_texture_destination(document);
+                            commands.begin_set_export_texture_destination(tab);
                         }
                         ui.pop_id();
                     }
@@ -410,7 +418,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_metadata_destination(document);
+                            commands.begin_set_export_metadata_destination(tab);
                         }
                         ui.pop_id();
                     }
@@ -423,7 +431,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_metadata_paths_root(document);
+                            commands.begin_set_export_metadata_paths_root(tab);
                         }
                         ui.pop_id();
                     }
@@ -438,7 +446,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
                                 );
                                 ui.same_line(0.0);
                                 if ui.small_button(im_str!("Browse…")) {
-                                    commands.begin_set_export_format(document);
+                                    commands.begin_set_export_format(tab);
                                 }
                             }
                         };
@@ -544,14 +552,14 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
-                if let Some(document) = state.get_current_document() {
-                    commands.save_as(document);
+                if let Some((tab, document)) = state.get_current() {
+                    commands.save_as(tab.get_source(), document);
                 }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
             } else {
-                if let Some(document) = state.get_current_document() {
-                    commands.save(document);
+                if let Some((tab, document)) = state.get_current() {
+                    commands.save(tab.get_source(), document);
                 }
             }
         }

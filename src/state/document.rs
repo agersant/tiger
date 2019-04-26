@@ -4,8 +4,7 @@ use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::sheet::compat;
-use crate::sheet::{Animation, ExportSettings, Frame, Hitbox, Sheet};
+use crate::sheet::*;
 
 #[derive(Fail, Debug)]
 pub enum DocumentError {
@@ -33,6 +32,8 @@ pub enum DocumentError {
     NotDraggingATimelineFrame,
     #[fail(display = "No animation frame found for requested time")]
     NoAnimationFrameForThisTime,
+    #[fail(display = "Not currently adjusting export settings")]
+    NotExporting,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -74,102 +75,55 @@ pub enum WorkbenchItem {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-// TODO consider replacing the various path, names and indices within this struct (and commands) with Arc to Frame/Animation/AnimationFrame/Hitbox
-// Implications for undo/redo system?
 pub struct Document {
-    pub source: PathBuf,
-    pub export_settings: Option<ExportSettings>,
     sheet: Sheet,
+    pub export_settings: Option<ExportSettings>,
     content_current_tab: ContentTab,
-    item_being_renamed: Option<RenameItem>,
-    rename_buffer: String,
-    content_frame_being_dragged: Option<PathBuf>,
+    selection: Option<Selection>,
     workbench_item: Option<WorkbenchItem>,
     workbench_offset: Vector2D<f32>,
     workbench_zoom_level: i32,
-    workbench_hitbox_being_dragged: Option<String>,
-    workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
-    workbench_hitbox_drag_initial_offset: Vector2D<i32>,
-    workbench_hitbox_being_scaled: Option<String>,
-    workbench_hitbox_scale_axis: ResizeAxis,
-    workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
-    workbench_hitbox_scale_initial_position: Vector2D<i32>,
-    workbench_hitbox_scale_initial_size: Vector2D<u32>,
-    workbench_animation_frame_being_dragged: Option<usize>,
-    workbench_animation_frame_drag_initial_mouse_position: Vector2D<f32>,
-    workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
     timeline_zoom_level: i32,
-    timeline_frame_being_scaled: Option<usize>,
-    timeline_frame_scale_initial_duration: u32,
-    timeline_frame_scale_initial_clock: Duration,
-    timeline_frame_being_dragged: Option<usize>,
-    timeline_clock: Duration,
-    timeline_playing: bool,
-    timeline_scrubbing: bool,
-    selection: Option<Selection>,
 }
 
 impl Document {
-    pub fn new<T: AsRef<Path>>(path: T) -> Document {
+    pub fn new() -> Document {
         Document {
-            source: path.as_ref().to_owned(),
-            export_settings: None,
             sheet: Sheet::new(),
+            export_settings: None,
             content_current_tab: ContentTab::Frames,
-            item_being_renamed: None,
-            rename_buffer: "".to_owned(),
-            content_frame_being_dragged: None,
+            selection: None,
             workbench_item: None,
             workbench_offset: Vector2D::<f32>::zero(),
             workbench_zoom_level: 1,
-            workbench_hitbox_being_dragged: None,
-            workbench_hitbox_drag_initial_mouse_position: Vector2D::<f32>::zero(),
-            workbench_hitbox_drag_initial_offset: vec2(0, 0),
-            workbench_hitbox_being_scaled: None,
-            workbench_hitbox_scale_axis: ResizeAxis::N,
-            workbench_hitbox_scale_initial_mouse_position: Vector2D::<f32>::zero(),
-            workbench_hitbox_scale_initial_position: vec2(0, 0),
-            workbench_hitbox_scale_initial_size: vec2(0, 0),
-            workbench_animation_frame_being_dragged: None,
-            workbench_animation_frame_drag_initial_mouse_position: Vector2D::<f32>::zero(),
-            workbench_animation_frame_drag_initial_offset: vec2(0, 0),
             timeline_zoom_level: 1,
-            timeline_frame_being_scaled: None,
-            timeline_frame_scale_initial_duration: 0,
-            timeline_frame_scale_initial_clock: Duration::new(0, 0),
-            timeline_frame_being_dragged: None,
-            timeline_clock: Duration::new(0, 0),
-            timeline_playing: false,
-            timeline_scrubbing: false,
-            selection: None,
         }
     }
 
-    pub fn tick(&mut self, delta: Duration) {
-        if self.timeline_playing {
-            self.timeline_clock += delta;
+    pub fn tick(&self, delta: Duration, clock: &mut Duration, is_playing: &mut bool) {
+        if *is_playing {
+            *clock += delta;
             if let Some(WorkbenchItem::Animation(animation_name)) = &self.workbench_item {
                 if let Some(animation) = self.get_sheet().get_animation(animation_name) {
                     match animation.get_duration() {
                         Some(d) if d > 0 => {
-                            let clock_ms = self.timeline_clock.as_millis();
+                            let clock_ms = clock.as_millis();
 
                             // Loop animation
                             if animation.is_looping() {
-                                self.timeline_clock =
-                                    Duration::from_millis((clock_ms % u128::from(d)) as u64)
+                                *clock = Duration::from_millis((clock_ms % u128::from(d)) as u64)
 
                             // Stop playhead at the end of animation
                             } else if clock_ms >= u128::from(d) {
-                                self.timeline_playing = false;
-                                self.timeline_clock = Duration::from_millis(u64::from(d))
+                                *is_playing = false;
+                                *clock = Duration::from_millis(u64::from(d))
                             }
                         }
 
                         // Reset playhead
                         _ => {
-                            self.timeline_clock = Duration::new(0, 0);
-                            self.timeline_playing = false;
+                            *is_playing = false;
+                            *clock = Duration::new(0, 0);
                         }
                     };
                 }
@@ -182,25 +136,21 @@ impl Document {
         directory.pop();
         let sheet: Sheet = compat::read_sheet(path.as_ref())?;
         let sheet = sheet.with_absolute_paths(&directory)?;
-        let mut document = Document::new(&path);
+        let mut document = Document::new();
         document.sheet = sheet;
         Ok(document)
     }
 
-    pub fn save(&self) -> Result<(), Error> {
-        let mut directory = self.source.to_path_buf();
+    pub fn save<T: AsRef<Path>>(&self, to: T) -> Result<(), Error> {
+        let mut directory = to.as_ref().to_path_buf();
         directory.pop();
         let sheet = self.get_sheet().with_relative_paths(directory)?;
-        compat::write_sheet(&self.source, &sheet)?;
+        compat::write_sheet(to, &sheet)?;
         Ok(())
     }
 
     pub fn switch_to_content_tab(&mut self, tab: ContentTab) {
         self.content_current_tab = tab;
-    }
-
-    pub fn get_source(&self) -> &Path {
-        &self.source
     }
 
     pub fn get_sheet(&self) -> &Sheet {
@@ -311,6 +261,74 @@ impl Document {
 
     pub fn get_export_settings(&self) -> &Option<ExportSettings> {
         &self.export_settings
+    }
+
+    pub fn begin_export_as(&mut self) {
+        self.export_settings = self
+            .get_sheet()
+            .get_export_settings()
+            .as_ref()
+            .cloned()
+            .or_else(|| Some(ExportSettings::new()));
+    }
+
+    pub fn cancel_export_as(&mut self) {
+        self.export_settings = None;
+    }
+
+    pub fn end_set_export_texture_destination<T: AsRef<Path>>(
+        &mut self,
+        texture_destination: T,
+    ) -> Result<(), Error> {
+        let export_settings = &mut self
+            .export_settings
+            .as_mut()
+            .ok_or(DocumentError::NotExporting)?;
+        export_settings.texture_destination = texture_destination.as_ref().to_path_buf();
+        Ok(())
+    }
+
+    pub fn end_set_export_metadata_destination<T: AsRef<Path>>(
+        &mut self,
+        metadata_destination: T,
+    ) -> Result<(), Error> {
+        let export_settings = &mut self
+            .export_settings
+            .as_mut()
+            .ok_or(DocumentError::NotExporting)?;
+        export_settings.metadata_destination = metadata_destination.as_ref().to_path_buf();
+        Ok(())
+    }
+
+    pub fn end_set_export_metadata_paths_root<T: AsRef<Path>>(
+        &mut self,
+        metadata_paths_root: T,
+    ) -> Result<(), Error> {
+        let export_settings = &mut self
+            .export_settings
+            .as_mut()
+            .ok_or(DocumentError::NotExporting)?;
+        export_settings.metadata_paths_root = metadata_paths_root.as_ref().to_path_buf();
+        Ok(())
+    }
+
+    pub fn end_set_export_format(&mut self, format: ExportFormat) -> Result<(), Error> {
+        let export_settings = &mut self
+            .export_settings
+            .as_mut()
+            .ok_or(DocumentError::NotExporting)?;
+        export_settings.format = format;
+        Ok(())
+    }
+
+    pub fn end_export_as(&mut self) -> Result<(), Error> {
+        let export_settings = self
+            .export_settings
+            .take()
+            .ok_or(DocumentError::NotExporting)?;
+        self.get_sheet_mut()
+            .set_export_settings(export_settings.clone());
+        Ok(())
     }
 
     pub fn nudge_selection(&mut self, direction: &Vector2D<i32>, large: bool) -> Result<(), Error> {

@@ -37,8 +37,14 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
     let position = hitbox.get_position();
     let size = hitbox.get_size();
     ui.text(&ImString::new(format!("Tag: {}", hitbox.get_name())));
-    ui.text(&ImString::new(format!("Offset: {}, {}", position.x, position.y)));
-    ui.text(&ImString::new(format!("Dimensions: {} x {}", size.x, size.y)));
+    ui.text(&ImString::new(format!(
+        "Offset: {}, {}",
+        position.x, position.y
+    )));
+    ui.text(&ImString::new(format!(
+        "Dimensions: {} x {}",
+        size.x, size.y
+    )));
 
     let space: Vector2D<f32> = ui.get_content_region_avail().into();
     let padding = 0.2;
@@ -49,8 +55,10 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
         let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
         draw_list
             .add_rect(
-                (cursor_screen_pos + space * padding / 2.0 + fill.rect.origin.to_vector()).to_tuple(),
-                (cursor_screen_pos + space * padding / 2.0 + fill.rect.bottom_right().to_vector()).to_tuple(),
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.origin.to_vector())
+                    .to_tuple(),
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.bottom_right().to_vector())
+                    .to_tuple(),
                 color,
             )
             .thickness(2.0) // TODO dpi
@@ -172,7 +180,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: 
                                 }
                             }
                         }
-                        None => ()
+                        None => (),
                     }
                 }
             });

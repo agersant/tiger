@@ -1,3 +1,4 @@
+use euclid::*;
 use failure::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -5,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::export::*;
-use crate::sheet::{ExportFormat, ExportSettings, Sheet};
+use crate::sheet::ExportFormat;
 use crate::state::*;
 
 const SHEET_FILE_EXTENSION: &str = "tiger";
@@ -19,32 +20,126 @@ pub enum StateError {
     NoDocumentOpen,
     #[fail(display = "Requested document was not found")]
     DocumentNotFound,
-    #[fail(display = "Currently not exporting")]
-    NotExporting,
     #[fail(display = "Sheet has no export settings")]
     NoExistingExportSettings,
 }
 
+// State preventing undo/redo while not default
+// Reset when focusing different document
+#[derive(Clone, Debug)]
+struct TransientState {
+    content_frame_being_dragged: Option<PathBuf>,
+    item_being_renamed: Option<RenameItem>,
+    rename_buffer: Option<String>,
+    workbench_hitbox_being_dragged: Option<String>,
+    workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
+    workbench_hitbox_drag_initial_offset: Vector2D<i32>,
+    workbench_hitbox_being_scaled: Option<String>,
+    workbench_hitbox_scale_axis: ResizeAxis,
+    workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
+    workbench_hitbox_scale_initial_position: Vector2D<i32>,
+    workbench_hitbox_scale_initial_size: Vector2D<u32>,
+    workbench_animation_frame_being_dragged: Option<usize>,
+    workbench_animation_frame_drag_initial_mouse_position: Vector2D<f32>,
+    workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
+    timeline_frame_being_scaled: Option<usize>,
+    timeline_frame_scale_initial_duration: u32,
+    timeline_frame_scale_initial_clock: Duration,
+    timeline_frame_being_dragged: Option<usize>,
+    timeline_scrubbing: bool,
+}
+
+impl TransientState {
+    fn new() -> TransientState {
+        TransientState {
+            content_frame_being_dragged: None,
+            item_being_renamed: None,
+            rename_buffer: None,
+            workbench_hitbox_being_dragged: None,
+            workbench_hitbox_drag_initial_mouse_position: vec2(0.0, 0.0),
+            workbench_hitbox_drag_initial_offset: vec2(0, 0),
+            workbench_hitbox_being_scaled: None,
+            workbench_hitbox_scale_axis: ResizeAxis::N,
+            workbench_hitbox_scale_initial_mouse_position: vec2(0.0, 0.0),
+            workbench_hitbox_scale_initial_position: vec2(0, 0),
+            workbench_hitbox_scale_initial_size: vec2(0, 0),
+            workbench_animation_frame_being_dragged: None,
+            workbench_animation_frame_drag_initial_mouse_position: vec2(0.0, 0.0),
+            workbench_animation_frame_drag_initial_offset: vec2(0, 0),
+            timeline_frame_being_scaled: None,
+            timeline_frame_scale_initial_duration: 0,
+            timeline_frame_scale_initial_clock: Default::default(),
+            timeline_frame_being_dragged: None,
+            timeline_scrubbing: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Tab {
+    source: PathBuf,
+    history: Vec<(Option<Command>, Document)>,
+    current_history_position: usize,
+    timeline_clock: Duration,
+    timeline_playing: bool,
+}
+
+impl Tab {
+    fn new<T: AsRef<Path>>(path: T) -> Tab {
+        Tab {
+            source: path.as_ref().to_path_buf(),
+            history: vec![(None, Document::new())],
+            current_history_position: 0,
+            timeline_clock: Default::default(),
+            timeline_playing: false,
+        }
+    }
+
+    fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
+        Ok(Tab {
+            source: path.as_ref().to_path_buf(),
+            history: vec![(None, Document::open(path)?)],
+            current_history_position: 0,
+            timeline_clock: Default::default(),
+            timeline_playing: false,
+        })
+    }
+
+    pub fn get_source(&self) -> &Path {
+        &self.source
+    }
+
+    fn get_current_document(&self) -> &Document {
+        &self.history[self.current_history_position].1
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct AppState {
-    documents: Vec<Document>,
-    current_document: Option<PathBuf>,
+    tabs: Vec<Tab>,
+    transient_state: TransientState,
+    current_tab: Option<PathBuf>,
     clock: Duration,
 }
 
 impl AppState {
     pub fn new() -> AppState {
         AppState {
-            documents: vec![],
-            current_document: None,
+            tabs: vec![],
+            transient_state: TransientState::new(),
+            current_tab: None,
             clock: Duration::new(0, 0),
         }
     }
 
     pub fn tick(&mut self, delta: Duration) {
         self.clock += delta;
-        if let Some(document) = self.get_current_document_mut() {
-            document.tick(delta);
+        if let Some(tab) = self.get_current_tab_mut() {
+            tab.get_current_document().tick(
+                delta,
+                &mut tab.timeline_clock,
+                &mut tab.timeline_playing,
+            );
         }
     }
 
@@ -52,60 +147,79 @@ impl AppState {
         self.clock
     }
 
-    fn is_document_open<T: AsRef<Path>>(&self, path: T) -> bool {
-        self.documents.iter().any(|d| d.source == path.as_ref())
+    fn is_opened<T: AsRef<Path>>(&self, path: T) -> bool {
+        self.tabs.iter().any(|t| t.source == path.as_ref())
     }
 
-    fn get_current_document_mut(&mut self) -> Option<&mut Document> {
-        if let Some(current_path) = &self.current_document {
-            self.documents
-                .iter_mut()
-                .find(|d| &d.source == current_path)
+    pub fn get_current(&self) -> Option<(&Tab, &Document)> {
+        if let Some(current_path) = &self.current_tab {
+            if let Some(tab) = self.tabs.iter().find(|d| &d.source == current_path) {
+                return Some((tab, tab.get_current_document()));
+            }
+        }
+        None
+    }
+
+    pub fn get_current_tab(&self) -> Option<&Tab> {
+        if let Some(current_path) = &self.current_tab {
+            self.tabs.iter().find(|d| &d.source == current_path)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_current_tab_mut(&self) -> Option<&mut Tab> {
+        if let Some(current_path) = &self.current_tab {
+            self.tabs.iter_mut().find(|d| &d.source == current_path)
         } else {
             None
         }
     }
 
     pub fn get_current_document(&self) -> Option<&Document> {
-        if let Some(current_path) = &self.current_document {
-            self.documents.iter().find(|d| &d.source == current_path)
+        if let Some(current_path) = &self.current_tab {
+            self.tabs
+                .iter()
+                .find(|d| &d.source == current_path)
+                .and_then(|t| Some(t.get_current_document()))
         } else {
             None
         }
     }
 
-    fn get_current_sheet_mut(&mut self) -> Option<&mut Sheet> {
-        self.get_current_document_mut().map(|d| d.get_sheet_mut())
-    }
-
     fn get_document<T: AsRef<Path>>(&mut self, path: T) -> Option<&Document> {
-        self.documents.iter().find(|d| d.source == path.as_ref())
+        self.tabs
+            .iter()
+            .find(|d| d.source == path.as_ref())
+            .and_then(|t| Some(t.get_current_document()))
     }
 
-    fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
-        self.documents
-            .iter_mut()
-            .find(|d| d.source == path.as_ref())
+    fn get_tab<T: AsRef<Path>>(&mut self, path: T) -> Option<&Tab> {
+        self.tabs.iter().find(|d| d.source == path.as_ref())
+    }
+
+    fn get_tab_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Tab> {
+        self.tabs.iter_mut().find(|d| d.source == path.as_ref())
     }
 
     fn end_new_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
-        match self.get_document_mut(&path) {
-            Some(d) => *d = Document::new(&path),
+        match self.get_tab_mut(&path) {
+            Some(d) => *d = Tab::new(path),
             None => {
-                let document = Document::new(&path);
-                self.add_document(document);
+                let tab = Tab::new(path);
+                self.add_tab(tab);
             }
         }
-        self.current_document = Some(path.as_ref().to_path_buf());
+        self.current_tab = Some(path.as_ref().to_path_buf());
         Ok(())
     }
 
     fn end_open_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
-        if self.get_document(&path).is_none() {
-            let document = Document::open(&path)?;
-            self.add_document(document);
+        if self.get_tab(&path).is_none() {
+            let tab = Tab::open(path)?;
+            self.add_tab(tab);
         }
-        self.current_document = Some(path.as_ref().to_path_buf());
+        self.current_tab = Some(path.as_ref().to_path_buf());
         Ok(())
     }
 
@@ -114,11 +228,11 @@ impl AppState {
         from: T,
         to: U,
     ) -> Result<(), Error> {
-        for document in &mut self.documents {
-            if &document.source == from.as_ref() {
-                document.source = to.as_ref().to_path_buf();
-                if Some(from.as_ref().to_path_buf()) == self.current_document {
-                    self.current_document = Some(to.as_ref().to_path_buf());
+        for tab in &mut self.tabs {
+            if &tab.source == from.as_ref() {
+                tab.source = to.as_ref().to_path_buf();
+                if Some(from.as_ref().to_path_buf()) == self.current_tab {
+                    self.current_tab = Some(to.as_ref().to_path_buf());
                 }
                 return Ok(());
             }
@@ -126,26 +240,24 @@ impl AppState {
         Err(StateError::DocumentNotFound.into())
     }
 
-    fn add_document(&mut self, added_document: Document) {
-        assert!(!self.is_document_open(&added_document.source));
-        self.documents.push(added_document);
+    fn add_tab(&mut self, added_tab: Tab) {
+        assert!(!self.is_opened(&added_tab.source));
+        self.tabs.push(added_tab);
     }
 
     fn close_current_document(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
+        let tab = self.get_current_tab().ok_or(StateError::NoDocumentOpen)?;
         let index = self
-            .documents
+            .tabs
             .iter()
-            .position(|d| d as *const Document == document as *const Document)
+            .position(|d| d as *const Tab == tab as *const Tab)
             .ok_or(StateError::DocumentNotFound)?;
-        self.documents.remove(index);
-        self.current_document = if self.documents.is_empty() {
+        self.tabs.remove(index);
+        self.current_tab = if self.tabs.is_empty() {
             None
         } else {
             Some(
-                self.documents[std::cmp::min(index, self.documents.len() - 1)]
+                self.tabs[std::cmp::min(index, self.tabs.len() - 1)]
                     .source
                     .clone(),
             )
@@ -154,138 +266,14 @@ impl AppState {
     }
 
     fn close_all_documents(&mut self) {
-        self.documents.clear();
-        self.current_document = None;
+        self.tabs.clear();
+        self.current_tab = None;
     }
 
     fn save_all_documents(&mut self) -> Result<(), Error> {
-        for document in &mut self.documents {
-            document.save()?;
+        for tab in &mut self.tabs {
+            tab.get_current_document().save(tab.get_source())?;
         }
-        Ok(())
-    }
-
-    fn begin_export_as(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-
-        document.export_settings = document
-            .get_sheet()
-            .get_export_settings()
-            .as_ref()
-            .cloned()
-            .or_else(|| Some(ExportSettings::new()));
-
-        Ok(())
-    }
-
-    fn end_set_export_texture_destination<T: AsRef<Path>, U: AsRef<Path>>(
-        &mut self,
-        document_path: T,
-        texture_destination: U,
-    ) -> Result<(), Error> {
-        let document = self
-            .get_document_mut(document_path)
-            .ok_or(StateError::DocumentNotFound)?;
-        let export_settings = &mut document
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.texture_destination = texture_destination.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    fn end_set_export_metadata_destination<T: AsRef<Path>, U: AsRef<Path>>(
-        &mut self,
-        document_path: T,
-        metadata_destination: U,
-    ) -> Result<(), Error> {
-        let document = self
-            .get_document_mut(document_path)
-            .ok_or(StateError::DocumentNotFound)?;
-        let export_settings = &mut document
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.metadata_destination = metadata_destination.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    fn end_set_export_metadata_paths_root<T: AsRef<Path>, U: AsRef<Path>>(
-        &mut self,
-        document_path: T,
-        metadata_paths_root: U,
-    ) -> Result<(), Error> {
-        let document = self
-            .get_document_mut(document_path)
-            .ok_or(StateError::NoDocumentOpen)?;
-        let export_settings = &mut document
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.metadata_paths_root = metadata_paths_root.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    fn end_set_export_format<T: AsRef<Path>>(
-        &mut self,
-        document_path: T,
-        format: ExportFormat,
-    ) -> Result<(), Error> {
-        let document = self
-            .get_document_mut(document_path)
-            .ok_or(StateError::NoDocumentOpen)?;
-        let export_settings = &mut document
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.format = format;
-        Ok(())
-    }
-
-    fn cancel_export_as(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        document.export_settings = None;
-        Ok(())
-    }
-
-    fn end_export_as(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-
-        let export_settings = document
-            .export_settings
-            .take()
-            .ok_or(StateError::NotExporting)?;
-
-        document
-            .get_sheet_mut()
-            .set_export_settings(export_settings.clone());
-
-        Ok(())
-    }
-
-    fn import(&mut self) -> Result<(), Error> {
-        let sheet = self
-            .get_current_sheet_mut()
-            .ok_or(StateError::NoDocumentOpen)?;
-        match nfd::open_file_multiple_dialog(Some(IMAGE_IMPORT_FILE_EXTENSIONS), None)? {
-            nfd::Response::Okay(path_string) => {
-                let path = std::path::PathBuf::from(path_string);
-                sheet.add_frame(&path);
-            }
-            nfd::Response::OkayMultiple(path_strings) => {
-                for path_string in &path_strings {
-                    let path = std::path::PathBuf::from(path_string);
-                    sheet.add_frame(&path);
-                }
-            }
-            _ => (),
-        };
         Ok(())
     }
 
@@ -296,42 +284,62 @@ impl AppState {
         Ok(document.get_timeline_zoom_factor())
     }
 
-    pub fn documents_iter(&self) -> std::slice::Iter<'_, Document> {
-        self.documents.iter()
+    pub fn tabs_iter(&self) -> impl Iterator<Item = &Tab> {
+        self.tabs.iter()
+    }
+
+    pub fn documents_iter(&self) -> impl Iterator<Item = &Document> {
+        self.tabs.iter().map(|t| t.get_current_document())
     }
 
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
-        let document = self.get_current_document_mut();
+        let old_document = self.get_current_document();
+        let mut document = old_document.cloned();
 
         match command {
             SyncCommand::EndNewDocument(p) => self.end_new_document(p)?,
             SyncCommand::EndOpenDocument(p) => self.end_open_document(p)?,
             SyncCommand::RelocateDocument(from, to) => self.relocate_document(from, to)?,
             SyncCommand::FocusDocument(p) => {
-                if self.is_document_open(&p) {
-                    self.current_document = Some(p.clone());
+                if self.is_opened(&p) {
+                    self.current_tab = Some(p.clone());
                 }
             }
             SyncCommand::CloseCurrentDocument => self.close_current_document()?,
             SyncCommand::CloseAllDocuments => self.close_all_documents(),
             SyncCommand::SaveAllDocuments => self.save_all_documents()?,
-            SyncCommand::BeginExportAs => self.begin_export_as()?,
-            SyncCommand::CancelExportAs => self.cancel_export_as()?,
-            SyncCommand::EndSetExportTextureDestination(p, d) => {
-                self.end_set_export_texture_destination(p, d)?
-            }
-            SyncCommand::EndSetExportMetadataDestination(p, d) => {
-                self.end_set_export_metadata_destination(p, d)?
-            }
-            SyncCommand::EndSetExportMetadataPathsRoot(p, d) => {
-                self.end_set_export_metadata_paths_root(p, d)?
-            }
-            SyncCommand::EndSetExportFormat(p, f) => self.end_set_export_format(p, f.clone())?,
-            SyncCommand::EndExportAs => self.end_export_as()?,
+            SyncCommand::BeginExportAs => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .begin_export_as(),
+            SyncCommand::CancelExportAs => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .cancel_export_as(),
+            SyncCommand::EndSetExportTextureDestination(p, d) => self
+                .get_document(p)
+                .cloned()
+                .ok_or(StateError::DocumentNotFound)?
+                .end_set_export_texture_destination(d)?,
+            SyncCommand::EndSetExportMetadataDestination(p, d) => self
+                .get_document(p)
+                .cloned()
+                .ok_or(StateError::DocumentNotFound)?
+                .end_set_export_metadata_destination(d)?,
+            SyncCommand::EndSetExportMetadataPathsRoot(p, d) => self
+                .get_document(p)
+                .cloned()
+                .ok_or(StateError::DocumentNotFound)?
+                .end_set_export_metadata_paths_root(d)?,
+            SyncCommand::EndSetExportFormat(p, f) => self
+                .get_document(p)
+                .cloned()
+                .ok_or(StateError::DocumentNotFound)?
+                .end_set_export_format(f.clone())?,
+            SyncCommand::EndExportAs => document
+                .ok_or(StateError::NoDocumentOpen)?
+                .end_export_as()?,
             SyncCommand::SwitchToContentTab(tab) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .switch_to_content_tab(*tab),
-            SyncCommand::Import => self.import()?,
             SyncCommand::SelectFrame(p) => document
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_frame(&p)?,
@@ -470,6 +478,11 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_rename_selection()?,
         };
+
+        if document.as_ref() != old_document {
+            // TODO push undo state
+        }
+
         Ok(())
     }
 }
@@ -504,15 +517,33 @@ fn begin_open_document() -> Result<CommandBuffer, Error> {
     Ok(buffer)
 }
 
-fn save_document_as(document: &Document) -> Result<CommandBuffer, Error> {
+fn save_as<T: AsRef<Path>>(source: T, document: &Document) -> Result<CommandBuffer, Error> {
     let mut buffer = CommandBuffer::new();
     if let nfd::Response::Okay(path_string) =
         nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
     {
         let mut new_path = std::path::PathBuf::from(path_string);
         new_path.set_extension(SHEET_FILE_EXTENSION);
-        buffer.relocate_document(&document.source, new_path);
-        buffer.save(&document);
+        buffer.relocate_document(source, new_path);
+        buffer.save(new_path, document);
+    };
+    Ok(buffer)
+}
+
+fn begin_import<T: AsRef<Path>>(into: T) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    match nfd::open_file_multiple_dialog(Some(IMAGE_IMPORT_FILE_EXTENSIONS), None)? {
+        nfd::Response::Okay(path_string) => {
+            let path = std::path::PathBuf::from(path_string);
+            buffer.end_import(into, path);
+        }
+        nfd::Response::OkayMultiple(path_strings) => {
+            for path_string in &path_strings {
+                let path = std::path::PathBuf::from(path_string);
+                buffer.end_import(into, path);
+            }
+        }
+        _ => (),
     };
     Ok(buffer)
 }
@@ -595,8 +626,8 @@ pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Er
     match command {
         AsyncCommand::BeginNewDocument => begin_new_document(),
         AsyncCommand::BeginOpenDocument => begin_open_document(),
-        AsyncCommand::SaveDocument(d) => d.save().and(Ok(no_commands)),
-        AsyncCommand::SaveDocumentAs(d) => save_document_as(d),
+        AsyncCommand::Save(p, d) => d.save(p).and(Ok(no_commands)),
+        AsyncCommand::SaveAs(p, d) => save_as(p, d),
         AsyncCommand::BeginSetExportTextureDestination(p) => {
             begin_set_export_texture_destination(p)
         }
@@ -605,6 +636,7 @@ pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Er
         }
         AsyncCommand::BeginSetExportMetadataPathsRoot(p) => begin_set_export_metadata_paths_root(p),
         AsyncCommand::BeginSetExportFormat(p) => begin_set_export_format(p),
+        AsyncCommand::BeginImport(p) => begin_import(p),
         AsyncCommand::Export(d) => export(d).and(Ok(no_commands)),
     }
 }

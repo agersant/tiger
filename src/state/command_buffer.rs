@@ -52,9 +52,9 @@ impl CommandBuffer {
         )));
     }
 
-    pub fn focus_document(&mut self, document: &Document) {
+    pub fn focus_tab(&mut self, tab: &Tab) {
         self.queue.push(Command::Sync(SyncCommand::FocusDocument(
-            document.get_source().to_owned(),
+            tab.get_source().to_owned(),
         )));
     }
 
@@ -68,13 +68,16 @@ impl CommandBuffer {
             .push(Command::Sync(SyncCommand::CloseAllDocuments));
     }
 
-    pub fn save(&mut self, document: &Document) {
-        self.queue
-            .push(Command::Async(AsyncCommand::SaveDocument(document.clone())));
+    pub fn save<T: AsRef<Path>>(&mut self, path: T, document: &Document) {
+        self.queue.push(Command::Async(AsyncCommand::Save(
+            path.as_ref().to_path_buf(),
+            document.clone(),
+        )));
     }
 
-    pub fn save_as(&mut self, document: &Document) {
-        self.queue.push(Command::Async(AsyncCommand::SaveDocumentAs(
+    pub fn save_as<T: AsRef<Path>>(&mut self, path: T, document: &Document) {
+        self.queue.push(Command::Async(AsyncCommand::SaveAs(
+            path.as_ref().to_path_buf(),
             document.clone(),
         )));
     }
@@ -88,9 +91,9 @@ impl CommandBuffer {
         self.queue.push(Command::Sync(SyncCommand::BeginExportAs));
     }
 
-    pub fn begin_set_export_texture_destination(&mut self, document: &Document) {
+    pub fn begin_set_export_texture_destination(&mut self, tab: &Tab) {
         self.queue.push(Command::Async(
-            AsyncCommand::BeginSetExportTextureDestination(document.source.clone()),
+            AsyncCommand::BeginSetExportTextureDestination(tab.get_source().to_path_buf()),
         ));
     }
 
@@ -106,9 +109,9 @@ impl CommandBuffer {
             )));
     }
 
-    pub fn begin_set_export_metadata_destination(&mut self, document: &Document) {
+    pub fn begin_set_export_metadata_destination(&mut self, tab: &Tab) {
         self.queue.push(Command::Async(
-            AsyncCommand::BeginSetExportMetadataDestination(document.source.clone()),
+            AsyncCommand::BeginSetExportMetadataDestination(tab.get_source().to_path_buf()),
         ));
     }
 
@@ -124,9 +127,9 @@ impl CommandBuffer {
             )));
     }
 
-    pub fn begin_set_export_metadata_paths_root(&mut self, document: &Document) {
+    pub fn begin_set_export_metadata_paths_root(&mut self, tab: &Tab) {
         self.queue.push(Command::Async(
-            AsyncCommand::BeginSetExportMetadataPathsRoot(document.source.clone()),
+            AsyncCommand::BeginSetExportMetadataPathsRoot(tab.get_source().to_path_buf()),
         ));
     }
 
@@ -142,10 +145,10 @@ impl CommandBuffer {
             )));
     }
 
-    pub fn begin_set_export_format(&mut self, document: &Document) {
+    pub fn begin_set_export_format(&mut self, tab: &Tab) {
         self.queue
             .push(Command::Async(AsyncCommand::BeginSetExportFormat(
-                document.source.clone(),
+                tab.get_source().to_path_buf(),
             )));
     }
 
@@ -181,8 +184,17 @@ impl CommandBuffer {
             .push(Command::Sync(SyncCommand::SwitchToContentTab(tab)));
     }
 
-    pub fn import(&mut self) {
-        self.queue.push(Command::Sync(SyncCommand::Import));
+    pub fn import(&mut self, tab: &Tab) {
+        self.queue.push(Command::Async(AsyncCommand::BeginImport(
+            tab.get_source().to_owned(),
+        )));
+    }
+
+    pub fn end_import<T: AsRef<Path>, U: AsRef<Path>>(&mut self, into: T, path: U) {
+        self.queue.push(Command::Sync(SyncCommand::EndImport(
+            into.as_ref().to_path_buf(),
+            path.as_ref().to_path_buf(),
+        )));
     }
 
     pub fn select_frame(&mut self, frame: &Frame) {

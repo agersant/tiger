@@ -9,24 +9,25 @@ use crate::state::*;
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
-    SaveDocument(Document),
-    SaveDocumentAs(Document),
+    Save(PathBuf, Document),
+    SaveAs(PathBuf, Document),
     BeginSetExportTextureDestination(PathBuf),
     BeginSetExportMetadataDestination(PathBuf),
     BeginSetExportMetadataPathsRoot(PathBuf),
     BeginSetExportFormat(PathBuf),
+    BeginImport(PathBuf),
     Export(Document),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyncCommand {
     EndNewDocument(PathBuf),
-    EndOpenDocument(PathBuf),
+    EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
     RelocateDocument(PathBuf, PathBuf),
     FocusDocument(PathBuf),
     CloseCurrentDocument,
     CloseAllDocuments,
-    SaveAllDocuments,
+    SaveAllDocuments, // TODO This should be async (has IO)
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
     EndSetExportMetadataDestination(PathBuf, PathBuf),
@@ -35,7 +36,7 @@ pub enum SyncCommand {
     CancelExportAs,
     EndExportAs,
     SwitchToContentTab(ContentTab),
-    Import,
+    EndImport(PathBuf, PathBuf),
     SelectFrame(PathBuf),
     SelectAnimation(String),
     SelectHitbox(String),

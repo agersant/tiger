@@ -16,9 +16,9 @@ fn draw_tabs<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     }
 }
 
-fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Document) {
+fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab, document: &Document) {
     if ui.small_button(im_str!("Import…")) {
-        commands.import();
+        commands.import(tab);
     }
     let mut frames: Vec<(&OsStr, &Frame)> = document
         .get_sheet()
@@ -101,11 +101,11 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .movable(false)
             .build(|| {
                 // TODO draw something before document is loaded?
-                if let Some(document) = state.get_current_document() {
+                if let Some((tab, document)) = state.get_current() {
                     draw_tabs(ui, commands);
                     ui.separator();
                     match document.get_content_tab() {
-                        ContentTab::Frames => draw_frames(ui, commands, document),
+                        ContentTab::Frames => draw_frames(ui, commands, tab, document),
                         ContentTab::Animations => draw_animations(ui, commands, document),
                     }
                 }
