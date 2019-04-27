@@ -27,7 +27,7 @@ pub enum StateError {
 // State preventing undo/redo while not default
 // Reset when focusing different document
 // TODO.important review places where we write to current_tab and clear transient state!
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TransientState {
     pub content_frame_being_dragged: Option<PathBuf>,
     pub item_being_renamed: Option<RenameItem>,
@@ -303,6 +303,10 @@ impl AppState {
         self.tabs.iter().map(|t| t.get_current_document())
     }
 
+    fn can_use_undo_system(&self) -> bool {
+        self.transient == TransientState::new()
+    }
+
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
         let affected_document_path = match command {
             SyncCommand::EndNewDocument(_)
@@ -342,19 +346,23 @@ impl AppState {
             SyncCommand::CloseAllDocuments => self.close_all_documents(),
             SyncCommand::SaveAllDocuments => self.save_all_documents()?,
             SyncCommand::Undo => {
-                let tab = self
-                    .get_current_tab_mut()
-                    .ok_or(StateError::NoDocumentOpen)?;
-                if tab.current_history_position > 0 {
-                    tab.current_history_position -= 1;
+                if self.can_use_undo_system() {
+                    let tab = self
+                        .get_current_tab_mut()
+                        .ok_or(StateError::NoDocumentOpen)?;
+                    if tab.current_history_position > 0 {
+                        tab.current_history_position -= 1;
+                    }
                 }
             }
             SyncCommand::Redo => {
-                let tab = self
-                    .get_current_tab_mut()
-                    .ok_or(StateError::NoDocumentOpen)?;
-                if tab.current_history_position < tab.history.len() - 1 {
-                    tab.current_history_position += 1;
+                if self.can_use_undo_system() {
+                    let tab = self
+                        .get_current_tab_mut()
+                        .ok_or(StateError::NoDocumentOpen)?;
+                    if tab.current_history_position < tab.history.len() - 1 {
+                        tab.current_history_position += 1;
+                    }
                 }
             }
             SyncCommand::EndImport(_, f) => new_document
@@ -480,7 +488,9 @@ impl AppState {
                     )?
             }
             SyncCommand::EndAnimationFrameDurationDrag => {
-                self.transient.timeline_frame_being_scaled = None
+                self.transient.timeline_frame_scale_initial_duration = 0;
+                self.transient.timeline_frame_scale_initial_clock = Default::default();
+                self.transient.timeline_frame_being_scaled = None;
             }
             SyncCommand::BeginAnimationFrameDrag(a) => new_document
                 .as_ref()
@@ -509,7 +519,9 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_offset_drag(&mut self.transient, *o, *b)?,
             SyncCommand::EndAnimationFrameOffsetDrag => {
-                self.transient.workbench_animation_frame_being_dragged = None
+                self.transient.workbench_animation_frame_drag_initial_offset = Vector2D::<i32>::zero();
+                self.transient.workbench_animation_frame_drag_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_animation_frame_being_dragged = None;
             }
             SyncCommand::WorkbenchZoomIn => new_document
                 .as_mut()
@@ -539,7 +551,13 @@ impl AppState {
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_scale(&mut self.transient, *p)?,
-            SyncCommand::EndHitboxScale => self.transient.workbench_hitbox_being_scaled = None,
+            SyncCommand::EndHitboxScale => {
+                self.transient.workbench_hitbox_scale_axis = ResizeAxis::N;
+                self.transient.workbench_hitbox_scale_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_hitbox_scale_initial_position = Vector2D::<i32>::zero();
+                self.transient.workbench_hitbox_scale_initial_size = Vector2D::<u32>::zero();
+                self.transient.workbench_hitbox_being_scaled = None;
+            }
             SyncCommand::BeginHitboxDrag(a, m) => new_document
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
@@ -548,7 +566,11 @@ impl AppState {
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_drag(&mut self.transient, *o, *b)?,
-            SyncCommand::EndHitboxDrag => self.transient.workbench_hitbox_being_dragged = None,
+            SyncCommand::EndHitboxDrag => {
+                self.transient.workbench_hitbox_drag_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_hitbox_drag_initial_offset = Vector2D::<i32>::zero();
+                self.transient.workbench_hitbox_being_dragged = None;
+            }
             SyncCommand::TogglePlayback => {
                 let tab = self
                     .get_current_tab_mut()
