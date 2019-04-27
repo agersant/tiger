@@ -28,26 +28,26 @@ pub enum StateError {
 // Reset when focusing different document
 // TODO.important review places where we write to current_tab and clear transient state!
 #[derive(Clone, Debug)]
-struct TransientState {
-    content_frame_being_dragged: Option<PathBuf>,
-    item_being_renamed: Option<RenameItem>,
-    rename_buffer: Option<String>,
-    workbench_hitbox_being_dragged: Option<String>,
-    workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
-    workbench_hitbox_drag_initial_offset: Vector2D<i32>,
-    workbench_hitbox_being_scaled: Option<String>,
-    workbench_hitbox_scale_axis: ResizeAxis,
-    workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
-    workbench_hitbox_scale_initial_position: Vector2D<i32>,
-    workbench_hitbox_scale_initial_size: Vector2D<u32>,
-    workbench_animation_frame_being_dragged: Option<usize>,
-    workbench_animation_frame_drag_initial_mouse_position: Vector2D<f32>,
-    workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
-    timeline_frame_being_scaled: Option<usize>,
-    timeline_frame_scale_initial_duration: u32,
-    timeline_frame_scale_initial_clock: Duration,
-    timeline_frame_being_dragged: Option<usize>,
-    timeline_scrubbing: bool,
+pub struct TransientState {
+    pub content_frame_being_dragged: Option<PathBuf>,
+    pub item_being_renamed: Option<RenameItem>,
+    pub rename_buffer: Option<String>,
+    pub workbench_hitbox_being_dragged: Option<String>,
+    pub workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
+    pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
+    pub workbench_hitbox_being_scaled: Option<String>,
+    pub workbench_hitbox_scale_axis: ResizeAxis,
+    pub workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
+    pub workbench_hitbox_scale_initial_position: Vector2D<i32>,
+    pub workbench_hitbox_scale_initial_size: Vector2D<u32>,
+    pub workbench_animation_frame_being_dragged: Option<usize>,
+    pub workbench_animation_frame_drag_initial_mouse_position: Vector2D<f32>,
+    pub workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
+    pub timeline_frame_being_scaled: Option<usize>,
+    pub timeline_frame_scale_initial_duration: u32,
+    pub timeline_frame_scale_initial_clock: Duration,
+    pub timeline_frame_being_dragged: Option<usize>,
+    pub timeline_scrubbing: bool,
 }
 
 impl TransientState {
@@ -81,8 +81,7 @@ pub struct Tab {
     source: PathBuf,
     history: Vec<(Option<Command>, Document)>,
     current_history_position: usize,
-    timeline_clock: Duration,
-    timeline_playing: bool,
+    timeline_is_playing: bool,
 }
 
 impl Tab {
@@ -91,8 +90,7 @@ impl Tab {
             source: path.as_ref().to_path_buf(),
             history: vec![(None, Document::new())],
             current_history_position: 0,
-            timeline_clock: Default::default(),
-            timeline_playing: false,
+            timeline_is_playing: false,
         }
     }
 
@@ -101,8 +99,7 @@ impl Tab {
             source: path.as_ref().to_path_buf(),
             history: vec![(None, Document::open(path)?)],
             current_history_position: 0,
-            timeline_clock: Default::default(),
-            timeline_playing: false,
+            timeline_is_playing: false,
         })
     }
 
@@ -113,12 +110,16 @@ impl Tab {
     fn get_current_document(&self) -> &Document {
         &self.history[self.current_history_position].1
     }
+
+    fn get_current_document_mut(&mut self) -> &mut Document {
+        &mut self.history[self.current_history_position].1
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct AppState {
     tabs: Vec<Tab>,
-    transient_state: TransientState,
+    pub transient: TransientState,
     current_tab: Option<PathBuf>,
     clock: Duration,
 }
@@ -127,7 +128,7 @@ impl AppState {
     pub fn new() -> AppState {
         AppState {
             tabs: vec![],
-            transient_state: TransientState::new(),
+            transient: TransientState::new(),
             current_tab: None,
             clock: Duration::new(0, 0),
         }
@@ -135,12 +136,17 @@ impl AppState {
 
     pub fn tick(&mut self, delta: Duration) {
         self.clock += delta;
+        let mut timeline_is_playing;
+        if let Some(tab) = self.get_current_tab() {
+            timeline_is_playing = tab.timeline_is_playing;
+        } else {
+            return;
+        }
+        if let Some(document) = self.get_current_document_mut() {
+            document.tick(delta, &mut timeline_is_playing);
+        }
         if let Some(tab) = self.get_current_tab_mut() {
-            tab.get_current_document().tick(
-                delta,
-                &mut tab.timeline_clock,
-                &mut tab.timeline_playing,
-            );
+            tab.timeline_is_playing = timeline_is_playing;
         }
     }
 
@@ -152,10 +158,10 @@ impl AppState {
         self.tabs.iter().any(|t| t.source == path.as_ref())
     }
 
-    pub fn get_current(&self) -> Option<(&Tab, &Document)> {
+    pub fn get_current(&self) -> Option<(&TransientState, &Tab, &Document)> {
         if let Some(current_path) = &self.current_tab {
             if let Some(tab) = self.tabs.iter().find(|d| &d.source == current_path) {
-                return Some((tab, tab.get_current_document()));
+                return Some((&self.transient, tab, tab.get_current_document()));
             }
         }
         None
@@ -169,7 +175,7 @@ impl AppState {
         }
     }
 
-    pub fn get_current_tab_mut(&self) -> Option<&mut Tab> {
+    pub fn get_current_tab_mut(&mut self) -> Option<&mut Tab> {
         if let Some(current_path) = &self.current_tab {
             self.tabs.iter_mut().find(|d| &d.source == current_path)
         } else {
@@ -188,11 +194,29 @@ impl AppState {
         }
     }
 
+    pub fn get_current_document_mut(&mut self) -> Option<&mut Document> {
+        if let Some(current_path) = &self.current_tab {
+            self.tabs
+                .iter_mut()
+                .find(|d| &d.source == current_path)
+                .and_then(|t| Some(t.get_current_document_mut()))
+        } else {
+            None
+        }
+    }
+
     fn get_document<T: AsRef<Path>>(&mut self, path: T) -> Option<&Document> {
         self.tabs
             .iter()
             .find(|d| d.source == path.as_ref())
             .and_then(|t| Some(t.get_current_document()))
+    }
+
+    fn get_document_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Document> {
+        self.tabs
+            .iter_mut()
+            .find(|d| d.source == path.as_ref())
+            .and_then(|t| Some(t.get_current_document_mut()))
     }
 
     fn get_tab<T: AsRef<Path>>(&mut self, path: T) -> Option<&Tab> {
@@ -205,19 +229,19 @@ impl AppState {
 
     fn end_new_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         match self.get_tab_mut(&path) {
-            Some(d) => *d = Tab::new(path),
+            Some(d) => *d = Tab::new(path.as_ref()),
             None => {
-                let tab = Tab::new(path);
+                let tab = Tab::new(path.as_ref());
                 self.add_tab(tab);
             }
         }
-        self.current_tab = Some(path.as_ref().to_path_buf());
+        self.current_tab = Some(path.as_ref().to_owned());
         Ok(())
     }
 
     fn end_open_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         if self.get_tab(&path).is_none() {
-            let tab = Tab::open(path)?;
+            let tab = Tab::open(&path)?;
             self.add_tab(tab);
         }
         self.current_tab = Some(path.as_ref().to_path_buf());
@@ -230,7 +254,7 @@ impl AppState {
         to: U,
     ) -> Result<(), Error> {
         for tab in &mut self.tabs {
-            if &tab.source == from.as_ref() {
+            if tab.source == from.as_ref() {
                 tab.source = to.as_ref().to_path_buf();
                 if Some(from.as_ref().to_path_buf()) == self.current_tab {
                     self.current_tab = Some(to.as_ref().to_path_buf());
@@ -278,13 +302,6 @@ impl AppState {
         Ok(())
     }
 
-    pub fn get_timeline_zoom_factor(&self) -> Result<f32, Error> {
-        let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
-        Ok(document.get_timeline_zoom_factor())
-    }
-
     pub fn tabs_iter(&self) -> impl Iterator<Item = &Tab> {
         self.tabs.iter()
     }
@@ -294,8 +311,27 @@ impl AppState {
     }
 
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
-        let old_document = self.get_current_document();
-        let mut document = old_document.cloned();
+        let document_path = match command {
+            SyncCommand::EndNewDocument(_)
+            | SyncCommand::EndOpenDocument(_)
+            | SyncCommand::RelocateDocument(_, _)
+            | SyncCommand::FocusDocument(_)
+            | SyncCommand::CloseCurrentDocument
+            | SyncCommand::CloseAllDocuments
+            | SyncCommand::SaveAllDocuments => None,
+            SyncCommand::EndImport(p, _)
+            | SyncCommand::EndSetExportTextureDestination(p, _)
+            | SyncCommand::EndSetExportMetadataDestination(p, _)
+            | SyncCommand::EndSetExportMetadataPathsRoot(p, _)
+            | SyncCommand::EndSetExportFormat(p, _) => Some(p.to_owned()),
+            _ => self
+                .get_current_tab()
+                .and_then(|t| Some(t.get_source().to_path_buf())),
+        };
+        let old_document = document_path
+            .as_ref()
+            .and_then(|p| self.get_document(p).cloned());
+        let mut document = old_document.clone();
 
         match command {
             SyncCommand::EndNewDocument(p) => self.end_new_document(p)?,
@@ -309,10 +345,16 @@ impl AppState {
             SyncCommand::CloseCurrentDocument => self.close_current_document()?,
             SyncCommand::CloseAllDocuments => self.close_all_documents(),
             SyncCommand::SaveAllDocuments => self.save_all_documents()?,
+            SyncCommand::EndImport(p, f) => self
+                .get_document_mut(p)
+                .ok_or(StateError::DocumentNotFound)?
+                .import(f),
             SyncCommand::BeginExportAs => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_export_as(),
             SyncCommand::CancelExportAs => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .cancel_export_as(),
             SyncCommand::EndSetExportTextureDestination(p, d) => self
@@ -336,152 +378,253 @@ impl AppState {
                 .ok_or(StateError::DocumentNotFound)?
                 .end_set_export_format(f.clone())?,
             SyncCommand::EndExportAs => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_export_as()?,
             SyncCommand::SwitchToContentTab(tab) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .switch_to_content_tab(*tab),
             SyncCommand::SelectFrame(p) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_frame(&p)?,
             SyncCommand::SelectAnimation(a) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation(&a)?,
             SyncCommand::SelectHitbox(h) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_hitbox(&h)?,
-            SyncCommand::SelectAnimationFrame(af) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .select_animation_frame(*af)?,
+            SyncCommand::SelectAnimationFrame(af) => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .select_animation_frame(tab.timeline_is_playing, *af)?
+            }
             SyncCommand::SelectPrevious => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_previous()?,
-            SyncCommand::SelectNext => document.ok_or(StateError::NoDocumentOpen)?.select_next()?,
-            SyncCommand::EditFrame(p) => {
-                document.ok_or(StateError::NoDocumentOpen)?.edit_frame(&p)?
+            SyncCommand::SelectNext => document
+                .as_mut()
+                .ok_or(StateError::NoDocumentOpen)?
+                .select_next()?,
+            SyncCommand::EditFrame(p) => document
+                .as_mut()
+                .ok_or(StateError::NoDocumentOpen)?
+                .edit_frame(&p)?,
+            SyncCommand::EditAnimation(a) => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .edit_animation(&mut tab.timeline_is_playing, &a)?
             }
-            SyncCommand::EditAnimation(a) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .edit_animation(&a)?,
-            SyncCommand::CreateAnimation => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .create_animation()?,
+            SyncCommand::CreateAnimation => {
+                let mut timeline_is_playing = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .timeline_is_playing;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .create_animation(&mut self.transient, &mut timeline_is_playing)?;
+                self.get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .timeline_is_playing = timeline_is_playing;
+            }
             SyncCommand::BeginFrameDrag(f) => document
+                .as_ref()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_frame_drag(f)?,
-            SyncCommand::EndFrameDrag => {
-                document.ok_or(StateError::NoDocumentOpen)?.end_frame_drag()
-            }
+                .begin_frame_drag(&mut self.transient, f)?,
+            SyncCommand::EndFrameDrag => self.transient.content_frame_being_dragged = None,
             SyncCommand::InsertAnimationFrameBefore(f, n) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .insert_animation_frame_before(f, *n)?,
             SyncCommand::ReorderAnimationFrame(a, b) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .reorder_animation_frame(*a, *b)?,
             SyncCommand::BeginAnimationFrameDurationDrag(a) => document
+                .as_ref()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_animation_frame_duration_drag(*a)?,
-            SyncCommand::UpdateAnimationFrameDurationDrag(d) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .update_animation_frame_duration_drag(*d)?,
-            SyncCommand::EndAnimationFrameDurationDrag => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_animation_frame_duration_drag(),
+                .begin_animation_frame_duration_drag(&mut self.transient, *a)?,
+            SyncCommand::UpdateAnimationFrameDurationDrag(d) => {
+                let timeline_is_playing = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .timeline_is_playing;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .update_animation_frame_duration_drag(
+                        &mut self.transient,
+                        timeline_is_playing,
+                        *d,
+                    )?
+            }
+            SyncCommand::EndAnimationFrameDurationDrag => {
+                self.transient.timeline_frame_being_scaled = None
+            }
             SyncCommand::BeginAnimationFrameDrag(a) => document
+                .as_ref()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_animation_frame_drag(*a)?,
-            SyncCommand::EndAnimationFrameDrag => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_animation_frame_drag(),
-            SyncCommand::BeginAnimationFrameOffsetDrag(a, m) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .begin_animation_frame_offset_drag(*a, *m)?,
+                .begin_animation_frame_drag(&mut self.transient, *a)?,
+            SyncCommand::EndAnimationFrameDrag => {
+                self.transient.timeline_frame_being_dragged = None
+            }
+            SyncCommand::BeginAnimationFrameOffsetDrag(a, m) => {
+                let timeline_is_playing = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .timeline_is_playing;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .begin_animation_frame_offset_drag(
+                        &mut self.transient,
+                        timeline_is_playing,
+                        *a,
+                        *m,
+                    )?
+            }
             SyncCommand::UpdateAnimationFrameOffsetDrag(o, b) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_animation_frame_offset_drag(*o, *b)?,
-            SyncCommand::EndAnimationFrameOffsetDrag => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_animation_frame_offset_drag(),
+                .update_animation_frame_offset_drag(&mut self.transient, *o, *b)?,
+            SyncCommand::EndAnimationFrameOffsetDrag => {
+                self.transient.workbench_animation_frame_being_dragged = None
+            }
             SyncCommand::WorkbenchZoomIn => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_zoom_in(),
             SyncCommand::WorkbenchZoomOut => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_zoom_out(),
             SyncCommand::WorkbenchResetZoom => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .workbench_reset_zoom(),
-            SyncCommand::Pan(delta) => document.ok_or(StateError::NoDocumentOpen)?.pan(*delta),
+            SyncCommand::Pan(delta) => document
+                .as_mut()
+                .ok_or(StateError::NoDocumentOpen)?
+                .pan(*delta),
             SyncCommand::CreateHitbox(p) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .create_hitbox(*p)?,
+                .create_hitbox(&mut self.transient, *p)?,
             SyncCommand::BeginHitboxScale(h, a, p) => document
+                .as_ref()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_hitbox_scale(&h, *a, *p)?,
+                .begin_hitbox_scale(&mut self.transient, &h, *a, *p)?,
             SyncCommand::UpdateHitboxScale(p) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_hitbox_scale(*p)?,
-            SyncCommand::EndHitboxScale => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_hitbox_scale(),
+                .update_hitbox_scale(&mut self.transient, *p)?,
+            SyncCommand::EndHitboxScale => self.transient.workbench_hitbox_being_scaled = None,
             SyncCommand::BeginHitboxDrag(a, m) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_hitbox_drag(&a, *m)?,
+                .begin_hitbox_drag(&mut self.transient, &a, *m)?,
             SyncCommand::UpdateHitboxDrag(o, b) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .update_hitbox_drag(*o, *b)?,
-            SyncCommand::EndHitboxDrag => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_hitbox_drag(),
-            SyncCommand::TogglePlayback => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .toggle_playback()?,
-            SyncCommand::SnapToPreviousFrame => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .snap_to_previous_frame()?,
-            SyncCommand::SnapToNextFrame => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .snap_to_next_frame()?,
+                .update_hitbox_drag(&mut self.transient, *o, *b)?,
+            SyncCommand::EndHitboxDrag => self.transient.workbench_hitbox_being_dragged = None,
+            SyncCommand::TogglePlayback => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .toggle_playback(&mut tab.timeline_is_playing)?
+            }
+            SyncCommand::SnapToPreviousFrame => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .snap_to_previous_frame(tab.timeline_is_playing)?
+            }
+            SyncCommand::SnapToNextFrame => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .snap_to_next_frame(tab.timeline_is_playing)?
+            }
             SyncCommand::ToggleLooping => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_looping()?,
             SyncCommand::TimelineZoomIn => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_zoom_in(),
             SyncCommand::TimelineZoomOut => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_zoom_out(),
             SyncCommand::TimelineResetZoom => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .timeline_reset_zoom(),
-            SyncCommand::BeginScrub => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .begin_timeline_scrub(),
-            SyncCommand::UpdateScrub(t) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .update_timeline_scrub(*t)?,
-            SyncCommand::EndScrub => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .end_timeline_scrub(),
+            SyncCommand::BeginScrub => self.transient.timeline_scrubbing = true,
+            SyncCommand::UpdateScrub(t) => {
+                let tab = self
+                    .get_current_tab_mut()
+                    .ok_or(StateError::NoDocumentOpen)?;
+                document
+                    .as_mut()
+                    .ok_or(StateError::NoDocumentOpen)?
+                    .update_timeline_scrub(tab.timeline_is_playing, *t)?
+            }
+            SyncCommand::EndScrub => self.transient.timeline_scrubbing = false,
             SyncCommand::NudgeSelection(d, l) => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .nudge_selection(d, *l)?,
+                .nudge_selection(*d, *l)?,
             SyncCommand::DeleteSelection => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .delete_selection(),
+                .delete_selection(&mut self.transient),
             SyncCommand::BeginRenameSelection => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .begin_rename_selection()?,
-            SyncCommand::UpdateRenameSelection(n) => document
-                .ok_or(StateError::NoDocumentOpen)?
-                .update_rename_selection(n),
+                .begin_rename_selection(&mut self.transient)?,
+            SyncCommand::UpdateRenameSelection(n) => {
+                self.transient.rename_buffer = Some(n.to_owned())
+            }
             SyncCommand::EndRenameSelection => document
+                .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .end_rename_selection()?,
+                .end_rename_selection(&mut self.transient)?,
         };
 
-        if document.as_ref() != old_document {
-            // TODO push undo state
+        if document != old_document {
+            if let Some(path) = document_path {
+                if let Some(tab) = self.get_tab_mut(&path) {
+                    if let Some(document) = document {
+                        tab.history.push((None, document));
+                        tab.current_history_position += 1;
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -525,8 +668,8 @@ fn save_as<T: AsRef<Path>>(source: T, document: &Document) -> Result<CommandBuff
     {
         let mut new_path = std::path::PathBuf::from(path_string);
         new_path.set_extension(SHEET_FILE_EXTENSION);
-        buffer.relocate_document(source, new_path);
-        buffer.save(new_path, document);
+        buffer.relocate_document(source, &new_path);
+        buffer.save(&new_path, document);
     };
     Ok(buffer)
 }
@@ -541,7 +684,7 @@ fn begin_import<T: AsRef<Path>>(into: T) -> Result<CommandBuffer, Error> {
         nfd::Response::OkayMultiple(path_strings) => {
             for path_string in &path_strings {
                 let path = std::path::PathBuf::from(path_string);
-                buffer.end_import(into, path);
+                buffer.end_import(&into, path);
             }
         }
         _ => (),

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::*;
+use crate::state::*;
 
 #[derive(Fail, Debug)]
 pub enum DocumentError {
@@ -34,6 +35,8 @@ pub enum DocumentError {
     NoAnimationFrameForThisTime,
     #[fail(display = "Not currently adjusting export settings")]
     NotExporting,
+    #[fail(display = "Not currently renaming an item")]
+    NotRenaming,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -84,6 +87,7 @@ pub struct Document {
     workbench_offset: Vector2D<f32>,
     workbench_zoom_level: i32,
     timeline_zoom_level: i32,
+    timeline_clock: Duration,
 }
 
 impl Document {
@@ -97,33 +101,35 @@ impl Document {
             workbench_offset: Vector2D::<f32>::zero(),
             workbench_zoom_level: 1,
             timeline_zoom_level: 1,
+            timeline_clock: Default::default(),
         }
     }
 
-    pub fn tick(&self, delta: Duration, clock: &mut Duration, is_playing: &mut bool) {
-        if *is_playing {
-            *clock += delta;
+    pub fn tick(&mut self, delta: Duration, timeline_is_playing: &mut bool) {
+        if *timeline_is_playing {
+            self.timeline_clock += delta;
             if let Some(WorkbenchItem::Animation(animation_name)) = &self.workbench_item {
                 if let Some(animation) = self.get_sheet().get_animation(animation_name) {
                     match animation.get_duration() {
                         Some(d) if d > 0 => {
-                            let clock_ms = clock.as_millis();
+                            let clock_ms = self.timeline_clock.as_millis();
 
                             // Loop animation
                             if animation.is_looping() {
-                                *clock = Duration::from_millis((clock_ms % u128::from(d)) as u64)
+                                self.timeline_clock =
+                                    Duration::from_millis((clock_ms % u128::from(d)) as u64)
 
                             // Stop playhead at the end of animation
                             } else if clock_ms >= u128::from(d) {
-                                *is_playing = false;
-                                *clock = Duration::from_millis(u64::from(d))
+                                *timeline_is_playing = false;
+                                self.timeline_clock = Duration::from_millis(u64::from(d))
                             }
                         }
 
                         // Reset playhead
                         _ => {
-                            *is_playing = false;
-                            *clock = Duration::new(0, 0);
+                            *timeline_is_playing = false;
+                            self.timeline_clock = Duration::new(0, 0);
                         }
                     };
                 }
@@ -169,56 +175,16 @@ impl Document {
         &self.selection
     }
 
-    pub fn get_content_frame_being_dragged(&self) -> &Option<PathBuf> {
-        &self.content_frame_being_dragged
-    }
-
-    pub fn get_item_being_renamed(&self) -> &Option<RenameItem> {
-        &self.item_being_renamed
-    }
-
-    pub fn get_rename_buffer(&self) -> &str {
-        &self.rename_buffer
-    }
-
-    pub fn get_timeline_frame_being_scaled(&self) -> &Option<usize> {
-        &self.timeline_frame_being_scaled
-    }
-
-    pub fn get_timeline_frame_being_dragged(&self) -> &Option<usize> {
-        &self.timeline_frame_being_dragged
-    }
-
-    pub fn get_timeline_clock(&self) -> Duration {
-        self.timeline_clock
-    }
-
-    pub fn is_scrubbing(&self) -> bool {
-        self.timeline_scrubbing
-    }
-
-    pub fn get_workbench_animation_frame_being_dragged(&self) -> &Option<usize> {
-        &self.workbench_animation_frame_being_dragged
-    }
-
-    pub fn get_workbench_hitbox_being_dragged(&self) -> &Option<String> {
-        &self.workbench_hitbox_being_dragged
-    }
-
-    pub fn get_workbench_hitbox_being_scaled(&self) -> &Option<String> {
-        &self.workbench_hitbox_being_scaled
-    }
-
-    pub fn get_workbench_hitbox_axis_being_scaled(&self) -> ResizeAxis {
-        self.workbench_hitbox_scale_axis
-    }
-
     pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
         &self.workbench_item
     }
 
     pub fn get_workbench_offset(&self) -> Vector2D<f32> {
         self.workbench_offset
+    }
+
+    pub fn get_timeline_clock(&self) -> Duration {
+        self.timeline_clock
     }
 
     pub fn get_workbench_zoom_factor(&self) -> f32 {
@@ -257,6 +223,10 @@ impl Document {
 
     pub fn pan(&mut self, delta: Vector2D<f32>) {
         self.workbench_offset += delta
+    }
+
+    pub fn import<T: AsRef<Path>>(&mut self, path: T) {
+        self.sheet.add_frame(path);
     }
 
     pub fn get_export_settings(&self) -> &Option<ExportSettings> {
@@ -331,9 +301,9 @@ impl Document {
         Ok(())
     }
 
-    pub fn nudge_selection(&mut self, direction: &Vector2D<i32>, large: bool) -> Result<(), Error> {
+    pub fn nudge_selection(&mut self, direction: Vector2D<i32>, large: bool) -> Result<(), Error> {
         let amplitude = if large { 10 } else { 1 };
-        let offset = *direction * amplitude;
+        let offset = direction * amplitude;
         match &self.selection {
             Some(Selection::Animation(_)) => {}
             Some(Selection::Frame(_)) => {}
@@ -360,38 +330,38 @@ impl Document {
         Ok(())
     }
 
-    pub fn delete_selection(&mut self) {
+    pub fn delete_selection(&mut self, transient: &mut TransientState) {
         match &self.selection {
             Some(Selection::Animation(a)) => {
                 self.sheet.delete_animation(&a);
-                if self.item_being_renamed == Some(RenameItem::Animation(a.clone())) {
-                    self.item_being_renamed = None;
-                    self.rename_buffer.clear();
+                if transient.item_being_renamed == Some(RenameItem::Animation(a.clone())) {
+                    transient.item_being_renamed = None;
+                    transient.rename_buffer = None;
                 }
             }
             Some(Selection::Frame(f)) => {
                 self.sheet.delete_frame(&f);
-                if self.content_frame_being_dragged == Some(f.clone()) {
-                    self.content_frame_being_dragged = None;
+                if transient.content_frame_being_dragged == Some(f.clone()) {
+                    transient.content_frame_being_dragged = None;
                 }
             }
             Some(Selection::Hitbox(f, h)) => {
                 self.sheet.delete_hitbox(&f, &h);
                 if self.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
-                    if self.workbench_hitbox_being_dragged == Some(h.to_owned()) {
-                        self.workbench_hitbox_being_dragged = None;
+                    if transient.workbench_hitbox_being_dragged == Some(h.to_owned()) {
+                        transient.workbench_hitbox_being_dragged = None;
                     }
-                    if self.workbench_hitbox_being_scaled == Some(h.to_owned()) {
-                        self.workbench_hitbox_being_scaled = None;
+                    if transient.workbench_hitbox_being_scaled == Some(h.to_owned()) {
+                        transient.workbench_hitbox_being_scaled = None;
                     }
                 }
             }
             Some(Selection::AnimationFrame(a, af)) => {
                 self.sheet.delete_animation_frame(a, *af);
                 if self.workbench_item == Some(WorkbenchItem::Animation(a.clone()))
-                    && self.workbench_animation_frame_being_dragged == Some(*af)
+                    && transient.workbench_animation_frame_being_dragged == Some(*af)
                 {
-                    self.workbench_animation_frame_being_dragged = None;
+                    transient.workbench_animation_frame_being_dragged = None;
                 }
             }
             None => {}
@@ -399,10 +369,12 @@ impl Document {
         self.selection = None;
     }
 
-    pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
+    pub fn begin_rename_selection(&mut self, transient: &mut TransientState) -> Result<(), Error> {
         match &self.selection {
-            Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
-            Some(Selection::Hitbox(f, h)) => self.begin_hitbox_rename(f.clone(), h.clone())?,
+            Some(Selection::Animation(a)) => self.begin_animation_rename(transient, a.clone())?,
+            Some(Selection::Hitbox(f, h)) => {
+                self.begin_hitbox_rename(transient, f.clone(), h.clone())?
+            }
             Some(Selection::Frame(_f)) => (),
             Some(Selection::AnimationFrame(_a, _af)) => (),
             None => {}
@@ -410,14 +382,13 @@ impl Document {
         Ok(())
     }
 
-    pub fn update_rename_selection<T: AsRef<str>>(&mut self, new_name: T) {
-        self.rename_buffer = new_name.as_ref().to_owned();
-    }
+    pub fn end_rename_selection(&mut self, transient: &mut TransientState) -> Result<(), Error> {
+        let new_name = transient
+            .rename_buffer
+            .clone()
+            .ok_or(DocumentError::NotRenaming)?;
 
-    pub fn end_rename_selection(&mut self) -> Result<(), Error> {
-        let new_name = self.rename_buffer.clone();
-
-        match self.item_being_renamed.as_ref().cloned() {
+        match transient.item_being_renamed.as_ref().cloned() {
             Some(RenameItem::Animation(old_name)) => {
                 if old_name != new_name {
                     if self.get_sheet().has_animation(&new_name) {
@@ -458,8 +429,8 @@ impl Document {
             None => (),
         }
 
-        self.item_being_renamed = None;
-        self.rename_buffer.clear();
+        transient.item_being_renamed = None;
+        transient.rename_buffer = None;
 
         Ok(())
     }
@@ -502,7 +473,11 @@ impl Document {
         Ok(())
     }
 
-    pub fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
+    pub fn select_animation_frame(
+        &mut self,
+        timeline_is_playing: bool,
+        frame_index: usize,
+    ) -> Result<(), Error> {
         let animation = self.get_workbench_animation()?;
         let animation_frame = animation
             .get_frame(frame_index)
@@ -525,7 +500,7 @@ impl Document {
         let is_playhead_in_frame = clock >= frame_start_time
             && (clock < (frame_start_time + duration)
                 || frame_index == animation.get_num_frames() - 1);
-        if !self.timeline_playing && !is_playhead_in_frame {
+        if !timeline_is_playing && !is_playhead_in_frame {
             self.timeline_clock = Duration::from_millis(frame_start_time);
         }
 
@@ -598,28 +573,36 @@ impl Document {
         Ok(())
     }
 
-    pub fn edit_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
+    pub fn edit_animation<T: AsRef<str>>(
+        &mut self,
+        timeline_is_playing: &mut bool,
+        name: T,
+    ) -> Result<(), Error> {
         let sheet = self.get_sheet();
         if !sheet.has_animation(&name) {
             return Err(DocumentError::AnimationNotInDocument.into());
         }
         self.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
         self.workbench_offset = Vector2D::zero();
-        self.timeline_playing = false;
+        *timeline_is_playing = false;
         self.timeline_clock = Duration::new(0, 0);
         Ok(())
     }
 
-    pub fn create_animation(&mut self) -> Result<(), Error> {
+    pub fn create_animation(
+        &mut self,
+        transient: &mut TransientState,
+        timeline_is_playing: &mut bool,
+    ) -> Result<(), Error> {
         let animation_name = {
             let sheet = self.get_sheet_mut();
             let animation = sheet.add_animation();
             let animation_name = animation.get_name().to_owned();
-            self.begin_animation_rename(&animation_name)?;
+            self.begin_animation_rename(transient, &animation_name)?;
             animation_name
         };
         self.select_animation(&animation_name)?;
-        self.edit_animation(animation_name)
+        self.edit_animation(timeline_is_playing, animation_name)
     }
 
     pub fn insert_animation_frame_before<T: AsRef<Path>>(
@@ -639,7 +622,11 @@ impl Document {
         Ok(())
     }
 
-    pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
+    pub fn create_hitbox(
+        &mut self,
+        transient: &mut TransientState,
+        mouse_position: Vector2D<f32>,
+    ) -> Result<(), Error> {
         let hitbox_name = {
             let frame_path = match &self.workbench_item {
                 Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -656,7 +643,7 @@ impl Document {
             hitbox.set_position(mouse_position.round().to_i32());
             hitbox.get_name().to_owned()
         };
-        self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;
+        self.begin_hitbox_scale(transient, &hitbox_name, ResizeAxis::SE, mouse_position)?;
         self.select_hitbox(&hitbox_name)
     }
 
@@ -676,18 +663,23 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_animation_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
+    pub fn begin_animation_rename<T: AsRef<str>>(
+        &mut self,
+        transient: &mut TransientState,
+        old_name: T,
+    ) -> Result<(), Error> {
         let sheet = self.get_sheet_mut();
         let _animation = sheet
             .get_animation(&old_name)
             .ok_or(DocumentError::AnimationNotInDocument)?;
-        self.item_being_renamed = Some(RenameItem::Animation(old_name.as_ref().to_owned()));
-        self.rename_buffer = old_name.as_ref().to_owned();
+        transient.item_being_renamed = Some(RenameItem::Animation(old_name.as_ref().to_owned()));
+        transient.rename_buffer = Some(old_name.as_ref().to_owned());
         Ok(())
     }
 
     fn begin_hitbox_rename<T: AsRef<Path>, U: AsRef<str>>(
         &mut self,
+        transient: &mut TransientState,
         frame_path: T,
         old_name: U,
     ) -> Result<(), Error> {
@@ -697,30 +689,26 @@ impl Document {
             .ok_or(DocumentError::FrameNotInDocument)?
             .get_hitbox(old_name.as_ref())
             .ok_or(DocumentError::HitboxNotInFrame)?;
-        self.item_being_renamed = Some(RenameItem::Hitbox(
+        transient.item_being_renamed = Some(RenameItem::Hitbox(
             frame_path.as_ref().to_owned(),
             old_name.as_ref().to_owned(),
         ));
-        self.rename_buffer = old_name.as_ref().to_owned();
+        transient.rename_buffer = Some(old_name.as_ref().to_owned());
         Ok(())
     }
 
-    pub fn begin_timeline_scrub(&mut self) {
-        self.timeline_scrubbing = true;
-    }
-
-    pub fn update_timeline_scrub(&mut self, new_time: Duration) -> Result<(), Error> {
+    pub fn update_timeline_scrub(
+        &mut self,
+        timeline_is_playing: bool,
+        new_time: Duration,
+    ) -> Result<(), Error> {
         let animation = self.get_workbench_animation()?;
         let (index, _) = animation
             .get_frame_at(new_time)
             .ok_or(DocumentError::NoAnimationFrameForThisTime)?;
-        self.select_animation_frame(index)?;
+        self.select_animation_frame(timeline_is_playing, index)?;
         self.timeline_clock = new_time;
         Ok(())
-    }
-
-    pub fn end_timeline_scrub(&mut self) {
-        self.timeline_scrubbing = false;
     }
 
     pub fn timeline_zoom_in(&mut self) {
@@ -769,13 +757,13 @@ impl Document {
         .ok_or_else(|| DocumentError::NotEditingAnyAnimation.into())
     }
 
-    pub fn toggle_playback(&mut self) -> Result<(), Error> {
+    pub fn toggle_playback(&mut self, timeline_is_playing: &mut bool) -> Result<(), Error> {
         let mut new_timeline_clock = self.timeline_clock;
 
         {
             let animation = self.get_workbench_animation()?;
 
-            if !self.timeline_playing {
+            if !*timeline_is_playing {
                 if let Some(d) = animation.get_duration() {
                     if d > 0
                         && !animation.is_looping()
@@ -787,13 +775,13 @@ impl Document {
             }
         }
 
-        self.timeline_playing = !self.timeline_playing;
+        *timeline_is_playing = !*timeline_is_playing;
         self.timeline_clock = new_timeline_clock;
 
         Ok(())
     }
 
-    pub fn snap_to_previous_frame(&mut self) -> Result<(), Error> {
+    pub fn snap_to_previous_frame(&mut self, timeline_is_playing: bool) -> Result<(), Error> {
         let clock = {
             let animation = self.get_workbench_animation()?;
 
@@ -821,10 +809,10 @@ impl Document {
             }
         };
 
-        self.update_timeline_scrub(Duration::from_millis(clock))
+        self.update_timeline_scrub(timeline_is_playing, Duration::from_millis(clock))
     }
 
-    pub fn snap_to_next_frame(&mut self) -> Result<(), Error> {
+    pub fn snap_to_next_frame(&mut self, timeline_is_playing: bool) -> Result<(), Error> {
         let clock = {
             let animation = self.get_workbench_animation()?;
 
@@ -852,7 +840,7 @@ impl Document {
             }
         };
 
-        self.update_timeline_scrub(Duration::from_millis(clock))
+        self.update_timeline_scrub(timeline_is_playing, Duration::from_millis(clock))
     }
 
     pub fn reorder_animation_frame(
@@ -894,18 +882,19 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_frame_drag<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
+    pub fn begin_frame_drag<T: AsRef<Path>>(
+        &self,
+        transient: &mut TransientState,
+        frame: T,
+    ) -> Result<(), Error> {
         // TODO Validate that frame is in sheet
-        self.content_frame_being_dragged = Some(frame.as_ref().to_path_buf());
+        transient.content_frame_being_dragged = Some(frame.as_ref().to_path_buf());
         Ok(())
-    }
-
-    pub fn end_frame_drag(&mut self) {
-        self.content_frame_being_dragged = None;
     }
 
     pub fn begin_hitbox_drag<T: AsRef<str>>(
         &mut self,
+        transient: &mut TransientState,
         hitbox_name: T,
         mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
@@ -927,9 +916,9 @@ impl Document {
             hitbox_position = hitbox.get_position();
         }
 
-        self.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
-        self.workbench_hitbox_drag_initial_mouse_position = mouse_position;
-        self.workbench_hitbox_drag_initial_offset = hitbox_position;
+        transient.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
+        transient.workbench_hitbox_drag_initial_mouse_position = mouse_position;
+        transient.workbench_hitbox_drag_initial_offset = hitbox_position;
         self.select_hitbox(hitbox_name)?;
 
         Ok(())
@@ -937,6 +926,7 @@ impl Document {
 
     pub fn update_hitbox_drag(
         &mut self,
+        transient: &mut TransientState,
         mouse_position: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
@@ -948,14 +938,14 @@ impl Document {
         }
         .ok_or(DocumentError::NotEditingAnyFrame)?;
 
-        let hitbox_name = self
+        let hitbox_name = transient
             .workbench_hitbox_being_dragged
             .as_ref()
             .cloned()
             .ok_or(DocumentError::NotDraggingAHitbox)?;
 
-        let old_offset = self.workbench_hitbox_drag_initial_offset;
-        let old_mouse_position = self.workbench_hitbox_drag_initial_mouse_position;
+        let old_offset = transient.workbench_hitbox_drag_initial_offset;
+        let old_mouse_position = transient.workbench_hitbox_drag_initial_mouse_position;
         let mut mouse_delta = mouse_position - old_mouse_position;
 
         if !both_axis {
@@ -979,12 +969,9 @@ impl Document {
         Ok(())
     }
 
-    pub fn end_hitbox_drag(&mut self) {
-        self.workbench_hitbox_being_dragged = None;
-    }
-
     pub fn begin_hitbox_scale<T: AsRef<str>>(
-        &mut self,
+        &self,
+        transient: &mut TransientState,
         hitbox_name: T,
         axis: ResizeAxis,
         mouse_position: Vector2D<f32>,
@@ -1000,42 +987,46 @@ impl Document {
         let size;
         {
             let frame = self
-                .get_sheet_mut()
-                .get_frame_mut(&frame_path)
+                .get_sheet()
+                .get_frame(&frame_path)
                 .ok_or(DocumentError::FrameNotInDocument)?;
             hitbox = frame
-                .get_hitbox_mut(&hitbox_name)
+                .get_hitbox(&hitbox_name)
                 .ok_or(DocumentError::InvalidHitboxIndex)?;
             position = hitbox.get_position();
             size = hitbox.get_size();
         }
 
-        self.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
-        self.workbench_hitbox_scale_axis = axis;
-        self.workbench_hitbox_scale_initial_mouse_position = mouse_position;
-        self.workbench_hitbox_scale_initial_position = position;
-        self.workbench_hitbox_scale_initial_size = size;
+        transient.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
+        transient.workbench_hitbox_scale_axis = axis;
+        transient.workbench_hitbox_scale_initial_mouse_position = mouse_position;
+        transient.workbench_hitbox_scale_initial_position = position;
+        transient.workbench_hitbox_scale_initial_size = size;
 
         Ok(())
     }
 
-    pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
+    pub fn update_hitbox_scale(
+        &mut self,
+        transient: &mut TransientState,
+        mouse_position: Vector2D<f32>,
+    ) -> Result<(), Error> {
         let frame_path = match self.get_workbench_item() {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
         }
         .ok_or(DocumentError::NotEditingAnyFrame)?;
 
-        let hitbox_name = self
+        let hitbox_name = transient
             .workbench_hitbox_being_scaled
             .as_ref()
             .cloned()
             .ok_or(DocumentError::NotDraggingAHitbox)?;
 
-        let initial_position = self.workbench_hitbox_scale_initial_position;
-        let initial_size = self.workbench_hitbox_scale_initial_size;
-        let axis = self.workbench_hitbox_scale_axis;
-        let initial_mouse_position = self.workbench_hitbox_scale_initial_mouse_position;
+        let initial_position = transient.workbench_hitbox_scale_initial_position;
+        let initial_size = transient.workbench_hitbox_scale_initial_size;
+        let axis = transient.workbench_hitbox_scale_axis;
+        let initial_mouse_position = transient.workbench_hitbox_scale_initial_mouse_position;
         let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
 
         let hitbox = self
@@ -1093,12 +1084,9 @@ impl Document {
         Ok(())
     }
 
-    pub fn end_hitbox_scale(&mut self) {
-        self.workbench_hitbox_being_scaled = None;
-    }
-
     pub fn begin_animation_frame_drag(
-        &mut self,
+        &self,
+        transient: &mut TransientState,
         animation_frame_index: usize,
     ) -> Result<(), Error> {
         let animation_name = match &self.workbench_item {
@@ -1107,22 +1095,20 @@ impl Document {
         }
         .ok_or(DocumentError::NotEditingAnyAnimation)?;
         let animation = self
-            .get_sheet_mut()
-            .get_animation_mut(animation_name)
+            .get_sheet()
+            .get_animation(animation_name)
             .ok_or(DocumentError::AnimationNotInDocument)?;
         let _animation_frame = animation
             .get_frame(animation_frame_index)
             .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-        self.timeline_frame_being_dragged = Some(animation_frame_index);
+        transient.timeline_frame_being_dragged = Some(animation_frame_index);
         Ok(())
-    }
-
-    pub fn end_animation_frame_drag(&mut self) {
-        self.timeline_frame_being_dragged = None;
     }
 
     pub fn begin_animation_frame_offset_drag(
         &mut self,
+        transient: &mut TransientState,
+        timeline_is_playing: bool,
         index: usize,
         mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
@@ -1141,16 +1127,17 @@ impl Document {
             let animation_frame = animation
                 .get_frame(index)
                 .ok_or(DocumentError::InvalidAnimationFrameIndex)?;
-            self.workbench_animation_frame_drag_initial_offset = animation_frame.get_offset();
+            transient.workbench_animation_frame_drag_initial_offset = animation_frame.get_offset();
         }
 
-        self.workbench_animation_frame_being_dragged = Some(index);
-        self.workbench_animation_frame_drag_initial_mouse_position = mouse_position;
-        self.select_animation_frame(index)
+        transient.workbench_animation_frame_being_dragged = Some(index);
+        transient.workbench_animation_frame_drag_initial_mouse_position = mouse_position;
+        self.select_animation_frame(timeline_is_playing, index)
     }
 
     pub fn update_animation_frame_offset_drag(
         &mut self,
+        transient: &mut TransientState,
         mouse_position: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
@@ -1161,12 +1148,12 @@ impl Document {
         }
         .ok_or(DocumentError::NotEditingAnyAnimation)?;
 
-        let animation_index = self
+        let animation_index = transient
             .workbench_animation_frame_being_dragged
             .ok_or(DocumentError::NotDraggingATimelineFrame)?;
 
-        let old_offset = self.workbench_animation_frame_drag_initial_offset;
-        let old_mouse_position = self.workbench_animation_frame_drag_initial_mouse_position;
+        let old_offset = transient.workbench_animation_frame_drag_initial_offset;
+        let old_mouse_position = transient.workbench_animation_frame_drag_initial_mouse_position;
         let mut mouse_delta = mouse_position - old_mouse_position;
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
@@ -1188,11 +1175,11 @@ impl Document {
         Ok(())
     }
 
-    pub fn end_animation_frame_offset_drag(&mut self) {
-        self.workbench_animation_frame_being_dragged = None;
-    }
-
-    pub fn begin_animation_frame_duration_drag(&mut self, index: usize) -> Result<(), Error> {
+    pub fn begin_animation_frame_duration_drag(
+        &self,
+        transient: &mut TransientState,
+        index: usize,
+    ) -> Result<(), Error> {
         let old_duration = {
             let animation_name = match &self.workbench_item {
                 Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
@@ -1201,8 +1188,8 @@ impl Document {
             .ok_or(DocumentError::NotEditingAnyAnimation)?;
 
             let animation = self
-                .get_sheet_mut()
-                .get_animation_mut(animation_name)
+                .get_sheet()
+                .get_animation(animation_name)
                 .ok_or(DocumentError::AnimationNotInDocument)?;
 
             let animation_frame = animation
@@ -1212,14 +1199,19 @@ impl Document {
             animation_frame.get_duration()
         };
 
-        self.timeline_frame_being_scaled = Some(index);
-        self.timeline_frame_scale_initial_duration = old_duration;
-        self.timeline_frame_scale_initial_clock = self.timeline_clock;
+        transient.timeline_frame_being_scaled = Some(index);
+        transient.timeline_frame_scale_initial_duration = old_duration;
+        transient.timeline_frame_scale_initial_clock = self.timeline_clock;
 
         Ok(())
     }
 
-    pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
+    pub fn update_animation_frame_duration_drag(
+        &mut self,
+        transient: &mut TransientState,
+        timeline_is_playing: bool,
+        new_duration: u32,
+    ) -> Result<(), Error> {
         let frame_start_time = {
             let animation_name = match &self.workbench_item {
                 Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
@@ -1227,7 +1219,7 @@ impl Document {
             }
             .ok_or(DocumentError::NotEditingAnyAnimation)?;
 
-            let index = self
+            let index = transient
                 .timeline_frame_being_scaled
                 .ok_or(DocumentError::NotDraggingATimelineFrame)?;
 
@@ -1249,9 +1241,9 @@ impl Document {
                 .ok_or(DocumentError::InvalidAnimationFrameIndex)?
         };
 
-        if !self.timeline_playing {
-            let initial_clock = self.timeline_frame_scale_initial_clock.as_millis();
-            let initial_duration = self.timeline_frame_scale_initial_duration as u128;
+        if !timeline_is_playing {
+            let initial_clock = transient.timeline_frame_scale_initial_clock.as_millis();
+            let initial_duration = transient.timeline_frame_scale_initial_duration as u128;
             if initial_clock >= frame_start_time as u128 + initial_duration {
                 self.timeline_clock = Duration::from_millis(
                     initial_clock as u64 + new_duration as u64 - initial_duration as u64,
@@ -1260,9 +1252,5 @@ impl Document {
         }
 
         Ok(())
-    }
-
-    pub fn end_animation_frame_duration_drag(&mut self) {
-        self.timeline_frame_being_scaled = None;
     }
 }

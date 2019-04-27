@@ -186,7 +186,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some((tab, document)) = state.get_current() {
+                    if let Some((_, tab, document)) = state.get_current() {
                         commands.save(tab.get_source(), document);
                     }
                 }
@@ -196,7 +196,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some((tab, document)) = state.get_current() {
+                    if let Some((_, tab, document)) = state.get_current() {
                         commands.save_as(tab.get_source(), document);
                     }
                 }
@@ -329,30 +329,27 @@ fn draw_documents_window<'a>(
 }
 
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(document) = state.get_current_document() {
+    if let Some((transient, _, _)) = state.get_current() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-            if document.get_content_frame_being_dragged().is_some() {
+            if transient.content_frame_being_dragged.is_some() {
                 commands.end_frame_drag();
             }
-            if document.get_timeline_frame_being_scaled().is_some() {
+            if transient.timeline_frame_being_scaled.is_some() {
                 commands.end_animation_frame_duration_drag();
             }
-            if document.get_timeline_frame_being_dragged().is_some() {
+            if transient.timeline_frame_being_dragged.is_some() {
                 commands.end_animation_frame_drag();
             }
-            if document
-                .get_workbench_animation_frame_being_dragged()
-                .is_some()
-            {
+            if transient.workbench_animation_frame_being_dragged.is_some() {
                 commands.end_animation_frame_offset_drag();
             }
-            if document.get_workbench_hitbox_being_dragged().is_some() {
+            if transient.workbench_hitbox_being_dragged.is_some() {
                 commands.end_hitbox_drag();
             }
-            if document.get_workbench_hitbox_being_scaled().is_some() {
+            if transient.workbench_hitbox_being_scaled.is_some() {
                 commands.end_hitbox_scale();
             }
-            if document.is_scrubbing() {
+            if transient.timeline_scrubbing {
                 commands.end_scrub();
             }
         }
@@ -360,8 +357,8 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut Comman
 }
 
 fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &TextureCache) {
-    if let Some(document) = state.get_current_document() {
-        if let Some(path) = document.get_content_frame_being_dragged() {
+    if let Some((transient, _, _)) = state.get_current() {
+        if let Some(ref path) = transient.content_frame_being_dragged {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
                 ui.tooltip(|| {
                     let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
@@ -386,7 +383,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &Texture
 }
 
 fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some((tab, document)) = state.get_current() {
+    if let Some((_, tab, document)) = state.get_current() {
         if let Some(settings) = document.get_export_settings() {
             let popup_id = im_str!("Export Options");
             ui.popup_modal(&popup_id)
@@ -468,8 +465,8 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
 }
 
 fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(document) = state.get_current_document() {
-        let max_length = match document.get_item_being_renamed() {
+    if let Some((transient, _, _)) = state.get_current() {
+        let max_length = match transient.item_being_renamed {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
             Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
             None => return,
@@ -483,7 +480,9 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
             .always_auto_resize(true)
             .build(|| {
                 let mut s = ImString::with_capacity(max_length);
-                s.push_str(&document.get_rename_buffer());
+                if let Some(current) = &transient.rename_buffer {
+                    s.push_str(current);
+                };
                 let end_rename = ui
                     .input_text(im_str!(""), &mut s)
                     .enter_returns_true(true)
@@ -552,24 +551,20 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
-                if let Some((tab, document)) = state.get_current() {
+                if let Some((_, tab, document)) = state.get_current() {
                     commands.save_as(tab.get_source(), document);
                 }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
-            } else {
-                if let Some((tab, document)) = state.get_current() {
-                    commands.save(tab.get_source(), document);
-                }
+            } else if let Some((_, tab, document)) = state.get_current() {
+                commands.save(tab.get_source(), document);
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
             if ui.imgui().key_shift() {
                 commands.begin_export_as();
-            } else {
-                if let Some(document) = state.get_current_document() {
-                    commands.export(document);
-                }
+            } else if let Some(document) = state.get_current_document() {
+                commands.export(document);
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::W as _) {
