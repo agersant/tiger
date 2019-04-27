@@ -28,6 +28,8 @@ pub enum SyncCommand {
     CloseCurrentDocument,
     CloseAllDocuments,
     SaveAllDocuments, // TODO This should be async (has IO)
+    Undo,
+    Redo,
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
     EndSetExportMetadataDestination(PathBuf, PathBuf),

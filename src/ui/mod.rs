@@ -244,6 +244,26 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     commands.close_all_documents();
                 }
             });
+
+            ui.menu(im_str!("Edit")).build(|| {
+                if ui
+                    .menu_item(im_str!("Undo"))
+                    .shortcut(im_str!("Ctrl+Z"))
+                    .enabled(has_document) // TODO disable when undo stack is empty
+                    .build()
+                {
+                    commands.undo();
+                }
+                if ui
+                    .menu_item(im_str!("Redo"))
+                    .shortcut(im_str!("Ctrl+Shift+Z"))
+                    .enabled(has_document) // TODO disable when at the end of undo stack
+                    .build()
+                {
+                    commands.redo();
+                }
+            });
+
             ui.menu(im_str!("View")).build(|| {
                 if ui
                     .menu_item(im_str!("Zoom In (Workbench)"))
@@ -543,6 +563,14 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
 
     // Menu commands
     if ui.imgui().key_ctrl() {
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Z as _) {
+            if ui.imgui().key_shift() {
+                commands.redo();
+            } else {
+                commands.undo();
+            }
+        }
+
         if ui.imgui().is_key_pressed(VirtualKeyCode::N as _) {
             commands.begin_new_document();
         }

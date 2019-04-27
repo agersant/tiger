@@ -87,6 +87,14 @@ impl CommandBuffer {
             .push(Command::Sync(SyncCommand::SaveAllDocuments));
     }
 
+    pub fn undo(&mut self) {
+        self.queue.push(Command::Sync(SyncCommand::Undo));
+    }
+
+    pub fn redo(&mut self) {
+        self.queue.push(Command::Sync(SyncCommand::Redo));
+    }
+
     pub fn begin_export_as(&mut self) {
         self.queue.push(Command::Sync(SyncCommand::BeginExportAs));
     }
