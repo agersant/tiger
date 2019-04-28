@@ -77,7 +77,7 @@ impl TransientState {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TabState {
     content_current_tab: ContentTab,
     selection: Option<Selection>,
@@ -280,6 +280,12 @@ impl Tab {
                 }
             }
         }
+    }
+
+    fn push_undo_state(&mut self, entry: TabHistoryEntry) {
+        self.history.truncate(self.current_history_position + 1);
+        self.history.push(entry);
+        self.current_history_position = self.history.len() - 1;
     }
 
     fn can_use_undo_system(&self) -> bool {
@@ -1670,11 +1676,46 @@ impl AppState {
                 .end_rename_selection()?,
         };
 
-        if let Some(tab) = tab {
-            if let Some(persistent_tab) = self.get_tab_mut(tab.source) {
-                persistent_tab.document = tab.document.clone();
-                persistent_tab.state = tab.state.clone();
-                persistent_tab.transient = tab.transient.clone();
+        if *command != SyncCommand::Undo && *command != SyncCommand::Redo {
+            if let Some(tab) = tab {
+                if let Some(persistent_tab) = self.get_tab_mut(&tab.source) {
+                    // Write new state to current tab
+                    persistent_tab.document = tab.document.clone();
+                    persistent_tab.state = tab.state.clone();
+                    persistent_tab.transient = tab.transient.clone();
+
+                    // Push new state to history
+                    if tab.can_use_undo_system() {
+                        let new_undo_state = TabHistoryEntry {
+                            document: tab.document,
+                            tab_state: tab.state,
+                            last_command: command.clone(),
+                        };
+
+                        if &persistent_tab.history[persistent_tab.current_history_position].document
+                            != &new_undo_state.document
+                        {
+                            persistent_tab.push_undo_state(new_undo_state);
+                        } else if &persistent_tab.history[persistent_tab.current_history_position]
+                            .tab_state
+                            != &new_undo_state.tab_state
+                        {
+                            let merge = persistent_tab.current_history_position > 0
+                                && persistent_tab.history
+                                    [persistent_tab.current_history_position - 1]
+                                    .document
+                                    == persistent_tab.history
+                                        [persistent_tab.current_history_position]
+                                        .document;
+                            if merge {
+                                persistent_tab.history[persistent_tab.current_history_position]
+                                    .tab_state = new_undo_state.tab_state;
+                            } else {
+                                persistent_tab.push_undo_state(new_undo_state);
+                            }
+                        }
+                    }
+                }
             }
         }
 
