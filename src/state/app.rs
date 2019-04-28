@@ -147,27 +147,8 @@ impl AppState {
         Ok(())
     }
 
-    pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
-        // TODO split SyncCommand into multiple enums based on what they interact with (no tab, specific tab, current tab)?
-
-        use SyncCommand::*;
-
-        let mut tab = match command {
-            EndNewDocument(_)
-            | EndOpenDocument(_)
-            | RelocateDocument(_, _)
-            | FocusDocument(_)
-            | CloseCurrentDocument
-            | CloseAllDocuments
-            | SaveAllDocuments => None,
-            EndImport(p, _)
-            | EndSetExportTextureDestination(p, _)
-            | EndSetExportMetadataDestination(p, _)
-            | EndSetExportMetadataPathsRoot(p, _)
-            | EndSetExportFormat(p, _) => self.get_tab(p),
-            _ => self.get_current_tab(),
-        }
-        .cloned();
+    fn process_app_command(&mut self, command: &AppCommand) -> Result<(), Error> {
+        use AppCommand::*;
 
         match command {
             EndNewDocument(p) => self.end_new_document(p)?,
@@ -189,6 +170,25 @@ impl AppState {
                 .get_current_tab_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .redo()?,
+        }
+
+        Ok(())
+    }
+
+    fn process_tab_command(&mut self, command: &TabCommand) -> Result<(), Error> {
+        use TabCommand::*;
+
+        let mut tab = match command {
+            EndImport(p, _)
+            | EndSetExportTextureDestination(p, _)
+            | EndSetExportMetadataDestination(p, _)
+            | EndSetExportMetadataPathsRoot(p, _)
+            | EndSetExportFormat(p, _) => self.get_tab(p),
+            _ => self.get_current_tab(),
+        }
+        .cloned();
+
+        match command {
             EndImport(_, f) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
@@ -441,15 +441,20 @@ impl AppState {
                 .end_rename_selection()?,
         };
 
-        if *command != Undo && *command != Redo {
-            if let Some(tab) = tab {
-                if let Some(persistent_tab) = self.get_tab_mut(&tab.source) {
-                    persistent_tab.record_command(command, tab.document, tab.view, tab.transient);
-                }
+        if let Some(tab) = tab {
+            if let Some(persistent_tab) = self.get_tab_mut(&tab.source) {
+                persistent_tab.record_command(command, tab.document, tab.view, tab.transient);
             }
         }
 
         Ok(())
+    }
+
+    pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
+        match command {
+            SyncCommand::App(c) => self.process_app_command(c),
+            SyncCommand::Tab(c) => self.process_tab_command(c),
+        }
     }
 }
 

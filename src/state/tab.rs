@@ -9,7 +9,7 @@ use crate::state::*;
 
 #[derive(Clone, Debug)]
 struct TabHistoryEntry {
-	last_command: SyncCommand,
+	last_command: Option<TabCommand>,
 	document: Document,
 	view: View,
 }
@@ -28,7 +28,7 @@ pub struct Tab {
 impl Tab {
 	pub fn new<T: AsRef<Path>>(path: T) -> Tab {
 		let history_entry = TabHistoryEntry {
-			last_command: SyncCommand::EndNewDocument(path.as_ref().to_owned()),
+			last_command: None,
 			document: Document::new(),
 			view: View::new(),
 		};
@@ -45,7 +45,7 @@ impl Tab {
 
 	pub fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
 		let history_entry = TabHistoryEntry {
-			last_command: SyncCommand::EndOpenDocument(path.as_ref().to_owned()),
+			last_command: None,
 			document: Document::open(&path)?,
 			view: View::new(),
 		};
@@ -103,7 +103,7 @@ impl Tab {
 
 	pub fn record_command(
 		&mut self,
-		command: &SyncCommand,
+		command: &TabCommand,
 		document: Document,
 		view: View,
 		transient: Transient,
@@ -116,7 +116,7 @@ impl Tab {
 			let new_undo_state = TabHistoryEntry {
 				document: document,
 				view: view,
-				last_command: command.clone(),
+				last_command: Some(command.clone()),
 			};
 
 			if &self.history[self.current_history_position].document != &new_undo_state.document {

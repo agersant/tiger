@@ -20,16 +20,20 @@ pub enum AsyncCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SyncCommand {
+pub enum AppCommand {
     EndNewDocument(PathBuf),
     EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
-    RelocateDocument(PathBuf, PathBuf),
-    FocusDocument(PathBuf),
     CloseCurrentDocument,
     CloseAllDocuments,
     SaveAllDocuments, // TODO This should be async (has IO)
+    FocusDocument(PathBuf),
+    RelocateDocument(PathBuf, PathBuf),
     Undo,
     Redo,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TabCommand {
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
     EndSetExportMetadataDestination(PathBuf, PathBuf),
@@ -86,6 +90,12 @@ pub enum SyncCommand {
     BeginRenameSelection,
     UpdateRenameSelection(String),
     EndRenameSelection,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SyncCommand {
+    App(AppCommand),
+    Tab(TabCommand),
 }
 
 #[derive(Debug, Clone, PartialEq)]
