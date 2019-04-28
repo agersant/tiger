@@ -4,26 +4,19 @@ use std::path::Path;
 use crate::sheet::*;
 use crate::state::*;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Document {
     sheet: Sheet,
     export_settings: Option<ExportSettings>,
 }
 
 impl Document {
-    pub fn new() -> Document {
-        Document {
-            sheet: Sheet::new(),
-            export_settings: None,
-        }
-    }
-
     pub fn open<T: AsRef<Path>>(path: T) -> Result<Document, Error> {
         let mut directory = path.as_ref().to_path_buf();
         directory.pop();
         let sheet: Sheet = compat::read_sheet(path.as_ref())?;
         let sheet = sheet.with_absolute_paths(&directory)?;
-        let mut document = Document::new();
+        let mut document: Document = Default::default();
         document.sheet = sheet;
         Ok(document)
     }

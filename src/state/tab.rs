@@ -7,7 +7,7 @@ use std::time::Duration;
 use crate::sheet::*;
 use crate::state::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct TabHistoryEntry {
 	last_command: Option<TabCommand>,
 	document: Document,
@@ -27,37 +27,23 @@ pub struct Tab {
 
 impl Tab {
 	pub fn new<T: AsRef<Path>>(path: T) -> Tab {
-		let history_entry = TabHistoryEntry {
-			last_command: None,
-			document: Document::new(),
-			view: View::new(),
-		};
+		let history_entry: TabHistoryEntry = Default::default();
 		Tab {
 			source: path.as_ref().to_path_buf(),
 			history: vec![history_entry.clone()],
 			document: history_entry.document.clone(),
 			view: history_entry.view.clone(),
-			transient: Transient::new(),
+			transient: Default::default(),
 			current_history_position: 0,
 			timeline_is_playing: false,
 		}
 	}
 
 	pub fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
-		let history_entry = TabHistoryEntry {
-			last_command: None,
-			document: Document::open(&path)?,
-			view: View::new(),
-		};
-		Ok(Tab {
-			source: path.as_ref().to_path_buf(),
-			history: vec![history_entry.clone()],
-			document: history_entry.document.clone(),
-			view: history_entry.view.clone(),
-			transient: Transient::new(),
-			current_history_position: 0,
-			timeline_is_playing: false,
-		})
+		let mut tab = Tab::new(path);
+		tab.document = Document::open(&path)?;
+		tab.history[0].document = tab.document.clone();
+		Ok(tab)
 	}
 
 	pub fn tick(&mut self, delta: Duration) {
@@ -98,7 +84,7 @@ impl Tab {
 	}
 
 	fn can_use_undo_system(&self) -> bool {
-		self.transient == Transient::new()
+		self.transient == Default::default()
 	}
 
 	fn record_command(

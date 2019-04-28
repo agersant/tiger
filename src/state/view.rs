@@ -33,8 +33,8 @@ pub struct View {
 	timeline_zoom_level: i32,
 }
 
-impl View {
-	pub fn new() -> View {
+impl Default for View {
+	fn default() -> View {
 		View {
 			content_current_tab: ContentTab::Frames,
 			selection: None,
@@ -45,7 +45,9 @@ impl View {
 			timeline_clock: Default::default(),
 		}
 	}
+}
 
+impl View {
 	pub fn switch_to_content_tab(&mut self, tab: ContentTab) {
 		self.content_current_tab = tab;
 	}
