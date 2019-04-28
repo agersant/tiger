@@ -64,7 +64,7 @@ impl AppState {
         }
     }
 
-    pub fn get_current_tab_mut(&mut self) -> Option<&mut Tab> {
+    fn get_current_tab_mut(&mut self) -> Option<&mut Tab> {
         if let Some(current_path) = &self.current_tab {
             self.tabs.iter_mut().find(|d| &d.source == current_path)
         } else {
@@ -78,6 +78,10 @@ impl AppState {
 
     fn get_tab_mut<T: AsRef<Path>>(&mut self, path: T) -> Option<&mut Tab> {
         self.tabs.iter_mut().find(|d| d.source == path.as_ref())
+    }
+
+    pub fn tabs_iter(&self) -> impl Iterator<Item = &Tab> {
+        self.tabs.iter()
     }
 
     fn end_new_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
@@ -153,14 +157,6 @@ impl AppState {
             tab.document.save(&tab.source)?;
         }
         Ok(())
-    }
-
-    pub fn tabs_iter(&self) -> impl Iterator<Item = &Tab> {
-        self.tabs.iter()
-    }
-
-    pub fn documents_iter(&self) -> impl Iterator<Item = &Document> {
-        self.tabs.iter().map(|t| &t.document)
     }
 
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
