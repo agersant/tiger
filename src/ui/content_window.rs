@@ -16,17 +16,12 @@ fn draw_tabs<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
     }
 }
 
-fn draw_frames<'a>(
-    ui: &Ui<'a>,
-    commands: &mut CommandBuffer,
-    transient: &TransientState,
-    tab: &Tab,
-    document: &Document,
-) {
+fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
     if ui.small_button(im_str!("Import…")) {
         commands.import(tab);
     }
-    let mut frames: Vec<(&OsStr, &Frame)> = document
+    let mut frames: Vec<(&OsStr, &Frame)> = tab
+        .document
         .get_sheet()
         .frames_iter()
         .filter_map(|f| {
@@ -39,7 +34,7 @@ fn draw_frames<'a>(
         .collect();
     frames.sort_unstable();
     for (name, frame) in frames.iter() {
-        let is_selected = match document.get_selection() {
+        let is_selected = match tab.state.get_selection() {
             Some(Selection::Frame(p)) => p == frame.get_source(),
             _ => false,
         };
@@ -59,7 +54,7 @@ fn draw_frames<'a>(
             }
         }
 
-        if transient.content_frame_being_dragged.is_none()
+        if tab.transient.content_frame_being_dragged.is_none()
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
@@ -68,14 +63,14 @@ fn draw_frames<'a>(
     }
 }
 
-fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Document) {
+fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
     if ui.small_button(im_str!("Add")) {
         commands.create_animation();
     }
-    let mut animations: Vec<&Animation> = document.get_sheet().animations_iter().collect();
+    let mut animations: Vec<&Animation> = tab.document.get_sheet().animations_iter().collect();
     animations.sort_unstable();
     for animation in animations.iter() {
-        let is_selected = match document.get_selection() {
+        let is_selected = match tab.state.get_selection() {
             Some(Selection::Animation(a)) => a == animation.get_name(),
             _ => false,
         };
@@ -106,12 +101,12 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .movable(false)
             .build(|| {
                 // TODO draw something before document is loaded?
-                if let Some((transient, tab, document)) = state.get_current() {
+                if let Some(tab) = state.get_current_tab() {
                     draw_tabs(ui, commands);
                     ui.separator();
-                    match document.get_content_tab() {
-                        ContentTab::Frames => draw_frames(ui, commands, transient, tab, document),
-                        ContentTab::Animations => draw_animations(ui, commands, document),
+                    match tab.state.get_content_tab() {
+                        ContentTab::Frames => draw_frames(ui, commands, tab),
+                        ContentTab::Animations => draw_animations(ui, commands, tab),
                     }
                 }
             });
