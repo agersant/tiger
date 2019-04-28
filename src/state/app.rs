@@ -79,7 +79,8 @@ impl TransientState {
 #[derive(Clone, Debug)]
 pub struct Tab {
     source: PathBuf,
-    history: Vec<(Option<Command>, Document)>,
+    history: Vec<(SyncCommand, Document)>,
+    current_document: Document,
     current_history_position: usize,
     timeline_is_playing: bool,
 }
@@ -88,7 +89,8 @@ impl Tab {
     fn new<T: AsRef<Path>>(path: T) -> Tab {
         Tab {
             source: path.as_ref().to_path_buf(),
-            history: vec![(None, Document::new())],
+            history: vec![],
+            current_document: Document::new(),
             current_history_position: 0,
             timeline_is_playing: false,
         }
@@ -97,7 +99,8 @@ impl Tab {
     fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
         Ok(Tab {
             source: path.as_ref().to_path_buf(),
-            history: vec![(None, Document::open(path)?)],
+            history: vec![],
+            current_document: Document::open(path)?,
             current_history_position: 0,
             timeline_is_playing: false,
         })
@@ -108,11 +111,11 @@ impl Tab {
     }
 
     fn get_current_document(&self) -> &Document {
-        &self.history[self.current_history_position].1
+        &self.current_document
     }
 
     fn get_current_document_mut(&mut self) -> &mut Document {
-        &mut self.history[self.current_history_position].1
+        &mut self.current_document
     }
 }
 
@@ -352,6 +355,7 @@ impl AppState {
                         .ok_or(StateError::NoDocumentOpen)?;
                     if tab.current_history_position > 0 {
                         tab.current_history_position -= 1;
+                        tab.current_document = tab.history[tab.current_history_position].1.clone();
                     }
                 }
             }
@@ -362,6 +366,7 @@ impl AppState {
                         .ok_or(StateError::NoDocumentOpen)?;
                     if tab.current_history_position < tab.history.len() - 1 {
                         tab.current_history_position += 1;
+                        tab.current_document = tab.history[tab.current_history_position].1.clone();
                     }
                 }
             }
@@ -519,8 +524,11 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_offset_drag(&mut self.transient, *o, *b)?,
             SyncCommand::EndAnimationFrameOffsetDrag => {
-                self.transient.workbench_animation_frame_drag_initial_offset = Vector2D::<i32>::zero();
-                self.transient.workbench_animation_frame_drag_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_animation_frame_drag_initial_offset =
+                    Vector2D::<i32>::zero();
+                self.transient
+                    .workbench_animation_frame_drag_initial_mouse_position =
+                    Vector2D::<f32>::zero();
                 self.transient.workbench_animation_frame_being_dragged = None;
             }
             SyncCommand::WorkbenchZoomIn => new_document
@@ -553,7 +561,8 @@ impl AppState {
                 .update_hitbox_scale(&mut self.transient, *p)?,
             SyncCommand::EndHitboxScale => {
                 self.transient.workbench_hitbox_scale_axis = ResizeAxis::N;
-                self.transient.workbench_hitbox_scale_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_hitbox_scale_initial_mouse_position =
+                    Vector2D::<f32>::zero();
                 self.transient.workbench_hitbox_scale_initial_position = Vector2D::<i32>::zero();
                 self.transient.workbench_hitbox_scale_initial_size = Vector2D::<u32>::zero();
                 self.transient.workbench_hitbox_being_scaled = None;
@@ -567,7 +576,8 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_drag(&mut self.transient, *o, *b)?,
             SyncCommand::EndHitboxDrag => {
-                self.transient.workbench_hitbox_drag_initial_mouse_position = Vector2D::<f32>::zero();
+                self.transient.workbench_hitbox_drag_initial_mouse_position =
+                    Vector2D::<f32>::zero();
                 self.transient.workbench_hitbox_drag_initial_offset = Vector2D::<i32>::zero();
                 self.transient.workbench_hitbox_being_dragged = None;
             }
@@ -646,17 +656,43 @@ impl AppState {
                 .end_rename_selection(&mut self.transient)?,
         };
 
-        let old_document = affected_document_path
-            .as_ref()
-            .and_then(|p| self.get_document(p));
+        if let Some(ref path) = affected_document_path {
+            if let Some(tab) = self.get_tab_mut(&path) {
+                if let Some(ref document) = new_document {
+                    tab.current_document = document.clone();
+                }
+            }
+        }
 
-        if new_document.as_ref() != old_document {
+        let can_undo = self.can_use_undo_system();
+        let history_state = affected_document_path
+            .as_ref()
+            .and_then(|p| self.get_tab(p))
+            .and_then(|t| {
+                if t.current_history_position < t.history.len() {
+                    Some(t.history[t.current_history_position].clone())
+                } else {
+                    None
+                }
+            });
+
+        if can_undo && command.generate_undo_steps() {
             if let Some(path) = affected_document_path {
                 if let Some(tab) = self.get_tab_mut(&path) {
                     if let Some(document) = new_document {
-                        tab.history.truncate(tab.current_history_position + 1);
-                        tab.history.push((None, document));
-                        tab.current_history_position += 1;
+                        if let Some((history_command, _)) = history_state {
+                            if command.collapse_undo_steps_with(&history_command) {
+                                tab.history[tab.current_history_position].1 = document;
+                            } else {
+                                tab.history.truncate(tab.current_history_position + 1);
+                                tab.history.push((command.clone(), document));
+                                tab.current_history_position = tab.history.len() - 1;
+                            }
+                        } else {
+                            tab.history.truncate(tab.current_history_position + 1);
+                            tab.history.push((command.clone(), document));
+                            tab.current_history_position = tab.history.len() - 1;
+                        }
                     }
                 }
             }

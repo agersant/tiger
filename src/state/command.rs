@@ -93,3 +93,57 @@ pub enum Command {
     Sync(SyncCommand),
     Async(AsyncCommand),
 }
+
+impl SyncCommand {
+    pub fn generate_undo_steps(&self) -> bool {
+        *self != SyncCommand::TogglePlayback
+    }
+
+    fn is_timeline_zoom(&self) -> bool {
+        use SyncCommand::*;
+        match self {
+            TimelineZoomIn | TimelineZoomOut | TimelineResetZoom => true,
+            _ => false,
+        }
+    }
+
+    fn is_workbench_zoom(&self) -> bool {
+        use SyncCommand::*;
+        match self {
+            WorkbenchZoomIn | WorkbenchZoomOut | WorkbenchResetZoom => true,
+            _ => false,
+        }
+    }
+
+    fn is_selection(&self) -> bool {
+        use SyncCommand::*;
+        match self {
+            SelectFrame(_) | SelectAnimation(_) | SelectAnimationFrame(_) | SelectHitbox(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_pan(&self) -> bool {
+        use SyncCommand::*;
+        match self {
+            Pan(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_timeline_scrub(&self) -> bool {
+        use SyncCommand::*;
+        match self {
+            EndScrub | SnapToNextFrame | SnapToPreviousFrame => true,
+            _ => false,
+        }
+    }
+
+    fn is_collapsable(&self) -> bool {
+        self.is_timeline_zoom() || self.is_workbench_zoom() || self.is_timeline_scrub() || self.is_selection() || self.is_pan()
+    }
+
+    pub fn collapse_undo_steps_with(&self, previous: &SyncCommand) -> bool {
+        self.is_collapsable() && previous.is_collapsable()
+    }
+}

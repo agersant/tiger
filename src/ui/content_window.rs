@@ -60,9 +60,8 @@ fn draw_frames<'a>(
         }
 
         if transient.content_frame_being_dragged.is_none()
-            && ui.is_item_hovered()
-            && ui.imgui().is_mouse_down(ImMouseButton::Left)
-            && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+            && ui.is_item_active()
+            && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
             commands.begin_frame_drag(frame);
         }
