@@ -10,8 +10,8 @@ use crate::ui::spinner::*;
 fn screen_to_workbench<'a>(ui: &Ui<'a>, screen_coords: Vector2D<f32>, tab: &Tab) -> Vector2D<f32> {
     let window_position: Vector2D<f32> = ui.get_window_pos().into();
     let window_size: Vector2D<f32> = ui.get_window_size().into();
-    let zoom = tab.state.get_workbench_zoom_factor();
-    let offset = tab.state.get_workbench_offset();
+    let zoom = tab.view.get_workbench_zoom_factor();
+    let offset = tab.view.get_workbench_offset();
     (screen_coords - offset - window_position - window_size / 2.0) / zoom
 }
 
@@ -62,8 +62,8 @@ fn draw_hitbox_controls<'a>(
     is_dragging: &mut bool,
 ) {
     let space: Vector2D<f32> = ui.get_window_size().into();
-    let zoom = tab.state.get_workbench_zoom_factor();
-    let offset = tab.state.get_workbench_offset();
+    let zoom = tab.view.get_workbench_zoom_factor();
+    let offset = tab.view.get_workbench_offset();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_shift_down = ui.imgui().key_shift();
@@ -235,8 +235,8 @@ fn draw_hitbox<'a>(
     is_selectable: bool,
     offset: Vector2D<i32>,
 ) {
-    let zoom = tab.state.get_workbench_zoom_factor();
-    let workbench_offset = tab.state.get_workbench_offset();
+    let zoom = tab.view.get_workbench_zoom_factor();
+    let workbench_offset = tab.view.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
     let cursor_pos = workbench_offset
@@ -251,7 +251,7 @@ fn draw_hitbox<'a>(
     let mouse_pos: Point2D<f32> = ui.imgui().mouse_pos().into();
 
     let is_hovered = is_selectable && hitbox_rect.contains(&mouse_pos);
-    let is_selected = *tab.state.get_selection()
+    let is_selected = *tab.view.get_selection()
         == Some(Selection::Hitbox(
             frame.get_source().to_path_buf(),
             hitbox.get_name().to_owned(),
@@ -279,8 +279,8 @@ fn draw_frame<'a>(
     tab: &Tab,
     frame: &Frame,
 ) {
-    let zoom = tab.state.get_workbench_zoom_factor();
-    let offset = tab.state.get_workbench_offset();
+    let zoom = tab.view.get_workbench_zoom_factor();
+    let offset = tab.view.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&frame.get_source()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -338,8 +338,8 @@ fn draw_animation_frame<'a>(
     animation_frame: &AnimationFrame,
     is_selected: bool,
 ) {
-    let zoom = tab.state.get_workbench_zoom_factor();
-    let offset = tab.state.get_workbench_offset();
+    let zoom = tab.view.get_workbench_zoom_factor();
+    let offset = tab.view.get_workbench_offset();
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&animation_frame.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -396,9 +396,9 @@ fn draw_animation<'a>(
     tab: &Tab,
     animation: &Animation,
 ) {
-    let now = tab.state.get_timeline_clock();
+    let now = tab.view.get_timeline_clock();
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = *tab.state.get_selection()
+        let is_selected = *tab.view.get_selection()
             == Some(Selection::AnimationFrame(
                 animation.get_name().to_owned(),
                 frame_index,
@@ -449,7 +449,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let offset = state
         .get_current_tab()
-        .map(|t| t.state.get_workbench_offset())
+        .map(|t| t.view.get_workbench_offset())
         .unwrap_or_else(Vector2D::<f32>::zero);
     let space: Vector2D<f32> = ui.get_window_size().into();
 
@@ -499,7 +499,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
 }
 
 fn draw_origin<'a>(ui: &Ui<'a>, tab: &Tab) {
-    let offset = tab.state.get_workbench_offset();
+    let offset = tab.view.get_workbench_offset();
     let size = 10.0; // TODO DPI?
     let thickness = 1.0; // TODO DPI?
 
@@ -560,7 +560,7 @@ pub fn draw<'a>(
                 draw_grid(ui, state);
 
                 if let Some(tab) = state.get_current_tab() {
-                    match tab.state.get_workbench_item() {
+                    match tab.view.get_workbench_item() {
                         Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = tab.document.get_sheet().get_frame(path) {
                                 draw_frame(ui, commands, texture_cache, tab, frame);

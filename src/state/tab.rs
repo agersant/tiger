@@ -11,14 +11,14 @@ use crate::state::*;
 struct TabHistoryEntry {
 	last_command: SyncCommand,
 	document: Document,
-	tab_state: View,
+	view: View,
 }
 
 #[derive(Clone, Debug)]
 pub struct Tab {
 	pub source: PathBuf,
 	pub document: Document,
-	pub state: View,
+	pub view: View,
 	pub transient: Transient,
 	history: Vec<TabHistoryEntry>,
 	current_history_position: usize,
@@ -30,13 +30,13 @@ impl Tab {
 		let history_entry = TabHistoryEntry {
 			last_command: SyncCommand::EndNewDocument(path.as_ref().to_owned()),
 			document: Document::new(),
-			tab_state: View::new(),
+			view: View::new(),
 		};
 		Tab {
 			source: path.as_ref().to_path_buf(),
 			history: vec![history_entry.clone()],
 			document: history_entry.document.clone(),
-			state: history_entry.tab_state.clone(),
+			view: history_entry.view.clone(),
 			transient: Transient::new(),
 			current_history_position: 0,
 			timeline_is_playing: false,
@@ -47,13 +47,13 @@ impl Tab {
 		let history_entry = TabHistoryEntry {
 			last_command: SyncCommand::EndOpenDocument(path.as_ref().to_owned()),
 			document: Document::open(&path)?,
-			tab_state: View::new(),
+			view: View::new(),
 		};
 		Ok(Tab {
 			source: path.as_ref().to_path_buf(),
 			history: vec![history_entry.clone()],
 			document: history_entry.document.clone(),
-			state: history_entry.tab_state.clone(),
+			view: history_entry.view.clone(),
 			transient: Transient::new(),
 			current_history_position: 0,
 			timeline_is_playing: false,
@@ -62,28 +62,28 @@ impl Tab {
 
 	pub fn tick(&mut self, delta: Duration) {
 		if self.timeline_is_playing {
-			self.state.timeline_clock += delta;
-			if let Some(WorkbenchItem::Animation(animation_name)) = &self.state.workbench_item {
+			self.view.timeline_clock += delta;
+			if let Some(WorkbenchItem::Animation(animation_name)) = &self.view.workbench_item {
 				if let Some(animation) = self.document.get_sheet().get_animation(animation_name) {
 					match animation.get_duration() {
 						Some(d) if d > 0 => {
-							let clock_ms = self.state.timeline_clock.as_millis();
+							let clock_ms = self.view.timeline_clock.as_millis();
 							// Loop animation
 							if animation.is_looping() {
-								self.state.timeline_clock =
+								self.view.timeline_clock =
 									Duration::from_millis((clock_ms % u128::from(d)) as u64)
 
 							// Stop playhead at the end of animation
 							} else if clock_ms >= u128::from(d) {
 								self.timeline_is_playing = false;
-								self.state.timeline_clock = Duration::from_millis(u64::from(d))
+								self.view.timeline_clock = Duration::from_millis(u64::from(d))
 							}
 						}
 
 						// Reset playhead
 						_ => {
 							self.timeline_is_playing = false;
-							self.state.timeline_clock = Duration::new(0, 0);
+							self.view.timeline_clock = Duration::new(0, 0);
 						}
 					};
 				}
@@ -109,27 +109,24 @@ impl Tab {
 		transient: Transient,
 	) {
 		self.document = document.clone();
-		self.state = view.clone();
+		self.view = view.clone();
 		self.transient = transient.clone();
 
 		if self.can_use_undo_system() {
 			let new_undo_state = TabHistoryEntry {
 				document: document,
-				tab_state: view,
+				view: view,
 				last_command: command.clone(),
 			};
 
 			if &self.history[self.current_history_position].document != &new_undo_state.document {
 				self.push_undo_state(new_undo_state);
-			} else if &self.history[self.current_history_position].tab_state
-				!= &new_undo_state.tab_state
-			{
+			} else if &self.history[self.current_history_position].view != &new_undo_state.view {
 				let merge = self.current_history_position > 0
 					&& self.history[self.current_history_position - 1].document
 						== self.history[self.current_history_position].document;
 				if merge {
-					self.history[self.current_history_position].tab_state =
-						new_undo_state.tab_state;
+					self.history[self.current_history_position].view = new_undo_state.view;
 				} else {
 					self.push_undo_state(new_undo_state);
 				}
@@ -144,9 +141,7 @@ impl Tab {
 		if self.current_history_position > 0 {
 			self.current_history_position -= 1;
 			self.document = self.history[self.current_history_position].document.clone();
-			self.state = self.history[self.current_history_position]
-				.tab_state
-				.clone();
+			self.view = self.history[self.current_history_position].view.clone();
 			self.timeline_is_playing = false;
 		}
 		Ok(())
@@ -159,16 +154,14 @@ impl Tab {
 		if self.current_history_position < self.history.len() - 1 {
 			self.current_history_position += 1;
 			self.document = self.history[self.current_history_position].document.clone();
-			self.state = self.history[self.current_history_position]
-				.tab_state
-				.clone();
+			self.view = self.history[self.current_history_position].view.clone();
 			self.timeline_is_playing = false;
 		}
 		Ok(())
 	}
 
 	fn get_workbench_animation(&self) -> Result<&Animation, Error> {
-		match &self.state.workbench_item {
+		match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(n)) => Some(
 				self.document
 					.get_sheet()
@@ -181,7 +174,7 @@ impl Tab {
 	}
 
 	fn get_workbench_animation_mut(&mut self) -> Result<&mut Animation, Error> {
-		match &self.state.workbench_item {
+		match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(n)) => Some(
 				self.document
 					.get_sheet_mut()
@@ -198,7 +191,7 @@ impl Tab {
 		if !sheet.has_frame(&path) {
 			return Err(DocumentError::FrameNotInDocument.into());
 		}
-		self.state.selection = Some(Selection::Frame(path.as_ref().to_owned()));
+		self.view.selection = Some(Selection::Frame(path.as_ref().to_owned()));
 		Ok(())
 	}
 
@@ -207,12 +200,12 @@ impl Tab {
 		if !sheet.has_animation(&name) {
 			return Err(DocumentError::AnimationNotInDocument.into());
 		}
-		self.state.selection = Some(Selection::Animation(name.as_ref().to_owned()));
+		self.view.selection = Some(Selection::Animation(name.as_ref().to_owned()));
 		Ok(())
 	}
 
 	pub fn select_hitbox<T: AsRef<str>>(&mut self, hitbox_name: T) -> Result<(), Error> {
-		let frame_path = match &self.state.workbench_item {
+		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
 			_ => None,
 		}
@@ -225,7 +218,7 @@ impl Tab {
 		let _hitbox = frame
 			.get_hitbox(&hitbox_name)
 			.ok_or(DocumentError::InvalidHitboxIndex)?;
-		self.state.selection = Some(Selection::Hitbox(
+		self.view.selection = Some(Selection::Hitbox(
 			frame_path,
 			hitbox_name.as_ref().to_owned(),
 		));
@@ -238,7 +231,7 @@ impl Tab {
 			animation.get_name().to_owned()
 		};
 
-		self.state.selection = Some(Selection::AnimationFrame(animation_name, frame_index));
+		self.view.selection = Some(Selection::AnimationFrame(animation_name, frame_index));
 
 		let animation = self.get_workbench_animation()?;
 
@@ -252,12 +245,12 @@ impl Tab {
 			.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
 		let duration = animation_frame.get_duration() as u64;
 
-		let clock = self.state.timeline_clock.as_millis() as u64;
+		let clock = self.view.timeline_clock.as_millis() as u64;
 		let is_playhead_in_frame = clock >= frame_start_time
 			&& (clock < (frame_start_time + duration)
 				|| frame_index == animation.get_num_frames() - 1);
 		if !self.timeline_is_playing && !is_playhead_in_frame {
-			self.state.timeline_clock = Duration::from_millis(frame_start_time);
+			self.view.timeline_clock = Duration::from_millis(frame_start_time);
 		}
 
 		Ok(())
@@ -267,7 +260,7 @@ impl Tab {
 	where
 		F: Fn(usize) -> usize,
 	{
-		match &self.state.selection {
+		match &self.view.selection {
 			Some(Selection::Frame(p)) => {
 				let mut frames: Vec<&Frame> = self.document.get_sheet().frames_iter().collect();
 				frames.sort_unstable();
@@ -276,7 +269,7 @@ impl Tab {
 					.position(|f| f.get_source() == p)
 					.ok_or(DocumentError::FrameNotInDocument)?;
 				if let Some(f) = frames.get(advance(current_index)) {
-					self.state.selection = Some(Selection::Frame(f.get_source().to_owned()));
+					self.view.selection = Some(Selection::Frame(f.get_source().to_owned()));
 				}
 			}
 			Some(Selection::Animation(n)) => {
@@ -288,7 +281,7 @@ impl Tab {
 					.position(|a| a.get_name() == n)
 					.ok_or(DocumentError::AnimationNotInDocument)?;
 				if let Some(n) = animations.get(advance(current_index)) {
-					self.state.selection = Some(Selection::Animation(n.get_name().to_owned()));
+					self.view.selection = Some(Selection::Animation(n.get_name().to_owned()));
 				}
 			}
 			Some(Selection::Hitbox(p, n)) => {
@@ -305,7 +298,7 @@ impl Tab {
 					.position(|h| h.get_name() == n)
 					.ok_or(DocumentError::InvalidHitboxIndex)?;
 				if let Some(h) = hitboxes.get(advance(current_index)) {
-					self.state.selection =
+					self.view.selection =
 						Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
 				}
 			}
@@ -327,8 +320,8 @@ impl Tab {
 		if !sheet.has_frame(&path) {
 			return Err(DocumentError::FrameNotInDocument.into());
 		}
-		self.state.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
-		self.state.workbench_offset = Vector2D::zero();
+		self.view.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
+		self.view.workbench_offset = Vector2D::zero();
 		Ok(())
 	}
 
@@ -337,9 +330,9 @@ impl Tab {
 		if !sheet.has_animation(&name) {
 			return Err(DocumentError::AnimationNotInDocument.into());
 		}
-		self.state.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
-		self.state.workbench_offset = Vector2D::zero();
-		self.state.timeline_clock = Duration::new(0, 0);
+		self.view.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
+		self.view.workbench_offset = Vector2D::zero();
+		self.view.timeline_clock = Duration::new(0, 0);
 		self.timeline_is_playing = false;
 		Ok(())
 	}
@@ -397,7 +390,7 @@ impl Tab {
 		frame: T,
 		next_frame_index: usize,
 	) -> Result<(), Error> {
-		let animation_name = match &self.state.workbench_item {
+		let animation_name = match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
@@ -419,7 +412,7 @@ impl Tab {
 			return Ok(());
 		}
 
-		let animation_name = match &self.state.workbench_item {
+		let animation_name = match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
@@ -431,17 +424,17 @@ impl Tab {
 			.ok_or(DocumentError::AnimationNotInDocument)?
 			.reorder_frame(old_index, new_index)?;
 
-		match self.state.selection {
+		match self.view.selection {
 			Some(Selection::AnimationFrame(ref n, i)) if n == &animation_name => {
 				if i == old_index {
-					self.state.selection = Some(Selection::AnimationFrame(
+					self.view.selection = Some(Selection::AnimationFrame(
 						n.clone(),
 						new_index - if old_index < new_index { 1 } else { 0 },
 					));
 				} else if i > old_index && i < new_index {
-					self.state.selection = Some(Selection::AnimationFrame(n.clone(), i - 1));
+					self.view.selection = Some(Selection::AnimationFrame(n.clone(), i - 1));
 				} else if i >= new_index && i < old_index {
-					self.state.selection = Some(Selection::AnimationFrame(n.clone(), i + 1));
+					self.view.selection = Some(Selection::AnimationFrame(n.clone(), i + 1));
 				}
 			}
 			_ => (),
@@ -452,7 +445,7 @@ impl Tab {
 
 	pub fn begin_animation_frame_duration_drag(&mut self, index: usize) -> Result<(), Error> {
 		let old_duration = {
-			let animation_name = match &self.state.workbench_item {
+			let animation_name = match &self.view.workbench_item {
 				Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 				_ => None,
 			}
@@ -473,14 +466,14 @@ impl Tab {
 
 		self.transient.timeline_frame_being_scaled = Some(index);
 		self.transient.timeline_frame_scale_initial_duration = old_duration;
-		self.transient.timeline_frame_scale_initial_clock = self.state.timeline_clock;
+		self.transient.timeline_frame_scale_initial_clock = self.view.timeline_clock;
 
 		Ok(())
 	}
 
 	pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
 		let frame_start_time = {
-			let animation_name = match &self.state.workbench_item {
+			let animation_name = match &self.view.workbench_item {
 				Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 				_ => None,
 			}
@@ -517,7 +510,7 @@ impl Tab {
 				.as_millis();
 			let initial_duration = self.transient.timeline_frame_scale_initial_duration as u128;
 			if initial_clock >= frame_start_time as u128 + initial_duration {
-				self.state.timeline_clock = Duration::from_millis(
+				self.view.timeline_clock = Duration::from_millis(
 					initial_clock as u64 + new_duration as u64 - initial_duration as u64,
 				);
 			}
@@ -536,7 +529,7 @@ impl Tab {
 		&mut self,
 		animation_frame_index: usize,
 	) -> Result<(), Error> {
-		let animation_name = match &self.state.workbench_item {
+		let animation_name = match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
@@ -558,7 +551,7 @@ impl Tab {
 		index: usize,
 		mouse_position: Vector2D<f32>,
 	) -> Result<(), Error> {
-		let animation_name = match &self.state.workbench_item {
+		let animation_name = match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
@@ -589,8 +582,8 @@ impl Tab {
 		mouse_position: Vector2D<f32>,
 		both_axis: bool,
 	) -> Result<(), Error> {
-		let zoom = self.state.get_workbench_zoom_factor();
-		let animation_name = match &self.state.workbench_item {
+		let zoom = self.view.get_workbench_zoom_factor();
+		let animation_name = match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
@@ -636,7 +629,7 @@ impl Tab {
 
 	pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
 		let hitbox_name = {
-			let frame_path = match &self.state.workbench_item {
+			let frame_path = match &self.view.workbench_item {
 				Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 				_ => None,
 			}
@@ -662,7 +655,7 @@ impl Tab {
 		axis: ResizeAxis,
 		mouse_position: Vector2D<f32>,
 	) -> Result<(), Error> {
-		let frame_path = match self.state.get_workbench_item() {
+		let frame_path = match self.view.get_workbench_item() {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
@@ -694,7 +687,7 @@ impl Tab {
 	}
 
 	pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
-		let frame_path = match &self.state.workbench_item {
+		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
@@ -782,7 +775,7 @@ impl Tab {
 		hitbox_name: T,
 		mouse_position: Vector2D<f32>,
 	) -> Result<(), Error> {
-		let frame_path = match &self.state.workbench_item {
+		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
@@ -814,9 +807,9 @@ impl Tab {
 		mouse_position: Vector2D<f32>,
 		both_axis: bool,
 	) -> Result<(), Error> {
-		let zoom = self.state.get_workbench_zoom_factor();
+		let zoom = self.view.get_workbench_zoom_factor();
 
-		let frame_path = match &self.state.workbench_item {
+		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
 			_ => None,
 		}
@@ -862,7 +855,7 @@ impl Tab {
 	}
 
 	pub fn toggle_playback(&mut self) -> Result<(), Error> {
-		let mut new_timeline_clock = self.state.timeline_clock;
+		let mut new_timeline_clock = self.view.timeline_clock;
 		{
 			let animation = self.get_workbench_animation()?;
 
@@ -870,7 +863,7 @@ impl Tab {
 				if let Some(d) = animation.get_duration() {
 					if d > 0
 						&& !animation.is_looping()
-						&& self.state.timeline_clock.as_millis() >= u128::from(d)
+						&& self.view.timeline_clock.as_millis() >= u128::from(d)
 					{
 						new_timeline_clock = Duration::new(0, 0);
 					}
@@ -879,7 +872,7 @@ impl Tab {
 		}
 
 		self.timeline_is_playing = !self.timeline_is_playing;
-		self.state.timeline_clock = new_timeline_clock;
+		self.view.timeline_clock = new_timeline_clock;
 
 		Ok(())
 	}
@@ -893,7 +886,7 @@ impl Tab {
 			}
 
 			let mut cursor = 0 as u64;
-			let now = self.state.timeline_clock.as_millis() as u64;
+			let now = self.view.timeline_clock.as_millis() as u64;
 			let frame_times: Vec<u64> = animation
 				.frames_iter()
 				.map(|f| {
@@ -924,7 +917,7 @@ impl Tab {
 			}
 
 			let mut cursor = 0 as u64;
-			let now = self.state.timeline_clock.as_millis() as u64;
+			let now = self.view.timeline_clock.as_millis() as u64;
 			let frame_times: Vec<u64> = animation
 				.frames_iter()
 				.map(|f| {
@@ -958,14 +951,14 @@ impl Tab {
 			.get_frame_at(new_time)
 			.ok_or(DocumentError::NoAnimationFrameForThisTime)?;
 		self.select_animation_frame(index)?;
-		self.state.timeline_clock = new_time;
+		self.view.timeline_clock = new_time;
 		Ok(())
 	}
 
 	pub fn nudge_selection(&mut self, direction: Vector2D<i32>, large: bool) -> Result<(), Error> {
 		let amplitude = if large { 10 } else { 1 };
 		let offset = direction * amplitude;
-		match &self.state.selection {
+		match &self.view.selection {
 			Some(Selection::Animation(_)) => {}
 			Some(Selection::Frame(_)) => {}
 			Some(Selection::Hitbox(f, h)) => {
@@ -994,7 +987,7 @@ impl Tab {
 	}
 
 	pub fn delete_selection(&mut self) {
-		match &self.state.selection {
+		match &self.view.selection {
 			Some(Selection::Animation(a)) => {
 				self.document.get_sheet_mut().delete_animation(&a);
 				if self.transient.item_being_renamed == Some(RenameItem::Animation(a.clone())) {
@@ -1010,7 +1003,7 @@ impl Tab {
 			}
 			Some(Selection::Hitbox(f, h)) => {
 				self.document.get_sheet_mut().delete_hitbox(&f, &h);
-				if self.state.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
+				if self.view.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
 					if self.transient.workbench_hitbox_being_dragged == Some(h.to_owned()) {
 						self.transient.workbench_hitbox_being_dragged = None;
 					}
@@ -1021,7 +1014,7 @@ impl Tab {
 			}
 			Some(Selection::AnimationFrame(a, af)) => {
 				self.document.get_sheet_mut().delete_animation_frame(a, *af);
-				if self.state.workbench_item == Some(WorkbenchItem::Animation(a.clone()))
+				if self.view.workbench_item == Some(WorkbenchItem::Animation(a.clone()))
 					&& self.transient.workbench_animation_frame_being_dragged == Some(*af)
 				{
 					self.transient.workbench_animation_frame_being_dragged = None;
@@ -1029,11 +1022,11 @@ impl Tab {
 			}
 			None => {}
 		};
-		self.state.selection = None;
+		self.view.selection = None;
 	}
 
 	pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
-		match &self.state.selection {
+		match &self.view.selection {
 			Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
 			Some(Selection::Hitbox(f, h)) => self.begin_hitbox_rename(f.clone(), h.clone())?,
 			Some(Selection::Frame(_f)) => (),
@@ -1059,13 +1052,12 @@ impl Tab {
 					self.document
 						.get_sheet_mut()
 						.rename_animation(&old_name, &new_name)?;
-					if Some(Selection::Animation(old_name.clone())) == self.state.selection {
-						self.state.selection = Some(Selection::Animation(new_name.clone()));
+					if Some(Selection::Animation(old_name.clone())) == self.view.selection {
+						self.view.selection = Some(Selection::Animation(new_name.clone()));
 					}
-					if Some(WorkbenchItem::Animation(old_name.clone())) == self.state.workbench_item
+					if Some(WorkbenchItem::Animation(old_name.clone())) == self.view.workbench_item
 					{
-						self.state.workbench_item =
-							Some(WorkbenchItem::Animation(new_name.clone()));
+						self.view.workbench_item = Some(WorkbenchItem::Animation(new_name.clone()));
 					}
 				}
 			}
@@ -1086,9 +1078,9 @@ impl Tab {
 						.ok_or(DocumentError::FrameNotInDocument)?
 						.rename_hitbox(&old_name, &new_name)?;
 					if Some(Selection::Hitbox(frame_path.clone(), old_name.clone()))
-						== self.state.selection
+						== self.view.selection
 					{
-						self.state.selection =
+						self.view.selection =
 							Some(Selection::Hitbox(frame_path.clone(), new_name.clone()));
 					}
 				}

@@ -246,7 +246,7 @@ impl AppState {
             SyncCommand::SwitchToContentTab(t) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .switch_to_content_tab(*t),
             SyncCommand::SelectFrame(p) => tab
                 .as_mut()
@@ -339,22 +339,22 @@ impl AppState {
             SyncCommand::WorkbenchZoomIn => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .workbench_zoom_in(),
             SyncCommand::WorkbenchZoomOut => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .workbench_zoom_out(),
             SyncCommand::WorkbenchResetZoom => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .workbench_reset_zoom(),
             SyncCommand::Pan(delta) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .pan(*delta),
             SyncCommand::CreateHitbox(p) => tab
                 .as_mut()
@@ -403,17 +403,17 @@ impl AppState {
             SyncCommand::TimelineZoomIn => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .timeline_zoom_in(),
             SyncCommand::TimelineZoomOut => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .timeline_zoom_out(),
             SyncCommand::TimelineResetZoom => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
-                .state
+                .view
                 .timeline_reset_zoom(),
             SyncCommand::BeginScrub => {
                 tab.as_mut()
@@ -458,7 +458,7 @@ impl AppState {
         if *command != SyncCommand::Undo && *command != SyncCommand::Redo {
             if let Some(tab) = tab {
                 if let Some(persistent_tab) = self.get_tab_mut(&tab.source) {
-                    persistent_tab.record_command(command, tab.document, tab.state, tab.transient);
+                    persistent_tab.record_command(command, tab.document, tab.view, tab.transient);
                 }
             }
         }

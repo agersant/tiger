@@ -34,7 +34,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
         .collect();
     frames.sort_unstable();
     for (name, frame) in frames.iter() {
-        let is_selected = match tab.state.get_selection() {
+        let is_selected = match tab.view.get_selection() {
             Some(Selection::Frame(p)) => p == frame.get_source(),
             _ => false,
         };
@@ -70,7 +70,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
     let mut animations: Vec<&Animation> = tab.document.get_sheet().animations_iter().collect();
     animations.sort_unstable();
     for animation in animations.iter() {
-        let is_selected = match tab.state.get_selection() {
+        let is_selected = match tab.view.get_selection() {
             Some(Selection::Animation(a)) => a == animation.get_name(),
             _ => false,
         };
@@ -104,7 +104,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
                 if let Some(tab) = state.get_current_tab() {
                     draw_tabs(ui, commands);
                     ui.separator();
-                    match tab.state.get_content_tab() {
+                    match tab.view.get_content_tab() {
                         ContentTab::Frames => draw_frames(ui, commands, tab),
                         ContentTab::Animations => draw_animations(ui, commands, tab),
                     }

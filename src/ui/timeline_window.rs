@@ -7,7 +7,7 @@ use crate::state::*;
 use crate::ui::Rect;
 
 fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
-    let zoom = tab.state.get_timeline_zoom_factor();
+    let zoom = tab.view.get_timeline_zoom_factor();
     let h = 8.0; // TODO DPI?
     let padding = 4.0; // TODO DPI?
 
@@ -86,7 +86,7 @@ fn get_frame_location(
     frame_starts_at: Duration,
     animation_frame: &AnimationFrame,
 ) -> FrameLocation {
-    let zoom = tab.state.get_timeline_zoom_factor();
+    let zoom = tab.view.get_timeline_zoom_factor();
     let w = (animation_frame.get_duration() as f32 * zoom).ceil();
     let h = 20.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
@@ -106,7 +106,7 @@ fn draw_animation_frame<'a>(
     frame_starts_at: Duration,
 ) {
     let animation_frame_location = get_frame_location(tab, frame_starts_at, animation_frame);
-    let zoom = tab.state.get_timeline_zoom_factor();
+    let zoom = tab.view.get_timeline_zoom_factor();
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
@@ -127,7 +127,7 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = tab.state.get_selection()
+    let is_selected = tab.view.get_selection()
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
             animation_frame_index,
@@ -261,12 +261,12 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, tab: &Tab, animation: &Animation) {
     let duration = animation.get_duration().unwrap_or(0);
 
     let now_ms = {
-        let now = tab.state.get_timeline_clock();
+        let now = tab.view.get_timeline_clock();
         let ms = now.as_millis();
         std::cmp::min(ms, duration.into()) as u32
     };
 
-    let zoom = tab.state.get_timeline_zoom_factor();
+    let zoom = tab.view.get_timeline_zoom_factor();
     let draw_list = ui.get_window_draw_list();
 
     let mut cursor_pos = ui.get_cursor_screen_pos();
@@ -392,7 +392,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .build(|| {
                 if let Some(tab) = state.get_current_tab() {
                     if let Some(WorkbenchItem::Animation(animation_name)) =
-                        tab.state.get_workbench_item()
+                        tab.view.get_workbench_item()
                     {
                         if let Some(animation) =
                             tab.document.get_sheet().get_animation(animation_name)
