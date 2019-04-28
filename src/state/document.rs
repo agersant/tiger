@@ -2,12 +2,10 @@ use failure::Error;
 use std::path::Path;
 
 use crate::sheet::*;
-use crate::state::*;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Document {
     sheet: Sheet,
-    export_settings: Option<ExportSettings>,
 }
 
 impl Document {
@@ -39,77 +37,5 @@ impl Document {
 
     pub fn import<T: AsRef<Path>>(&mut self, path: T) {
         self.sheet.add_frame(path);
-    }
-
-    pub fn get_export_settings(&self) -> &Option<ExportSettings> {
-        &self.export_settings
-    }
-
-    pub fn begin_export_as(&mut self) {
-        self.export_settings = self
-            .get_sheet()
-            .get_export_settings()
-            .as_ref()
-            .cloned()
-            .or_else(|| Some(ExportSettings::new()));
-    }
-
-    pub fn cancel_export_as(&mut self) {
-        self.export_settings = None;
-    }
-
-    pub fn end_set_export_texture_destination<T: AsRef<Path>>(
-        &mut self,
-        texture_destination: T,
-    ) -> Result<(), Error> {
-        let export_settings = &mut self
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.texture_destination = texture_destination.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    pub fn end_set_export_metadata_destination<T: AsRef<Path>>(
-        &mut self,
-        metadata_destination: T,
-    ) -> Result<(), Error> {
-        let export_settings = &mut self
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.metadata_destination = metadata_destination.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    pub fn end_set_export_metadata_paths_root<T: AsRef<Path>>(
-        &mut self,
-        metadata_paths_root: T,
-    ) -> Result<(), Error> {
-        let export_settings = &mut self
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.metadata_paths_root = metadata_paths_root.as_ref().to_path_buf();
-        Ok(())
-    }
-
-    pub fn end_set_export_format(&mut self, format: ExportFormat) -> Result<(), Error> {
-        let export_settings = &mut self
-            .export_settings
-            .as_mut()
-            .ok_or(StateError::NotExporting)?;
-        export_settings.format = format;
-        Ok(())
-    }
-
-    pub fn end_export_as(&mut self) -> Result<(), Error> {
-        let export_settings = self
-            .export_settings
-            .take()
-            .ok_or(StateError::NotExporting)?;
-        self.get_sheet_mut()
-            .set_export_settings(export_settings.clone());
-        Ok(())
     }
 }

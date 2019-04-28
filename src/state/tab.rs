@@ -20,6 +20,7 @@ pub struct Tab {
 	pub document: Document,
 	pub view: View,
 	pub transient: Transient,
+	pub export_settings_edit: Option<ExportSettings>,
 	history: Vec<TabHistoryEntry>,
 	history_index: usize,
 	timeline_is_playing: bool,
@@ -36,6 +37,7 @@ impl Tab {
 			transient: Default::default(),
 			history_index: 0,
 			timeline_is_playing: false,
+			export_settings_edit: None,
 		}
 	}
 
@@ -87,21 +89,16 @@ impl Tab {
 		self.transient == Default::default()
 	}
 
-	fn record_command(
-		&mut self,
-		command: &TabCommand,
-		document: Document,
-		view: View,
-		transient: Transient,
-	) {
-		self.document = document.clone();
-		self.view = view.clone();
-		self.transient = transient.clone();
+	fn record_command(&mut self, command: &TabCommand, new_tab: Tab) {
+		self.document = new_tab.document.clone();
+		self.view = new_tab.view.clone();
+		self.transient = new_tab.transient.clone();
+		self.export_settings_edit = new_tab.export_settings_edit.clone();
 
 		if self.can_use_undo_system() {
 			let new_undo_state = TabHistoryEntry {
-				document: document,
-				view: view,
+				document: new_tab.document,
+				view: new_tab.view,
 				last_command: Some(command.clone()),
 			};
 
@@ -1080,6 +1077,67 @@ impl Tab {
 		Ok(())
 	}
 
+	fn get_export_settings_edit_mut(&mut self) -> Result<&mut ExportSettings, Error> {
+		self.export_settings_edit
+			.as_mut()
+			.ok_or(StateError::NotExporting.into())
+	}
+
+	fn begin_export_as(&mut self) {
+		self.export_settings_edit = self
+			.document
+			.get_sheet()
+			.get_export_settings()
+			.as_ref()
+			.cloned()
+			.or_else(|| Some(ExportSettings::new()));
+	}
+
+	fn cancel_export_as(&mut self) {
+		self.export_settings_edit = None;
+	}
+
+	fn end_set_export_texture_destination<T: AsRef<Path>>(
+		&mut self,
+		texture_destination: T,
+	) -> Result<(), Error> {
+		self.get_export_settings_edit_mut()?.texture_destination =
+			texture_destination.as_ref().to_path_buf();
+		Ok(())
+	}
+
+	fn end_set_export_metadata_destination<T: AsRef<Path>>(
+		&mut self,
+		metadata_destination: T,
+	) -> Result<(), Error> {
+		self.get_export_settings_edit_mut()?.metadata_destination =
+			metadata_destination.as_ref().to_path_buf();
+		Ok(())
+	}
+
+	fn end_set_export_metadata_paths_root<T: AsRef<Path>>(
+		&mut self,
+		metadata_paths_root: T,
+	) -> Result<(), Error> {
+		self.get_export_settings_edit_mut()?.metadata_paths_root =
+			metadata_paths_root.as_ref().to_path_buf();
+		Ok(())
+	}
+
+	fn end_set_export_format(&mut self, format: ExportFormat) -> Result<(), Error> {
+		self.get_export_settings_edit_mut()?.format = format;
+		Ok(())
+	}
+
+	fn end_export_as(&mut self) -> Result<(), Error> {
+		let export_settings = self.get_export_settings_edit_mut()?.clone();
+		self.document
+			.get_sheet_mut()
+			.set_export_settings(export_settings);
+		self.export_settings_edit = None;
+		Ok(())
+	}
+
 	pub fn process_command(&mut self, command: &TabCommand) -> Result<(), Error> {
 		use TabCommand::*;
 
@@ -1087,19 +1145,17 @@ impl Tab {
 
 		match command {
 			EndImport(_, f) => new_tab.document.import(f),
-			BeginExportAs => new_tab.document.begin_export_as(),
-			CancelExportAs => new_tab.document.cancel_export_as(),
+			BeginExportAs => new_tab.begin_export_as(),
+			CancelExportAs => new_tab.cancel_export_as(),
 			EndSetExportTextureDestination(_, d) => {
-				new_tab.document.end_set_export_texture_destination(d)?
+				new_tab.end_set_export_texture_destination(d)?
 			}
 			EndSetExportMetadataDestination(_, d) => {
-				new_tab.document.end_set_export_metadata_destination(d)?
+				new_tab.end_set_export_metadata_destination(d)?
 			}
-			EndSetExportMetadataPathsRoot(_, d) => {
-				new_tab.document.end_set_export_metadata_paths_root(d)?
-			}
-			EndSetExportFormat(_, f) => new_tab.document.end_set_export_format(f.clone())?,
-			EndExportAs => new_tab.document.end_export_as()?,
+			EndSetExportMetadataPathsRoot(_, d) => new_tab.end_set_export_metadata_paths_root(d)?,
+			EndSetExportFormat(_, f) => new_tab.end_set_export_format(f.clone())?,
+			EndExportAs => new_tab.end_export_as()?,
 			SwitchToContentTab(t) => new_tab.view.switch_to_content_tab(*t),
 			SelectFrame(p) => new_tab.select_frame(&p)?,
 			SelectAnimation(a) => new_tab.select_animation(&a)?,
@@ -1158,7 +1214,7 @@ impl Tab {
 			EndRenameSelection => new_tab.end_rename_selection()?,
 		};
 
-		self.record_command(command, new_tab.document, new_tab.view, new_tab.transient);
+		self.record_command(command, new_tab);
 
 		Ok(())
 	}

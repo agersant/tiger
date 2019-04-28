@@ -412,10 +412,10 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
 
 fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(tab) = app_state.get_current_tab() {
-        if let Some(settings) = tab.document.get_export_settings() {
+        if let Some(settings) = &tab.export_settings_edit {
             let popup_id = im_str!("Export Options");
-            ui.popup_modal(&popup_id)
-                .title_bar(true)
+            ui.window(&popup_id)
+                .collapsible(false)
                 .resizable(true)
                 .always_auto_resize(true)
                 .build(|| {
