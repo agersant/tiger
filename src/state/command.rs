@@ -2,21 +2,21 @@ use euclid::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::sheet::ExportFormat;
+use crate::sheet::*;
 use crate::state::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
-    Save(PathBuf, Document),
-    SaveAs(PathBuf, Document),
+    Save(PathBuf, Sheet),
+    SaveAs(PathBuf, Sheet),
     BeginSetExportTextureDestination(PathBuf),
     BeginSetExportMetadataDestination(PathBuf),
     BeginSetExportMetadataPathsRoot(PathBuf),
     BeginSetExportFormat(PathBuf),
     BeginImport(PathBuf),
-    Export(Document),
+    Export(Sheet),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +33,7 @@ pub enum AppCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TabCommand {
+pub enum DocumentCommand {
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
     EndSetExportMetadataDestination(PathBuf, PathBuf),
@@ -95,7 +95,7 @@ pub enum TabCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyncCommand {
     App(AppCommand),
-    Tab(TabCommand),
+    Document(DocumentCommand),
 }
 
 #[derive(Debug, Clone, PartialEq)]

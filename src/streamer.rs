@@ -33,8 +33,8 @@ pub fn load_from_disk(
 ) {
     // List textures we want loaded
     let mut desired_textures = HashSet::new();
-    for tab in app_state.tabs_iter() {
-        for frame in tab.document.get_sheet().frames_iter() {
+    for document in app_state.documents_iter() {
+        for frame in document.sheet.frames_iter() {
             desired_textures.insert(frame.get_source().to_owned());
         }
     }

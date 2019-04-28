@@ -164,7 +164,7 @@ fn draw_main_menu<'a>(
     commands: &mut CommandBuffer,
 ) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
-    let has_document = app_state.get_current_tab().is_some();
+    let has_document = app_state.get_current_document().is_some();
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.main_menu_bar(|| {
@@ -190,8 +190,8 @@ fn draw_main_menu<'a>(
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = app_state.get_current_tab() {
-                        commands.save(&tab.source, &tab.document);
+                    if let Some(document) = app_state.get_current_document() {
+                        commands.save(&document.source, &document.sheet);
                     }
                 }
                 if ui
@@ -200,8 +200,8 @@ fn draw_main_menu<'a>(
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = app_state.get_current_tab() {
-                        commands.save_as(&tab.source, &tab.document);
+                    if let Some(document) = app_state.get_current_document() {
+                        commands.save_as(&document.source, &document.sheet);
                     }
                 }
                 if ui
@@ -218,8 +218,8 @@ fn draw_main_menu<'a>(
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = app_state.get_current_tab() {
-                        commands.export(&tab.document);
+                    if let Some(document) = app_state.get_current_document() {
+                        commands.export(&document.sheet);
                     }
                 }
                 if ui
@@ -339,9 +339,9 @@ fn draw_documents_window<'a>(
             .menu_bar(false)
             .movable(false)
             .build(|| {
-                for tab in app_state.tabs_iter() {
-                    if ui.small_button(&ImString::new(tab.source.to_string_lossy())) {
-                        commands.focus_tab(tab);
+                for document in app_state.documents_iter() {
+                    if ui.small_button(&ImString::new(document.source.to_string_lossy())) {
+                        commands.focus_document(document);
                     }
                     ui.same_line(0.0);
                 }
@@ -353,31 +353,31 @@ fn draw_documents_window<'a>(
 }
 
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = app_state.get_current_tab() {
+    if let Some(document) = app_state.get_current_document() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-            if tab.transient.content_frame_being_dragged.is_some() {
+            if document.transient.content_frame_being_dragged.is_some() {
                 commands.end_frame_drag();
             }
-            if tab.transient.timeline_frame_being_scaled.is_some() {
+            if document.transient.timeline_frame_being_scaled.is_some() {
                 commands.end_animation_frame_duration_drag();
             }
-            if tab.transient.timeline_frame_being_dragged.is_some() {
+            if document.transient.timeline_frame_being_dragged.is_some() {
                 commands.end_animation_frame_drag();
             }
-            if tab
+            if document
                 .transient
                 .workbench_animation_frame_being_dragged
                 .is_some()
             {
                 commands.end_animation_frame_offset_drag();
             }
-            if tab.transient.workbench_hitbox_being_dragged.is_some() {
+            if document.transient.workbench_hitbox_being_dragged.is_some() {
                 commands.end_hitbox_drag();
             }
-            if tab.transient.workbench_hitbox_being_scaled.is_some() {
+            if document.transient.workbench_hitbox_being_scaled.is_some() {
                 commands.end_hitbox_scale();
             }
-            if tab.transient.timeline_scrubbing {
+            if document.transient.timeline_scrubbing {
                 commands.end_scrub();
             }
         }
@@ -385,8 +385,8 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
 }
 
 fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &TextureCache) {
-    if let Some(tab) = app_state.get_current_tab() {
-        if let Some(ref path) = tab.transient.content_frame_being_dragged {
+    if let Some(document) = app_state.get_current_document() {
+        if let Some(ref path) = document.transient.content_frame_being_dragged {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
                 ui.tooltip(|| {
                     let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
@@ -411,8 +411,8 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
 }
 
 fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = app_state.get_current_tab() {
-        if let Some(settings) = &tab.export_settings_edit {
+    if let Some(document) = app_state.get_current_document() {
+        if let Some(settings) = &document.export_settings_edit {
             let popup_id = im_str!("Export Options");
             ui.window(&popup_id)
                 .collapsible(false)
@@ -428,7 +428,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         ui.same_line(0.0);
 
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_texture_destination(tab);
+                            commands.begin_set_export_texture_destination(document);
                         }
                         ui.pop_id();
                     }
@@ -443,7 +443,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_metadata_destination(tab);
+                            commands.begin_set_export_metadata_destination(document);
                         }
                         ui.pop_id();
                     }
@@ -456,7 +456,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         );
                         ui.same_line(0.0);
                         if ui.small_button(im_str!("Browse…")) {
-                            commands.begin_set_export_metadata_paths_root(tab);
+                            commands.begin_set_export_metadata_paths_root(document);
                         }
                         ui.pop_id();
                     }
@@ -471,7 +471,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                                 );
                                 ui.same_line(0.0);
                                 if ui.small_button(im_str!("Browse…")) {
-                                    commands.begin_set_export_format(tab);
+                                    commands.begin_set_export_format(document);
                                 }
                             }
                         };
@@ -480,7 +480,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 
                     // TODO grey out and disable if bad settings
                     if ui.small_button(im_str!("Ok")) {
-                        commands.end_export_as(&tab.document);
+                        commands.end_export_as(&document.sheet);
                     }
                     ui.same_line(0.0);
                     if ui.small_button(im_str!("Cancel")) {
@@ -493,8 +493,8 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 }
 
 fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = app_state.get_current_tab() {
-        let max_length = match tab.transient.item_being_renamed {
+    if let Some(document) = app_state.get_current_document() {
+        let max_length = match document.transient.item_being_renamed {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
             Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
             None => return,
@@ -508,7 +508,7 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
             .always_auto_resize(true)
             .build(|| {
                 let mut s = ImString::with_capacity(max_length);
-                if let Some(current) = &tab.transient.rename_buffer {
+                if let Some(current) = &document.transient.rename_buffer {
                     s.push_str(current);
                 };
                 let end_rename = ui
@@ -587,20 +587,20 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
-                if let Some(tab) = app_state.get_current_tab() {
-                    commands.save_as(&tab.source, &tab.document);
+                if let Some(document) = app_state.get_current_document() {
+                    commands.save_as(&document.source, &document.sheet);
                 }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
-            } else if let Some(tab) = app_state.get_current_tab() {
-                commands.save(&tab.source, &tab.document);
+            } else if let Some(document) = app_state.get_current_document() {
+                commands.save(&document.source, &document.sheet);
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
             if ui.imgui().key_shift() {
                 commands.begin_export_as();
-            } else if let Some(tab) = app_state.get_current_tab() {
-                commands.export(&tab.document);
+            } else if let Some(document) = app_state.get_current_document() {
+                commands.export(&document.sheet);
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::W as _) {

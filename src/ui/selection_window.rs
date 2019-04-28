@@ -154,27 +154,27 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
             .resizable(false)
             .movable(false)
             .build(|| {
-                if let Some(tab) = app_state.get_current_tab() {
-                    match tab.view.get_selection() {
+                if let Some(document) = app_state.get_current_document() {
+                    match document.view.get_selection() {
                         Some(Selection::Frame(path)) => {
-                            if let Some(frame) = tab.document.get_sheet().get_frame(path) {
+                            if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
                         Some(Selection::Animation(name)) => {
-                            if let Some(animation) = tab.document.get_sheet().get_animation(name) {
+                            if let Some(animation) = document.sheet.get_animation(name) {
                                 draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
                         Some(Selection::AnimationFrame(name, index)) => {
-                            if let Some(animation) = tab.document.get_sheet().get_animation(name) {
+                            if let Some(animation) = document.sheet.get_animation(name) {
                                 if let Some(animation_frame) = animation.get_frame(*index) {
                                     draw_animation_frame(ui, texture_cache, animation_frame);
                                 }
                             }
                         }
                         Some(Selection::Hitbox(path, name)) => {
-                            if let Some(frame) = tab.document.get_sheet().get_frame(path) {
+                            if let Some(frame) = document.sheet.get_frame(path) {
                                 if let Some(hitbox) = frame.get_hitbox(name) {
                                     draw_hitbox(ui, hitbox);
                                 }

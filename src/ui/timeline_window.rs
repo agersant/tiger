@@ -6,8 +6,8 @@ use crate::sheet::{Animation, AnimationFrame};
 use crate::state::*;
 use crate::ui::Rect;
 
-fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
-    let zoom = tab.view.get_timeline_zoom_factor();
+fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Document) {
+    let zoom = document.view.get_timeline_zoom_factor();
     let h = 8.0; // TODO DPI?
     let padding = 4.0; // TODO DPI?
 
@@ -49,7 +49,7 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab)
     {
         commands.begin_scrub();
     }
-    let is_scrubbing = tab.transient.timeline_scrubbing;
+    let is_scrubbing = document.transient.timeline_scrubbing;
     if clicked || is_scrubbing {
         let mouse_pos = ui.imgui().mouse_pos();
         let delta = mouse_pos.0 - cursor_start.0;
@@ -82,11 +82,11 @@ struct FrameLocation {
 }
 
 fn get_frame_location(
-    tab: &Tab,
+    document: &Document,
     frame_starts_at: Duration,
     animation_frame: &AnimationFrame,
 ) -> FrameLocation {
-    let zoom = tab.view.get_timeline_zoom_factor();
+    let zoom = document.view.get_timeline_zoom_factor();
     let w = (animation_frame.get_duration() as f32 * zoom).ceil();
     let h = 20.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
@@ -99,14 +99,14 @@ fn get_frame_location(
 fn draw_animation_frame<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
-    tab: &Tab,
+    document: &Document,
     animation: &Animation,
     animation_frame_index: usize,
     animation_frame: &AnimationFrame,
     frame_starts_at: Duration,
 ) {
-    let animation_frame_location = get_frame_location(tab, frame_starts_at, animation_frame);
-    let zoom = tab.view.get_timeline_zoom_factor();
+    let animation_frame_location = get_frame_location(document, frame_starts_at, animation_frame);
+    let zoom = document.view.get_timeline_zoom_factor();
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
@@ -127,7 +127,7 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = tab.view.get_selection()
+    let is_selected = document.view.get_selection()
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
             animation_frame_index,
@@ -198,7 +198,7 @@ fn draw_animation_frame<'a>(
     }
 
     // Drag and drop interactions
-    let is_dragging_duration = tab.transient.timeline_frame_being_scaled.is_some();
+    let is_dragging_duration = document.transient.timeline_frame_being_scaled.is_some();
     if !is_dragging_duration {
         let is_hovering_frame_exact = if is_too_small {
             false
@@ -211,8 +211,8 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let dragging_frame = tab.transient.content_frame_being_dragged.is_some();
-        let dragging_animation_frame = tab.transient.timeline_frame_being_dragged.is_some();
+        let dragging_frame = document.transient.content_frame_being_dragged.is_some();
+        let dragging_animation_frame = document.transient.timeline_frame_being_dragged.is_some();
 
         if !dragging_frame & !dragging_animation_frame
             && is_mouse_down
@@ -232,7 +232,7 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        match tab.transient.timeline_frame_being_scaled {
+        match document.transient.timeline_frame_being_scaled {
             None => {
                 if ui.is_item_hovered() {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
@@ -257,16 +257,16 @@ fn draw_animation_frame<'a>(
     ui.set_cursor_screen_pos(bottom_right);
 }
 
-fn draw_playback_head<'a>(ui: &Ui<'a>, tab: &Tab, animation: &Animation) {
+fn draw_playback_head<'a>(ui: &Ui<'a>, document: &Document, animation: &Animation) {
     let duration = animation.get_duration().unwrap_or(0);
 
     let now_ms = {
-        let now = tab.view.get_timeline_clock();
+        let now = document.view.get_timeline_clock();
         let ms = now.as_millis();
         std::cmp::min(ms, duration.into()) as u32
     };
 
-    let zoom = tab.view.get_timeline_zoom_factor();
+    let zoom = document.view.get_timeline_zoom_factor();
     let draw_list = ui.get_window_draw_list();
 
     let mut cursor_pos = ui.get_cursor_screen_pos();
@@ -287,14 +287,14 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, tab: &Tab, animation: &Animation) {
 
 fn get_frame_under_mouse<'a>(
     ui: &Ui<'a>,
-    tab: &Tab,
+    document: &Document,
     animation: &Animation,
     start_screen_position: (f32, f32),
 ) -> Option<(usize, FrameLocation)> {
     let mouse_pos = ui.imgui().mouse_pos();
     let mut cursor = Duration::new(0, 0);
     for (frame_index, animation_frame) in animation.frames_iter().enumerate() {
-        let frame_location = get_frame_location(tab, cursor, animation_frame);
+        let frame_location = get_frame_location(document, cursor, animation_frame);
         let frame_start_x = start_screen_position.0 + frame_location.top_left.0;
         if mouse_pos.0 >= frame_start_x && mouse_pos.0 < (frame_start_x + frame_location.size.0) {
             return Some((frame_index, frame_location));
@@ -307,7 +307,7 @@ fn get_frame_under_mouse<'a>(
 fn handle_drag_and_drop<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
-    tab: &Tab,
+    document: &Document,
     animation: &Animation,
     cursor_start: (f32, f32),
     cursor_end: (f32, f32),
@@ -318,14 +318,14 @@ fn handle_drag_and_drop<'a>(
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if is_window_hovered {
-        let frame_under_mouse = get_frame_under_mouse(ui, tab, animation, cursor_start);
+        let frame_under_mouse = get_frame_under_mouse(ui, document, animation, cursor_start);
         let h = cursor_end.1 - cursor_start.1;
 
         if is_mouse_dragging {
             match (
                 frame_under_mouse,
-                &tab.transient.content_frame_being_dragged,
-                &tab.transient.timeline_frame_being_dragged,
+                &document.transient.content_frame_being_dragged,
+                &document.transient.timeline_frame_being_dragged,
             ) {
                 (Some((_, frame_location)), Some(_), None)
                 | (Some((_, frame_location)), None, Some(_)) => {
@@ -349,8 +349,8 @@ fn handle_drag_and_drop<'a>(
         } else if !is_mouse_down {
             match (
                 frame_under_mouse,
-                &tab.transient.content_frame_being_dragged,
-                &tab.transient.timeline_frame_being_dragged,
+                &document.transient.content_frame_being_dragged,
+                &document.transient.timeline_frame_being_dragged,
             ) {
                 (None, Some(ref dragged_frame), None) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
@@ -390,13 +390,11 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
             .movable(false)
             .always_horizontal_scrollbar(true)
             .build(|| {
-                if let Some(tab) = app_state.get_current_tab() {
+                if let Some(document) = app_state.get_current_document() {
                     if let Some(WorkbenchItem::Animation(animation_name)) =
-                        tab.view.get_workbench_item()
+                        document.view.get_workbench_item()
                     {
-                        if let Some(animation) =
-                            tab.document.get_sheet().get_animation(animation_name)
-                        {
+                        if let Some(animation) = document.sheet.get_animation(animation_name) {
                             if ui.small_button(im_str!("Play/Pause")) {
                                 commands.toggle_playback();
                             }
@@ -409,7 +407,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                             // TODO autoscroll during playback
 
                             let ticks_cursor_position = ui.get_cursor_pos();
-                            draw_timeline_ticks(ui, commands, tab);
+                            draw_timeline_ticks(ui, commands, document);
 
                             let frames_cursor_position_start = ui.get_cursor_screen_pos();
                             let mut frames_cursor_position_end = frames_cursor_position_start;
@@ -421,7 +419,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                                 draw_animation_frame(
                                     ui,
                                     commands,
-                                    tab,
+                                    document,
                                     animation,
                                     frame_index,
                                     animation_frame,
@@ -434,12 +432,12 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                             }
 
                             ui.set_cursor_pos(ticks_cursor_position);
-                            draw_playback_head(ui, tab, animation);
+                            draw_playback_head(ui, document, animation);
 
                             handle_drag_and_drop(
                                 ui,
                                 commands,
-                                tab,
+                                document,
                                 animation,
                                 frames_cursor_position_start,
                                 frames_cursor_position_end,
