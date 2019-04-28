@@ -28,9 +28,9 @@ pub struct View {
 	pub selection: Option<Selection>,
 	pub workbench_item: Option<WorkbenchItem>,
 	pub workbench_offset: Vector2D<f32>,
-	pub workbench_zoom_level: i32,
-	pub timeline_zoom_level: i32,
 	pub timeline_clock: Duration,
+	workbench_zoom_level: i32,
+	timeline_zoom_level: i32,
 }
 
 impl View {
