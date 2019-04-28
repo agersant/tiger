@@ -1,5 +1,5 @@
 use failure::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::sheet::*;
 
@@ -35,48 +35,10 @@ pub enum DocumentError {
     NotRenaming,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ResizeAxis {
-    N,
-    S,
-    W,
-    E,
-    NW,
-    NE,
-    SE,
-    SW,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Selection {
-    Frame(PathBuf),
-    Animation(String),
-    Hitbox(PathBuf, String),
-    AnimationFrame(String, usize),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ContentTab {
-    Frames,
-    Animations,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum RenameItem {
-    Animation(String),
-    Hitbox(PathBuf, String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum WorkbenchItem {
-    Frame(PathBuf),
-    Animation(String),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
     sheet: Sheet,
-    pub export_settings: Option<ExportSettings>,
+    export_settings: Option<ExportSettings>,
 }
 
 impl Document {
