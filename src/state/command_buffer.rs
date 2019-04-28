@@ -68,17 +68,13 @@ impl CommandBuffer {
     }
 
     pub fn save<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet) {
-        self.queue.push(Async(AsyncCommand::Save(
-            path.as_ref().to_path_buf(),
-            sheet.clone(),
-        )));
+        self.queue
+            .push(Async(Save(path.as_ref().to_path_buf(), sheet.clone())));
     }
 
     pub fn save_as<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet) {
-        self.queue.push(Async(AsyncCommand::SaveAs(
-            path.as_ref().to_path_buf(),
-            sheet.clone(),
-        )));
+        self.queue
+            .push(Async(SaveAs(path.as_ref().to_path_buf(), sheet.clone())));
     }
 
     pub fn save_all(&mut self) {
@@ -98,10 +94,9 @@ impl CommandBuffer {
     }
 
     pub fn begin_set_export_texture_destination(&mut self, document: &crate::state::Document) {
-        self.queue
-            .push(Async(AsyncCommand::BeginSetExportTextureDestination(
-                document.source.to_path_buf(),
-            )));
+        self.queue.push(Async(BeginSetExportTextureDestination(
+            document.source.to_path_buf(),
+        )));
     }
 
     pub fn end_set_export_texture_destination<T: AsRef<Path>, U: AsRef<Path>>(
@@ -117,10 +112,9 @@ impl CommandBuffer {
     }
 
     pub fn begin_set_export_metadata_destination(&mut self, document: &crate::state::Document) {
-        self.queue
-            .push(Async(AsyncCommand::BeginSetExportMetadataDestination(
-                document.source.to_path_buf(),
-            )));
+        self.queue.push(Async(BeginSetExportMetadataDestination(
+            document.source.to_path_buf(),
+        )));
     }
 
     pub fn end_set_export_metadata_destination<T: AsRef<Path>, U: AsRef<Path>>(
@@ -153,9 +147,8 @@ impl CommandBuffer {
     }
 
     pub fn begin_set_export_format(&mut self, document: &crate::state::Document) {
-        self.queue.push(Async(AsyncCommand::BeginSetExportFormat(
-            document.source.to_path_buf(),
-        )));
+        self.queue
+            .push(Async(BeginSetExportFormat(document.source.to_path_buf())));
     }
 
     pub fn end_set_export_format<T: AsRef<Path>>(
@@ -175,11 +168,11 @@ impl CommandBuffer {
 
     pub fn end_export_as(&mut self, sheet: &Sheet) {
         self.queue.push(Sync(Document(EndExportAs)));
-        self.queue.push(Async(AsyncCommand::Export(sheet.clone())));
+        self.queue.push(Async(Export(sheet.clone())));
     }
 
     pub fn export(&mut self, sheet: &Sheet) {
-        self.queue.push(Async(AsyncCommand::Export(sheet.clone())));
+        self.queue.push(Async(Export(sheet.clone())));
     }
 
     pub fn switch_to_content_tab(&mut self, tab: ContentTab) {
@@ -188,7 +181,7 @@ impl CommandBuffer {
 
     pub fn import(&mut self, document: &crate::state::Document) {
         self.queue
-            .push(Async(AsyncCommand::BeginImport(document.source.to_owned())));
+            .push(Async(BeginImport(document.source.to_owned())));
     }
 
     pub fn end_import<T: AsRef<Path>, U: AsRef<Path>>(&mut self, into: T, path: U) {
