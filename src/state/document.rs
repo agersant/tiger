@@ -2,6 +2,7 @@ use failure::Error;
 use std::path::Path;
 
 use crate::sheet::*;
+use crate::state::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
