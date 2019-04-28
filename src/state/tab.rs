@@ -21,7 +21,7 @@ pub struct Tab {
 	pub view: View,
 	pub transient: Transient,
 	history: Vec<TabHistoryEntry>,
-	current_history_position: usize,
+	history_index: usize,
 	timeline_is_playing: bool,
 }
 
@@ -34,13 +34,13 @@ impl Tab {
 			document: history_entry.document.clone(),
 			view: history_entry.view.clone(),
 			transient: Default::default(),
-			current_history_position: 0,
+			history_index: 0,
 			timeline_is_playing: false,
 		}
 	}
 
 	pub fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
-		let mut tab = Tab::new(path);
+		let mut tab = Tab::new(&path);
 		tab.document = Document::open(&path)?;
 		tab.history[0].document = tab.document.clone();
 		Ok(tab)
@@ -78,9 +78,9 @@ impl Tab {
 	}
 
 	fn push_undo_state(&mut self, entry: TabHistoryEntry) {
-		self.history.truncate(self.current_history_position + 1);
+		self.history.truncate(self.history_index + 1);
 		self.history.push(entry);
-		self.current_history_position = self.history.len() - 1;
+		self.history_index = self.history.len() - 1;
 	}
 
 	fn can_use_undo_system(&self) -> bool {
@@ -105,14 +105,14 @@ impl Tab {
 				last_command: Some(command.clone()),
 			};
 
-			if &self.history[self.current_history_position].document != &new_undo_state.document {
+			if &self.history[self.history_index].document != &new_undo_state.document {
 				self.push_undo_state(new_undo_state);
-			} else if &self.history[self.current_history_position].view != &new_undo_state.view {
-				let merge = self.current_history_position > 0
-					&& self.history[self.current_history_position - 1].document
-						== self.history[self.current_history_position].document;
+			} else if &self.history[self.history_index].view != &new_undo_state.view {
+				let merge = self.history_index > 0
+					&& self.history[self.history_index - 1].document
+						== self.history[self.history_index].document;
 				if merge {
-					self.history[self.current_history_position].view = new_undo_state.view;
+					self.history[self.history_index].view = new_undo_state.view;
 				} else {
 					self.push_undo_state(new_undo_state);
 				}
@@ -124,10 +124,10 @@ impl Tab {
 		if !self.can_use_undo_system() {
 			return Err(StateError::UndoOperationNowAllowed.into());
 		}
-		if self.current_history_position > 0 {
-			self.current_history_position -= 1;
-			self.document = self.history[self.current_history_position].document.clone();
-			self.view = self.history[self.current_history_position].view.clone();
+		if self.history_index > 0 {
+			self.history_index -= 1;
+			self.document = self.history[self.history_index].document.clone();
+			self.view = self.history[self.history_index].view.clone();
 			self.timeline_is_playing = false;
 		}
 		Ok(())
@@ -137,10 +137,10 @@ impl Tab {
 		if !self.can_use_undo_system() {
 			return Err(StateError::UndoOperationNowAllowed.into());
 		}
-		if self.current_history_position < self.history.len() - 1 {
-			self.current_history_position += 1;
-			self.document = self.history[self.current_history_position].document.clone();
-			self.view = self.history[self.current_history_position].view.clone();
+		if self.history_index < self.history.len() - 1 {
+			self.history_index += 1;
+			self.document = self.history[self.history_index].document.clone();
+			self.view = self.history[self.history_index].view.clone();
 			self.timeline_is_playing = false;
 		}
 		Ok(())
