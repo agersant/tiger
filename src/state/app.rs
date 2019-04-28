@@ -13,18 +13,6 @@ const TEMPLATE_FILE_EXTENSION: &str = "liquid";
 const IMAGE_IMPORT_FILE_EXTENSIONS: &str = "png;tga;bmp";
 const IMAGE_EXPORT_FILE_EXTENSIONS: &str = "png";
 
-#[derive(Fail, Debug)]
-pub enum StateError {
-    #[fail(display = "No document is open")]
-    NoDocumentOpen,
-    #[fail(display = "Requested document was not found")]
-    DocumentNotFound,
-    #[fail(display = "Sheet has no export settings")]
-    NoExistingExportSettings,
-    #[fail(display = "Cannot perform undo operation")]
-    UndoOperationNowAllowed,
-}
-
 #[derive(Clone, Debug)]
 pub struct AppState {
     tabs: Vec<Tab>,

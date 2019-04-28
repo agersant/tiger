@@ -3,38 +3,6 @@ use std::path::Path;
 
 use crate::sheet::*;
 
-#[derive(Fail, Debug)]
-pub enum DocumentError {
-    #[fail(display = "Requested frame is not in document")]
-    FrameNotInDocument,
-    #[fail(display = "Requested animation is not in document")]
-    AnimationNotInDocument,
-    #[fail(display = "Requested hitbox is not in frame")]
-    HitboxNotInFrame,
-    #[fail(display = "A hitbox with this name already exists")]
-    HitboxAlreadyExists,
-    #[fail(display = "An animation with this name already exists")]
-    AnimationAlreadyExists,
-    #[fail(display = "Not currently editing any frame")]
-    NotEditingAnyFrame,
-    #[fail(display = "Not currently editing any animation")]
-    NotEditingAnyAnimation,
-    #[fail(display = "Currently not adjusting a hitbox")]
-    NotDraggingAHitbox,
-    #[fail(display = "Frame does not have a hitbox at the requested index")]
-    InvalidHitboxIndex,
-    #[fail(display = "Animation does not have a frame at the requested index")]
-    InvalidAnimationFrameIndex,
-    #[fail(display = "Currently not adjusting the duration of an animation frame")]
-    NotDraggingATimelineFrame,
-    #[fail(display = "No animation frame found for requested time")]
-    NoAnimationFrameForThisTime,
-    #[fail(display = "Not currently adjusting export settings")]
-    NotExporting,
-    #[fail(display = "Not currently renaming an item")]
-    NotRenaming,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Document {
     sheet: Sheet,
@@ -103,7 +71,7 @@ impl Document {
         let export_settings = &mut self
             .export_settings
             .as_mut()
-            .ok_or(DocumentError::NotExporting)?;
+            .ok_or(StateError::NotExporting)?;
         export_settings.texture_destination = texture_destination.as_ref().to_path_buf();
         Ok(())
     }
@@ -115,7 +83,7 @@ impl Document {
         let export_settings = &mut self
             .export_settings
             .as_mut()
-            .ok_or(DocumentError::NotExporting)?;
+            .ok_or(StateError::NotExporting)?;
         export_settings.metadata_destination = metadata_destination.as_ref().to_path_buf();
         Ok(())
     }
@@ -127,7 +95,7 @@ impl Document {
         let export_settings = &mut self
             .export_settings
             .as_mut()
-            .ok_or(DocumentError::NotExporting)?;
+            .ok_or(StateError::NotExporting)?;
         export_settings.metadata_paths_root = metadata_paths_root.as_ref().to_path_buf();
         Ok(())
     }
@@ -136,7 +104,7 @@ impl Document {
         let export_settings = &mut self
             .export_settings
             .as_mut()
-            .ok_or(DocumentError::NotExporting)?;
+            .ok_or(StateError::NotExporting)?;
         export_settings.format = format;
         Ok(())
     }
@@ -145,7 +113,7 @@ impl Document {
         let export_settings = self
             .export_settings
             .take()
-            .ok_or(DocumentError::NotExporting)?;
+            .ok_or(StateError::NotExporting)?;
         self.get_sheet_mut()
             .set_export_settings(export_settings.clone());
         Ok(())

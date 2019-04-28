@@ -166,11 +166,11 @@ impl Tab {
 				self.document
 					.get_sheet()
 					.get_animation(n)
-					.ok_or(DocumentError::AnimationNotInDocument)?,
+					.ok_or(StateError::AnimationNotInDocument)?,
 			),
 			_ => None,
 		}
-		.ok_or_else(|| DocumentError::NotEditingAnyAnimation.into())
+		.ok_or_else(|| StateError::NotEditingAnyAnimation.into())
 	}
 
 	fn get_workbench_animation_mut(&mut self) -> Result<&mut Animation, Error> {
@@ -179,17 +179,17 @@ impl Tab {
 				self.document
 					.get_sheet_mut()
 					.get_animation_mut(n)
-					.ok_or(DocumentError::AnimationNotInDocument)?,
+					.ok_or(StateError::AnimationNotInDocument)?,
 			),
 			_ => None,
 		}
-		.ok_or_else(|| DocumentError::NotEditingAnyAnimation.into())
+		.ok_or_else(|| StateError::NotEditingAnyAnimation.into())
 	}
 
 	pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
 		let sheet = self.document.get_sheet();
 		if !sheet.has_frame(&path) {
-			return Err(DocumentError::FrameNotInDocument.into());
+			return Err(StateError::FrameNotInDocument.into());
 		}
 		self.view.selection = Some(Selection::Frame(path.as_ref().to_owned()));
 		Ok(())
@@ -198,7 +198,7 @@ impl Tab {
 	pub fn select_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
 		let sheet = self.document.get_sheet();
 		if !sheet.has_animation(&name) {
-			return Err(DocumentError::AnimationNotInDocument.into());
+			return Err(StateError::AnimationNotInDocument.into());
 		}
 		self.view.selection = Some(Selection::Animation(name.as_ref().to_owned()));
 		Ok(())
@@ -209,15 +209,15 @@ impl Tab {
 			Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyFrame)?;
+		.ok_or(StateError::NotEditingAnyFrame)?;
 		let frame = self
 			.document
 			.get_sheet()
 			.get_frame(&frame_path)
-			.ok_or(DocumentError::FrameNotInDocument)?;
+			.ok_or(StateError::FrameNotInDocument)?;
 		let _hitbox = frame
 			.get_hitbox(&hitbox_name)
-			.ok_or(DocumentError::InvalidHitboxIndex)?;
+			.ok_or(StateError::InvalidHitboxIndex)?;
 		self.view.selection = Some(Selection::Hitbox(
 			frame_path,
 			hitbox_name.as_ref().to_owned(),
@@ -238,11 +238,11 @@ impl Tab {
 		let frame_times = animation.get_frame_times();
 		let frame_start_time = *frame_times
 			.get(frame_index)
-			.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+			.ok_or(StateError::InvalidAnimationFrameIndex)?;
 
 		let animation_frame = animation
 			.get_frame(frame_index)
-			.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+			.ok_or(StateError::InvalidAnimationFrameIndex)?;
 		let duration = animation_frame.get_duration() as u64;
 
 		let clock = self.view.timeline_clock.as_millis() as u64;
@@ -267,7 +267,7 @@ impl Tab {
 				let current_index = frames
 					.iter()
 					.position(|f| f.get_source() == p)
-					.ok_or(DocumentError::FrameNotInDocument)?;
+					.ok_or(StateError::FrameNotInDocument)?;
 				if let Some(f) = frames.get(advance(current_index)) {
 					self.view.selection = Some(Selection::Frame(f.get_source().to_owned()));
 				}
@@ -279,7 +279,7 @@ impl Tab {
 				let current_index = animations
 					.iter()
 					.position(|a| a.get_name() == n)
-					.ok_or(DocumentError::AnimationNotInDocument)?;
+					.ok_or(StateError::AnimationNotInDocument)?;
 				if let Some(n) = animations.get(advance(current_index)) {
 					self.view.selection = Some(Selection::Animation(n.get_name().to_owned()));
 				}
@@ -290,13 +290,13 @@ impl Tab {
 					.get_sheet()
 					.frames_iter()
 					.find(|f| f.get_source() == p)
-					.ok_or(DocumentError::FrameNotInDocument)?;
+					.ok_or(StateError::FrameNotInDocument)?;
 				let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
 				hitboxes.sort_unstable();
 				let current_index = hitboxes
 					.iter()
 					.position(|h| h.get_name() == n)
-					.ok_or(DocumentError::InvalidHitboxIndex)?;
+					.ok_or(StateError::InvalidHitboxIndex)?;
 				if let Some(h) = hitboxes.get(advance(current_index)) {
 					self.view.selection =
 						Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
@@ -318,7 +318,7 @@ impl Tab {
 	pub fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
 		let sheet = self.document.get_sheet();
 		if !sheet.has_frame(&path) {
-			return Err(DocumentError::FrameNotInDocument.into());
+			return Err(StateError::FrameNotInDocument.into());
 		}
 		self.view.workbench_item = Some(WorkbenchItem::Frame(path.as_ref().to_owned()));
 		self.view.workbench_offset = Vector2D::zero();
@@ -328,7 +328,7 @@ impl Tab {
 	pub fn edit_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
 		let sheet = self.document.get_sheet();
 		if !sheet.has_animation(&name) {
-			return Err(DocumentError::AnimationNotInDocument.into());
+			return Err(StateError::AnimationNotInDocument.into());
 		}
 		self.view.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
 		self.view.workbench_offset = Vector2D::zero();
@@ -341,7 +341,7 @@ impl Tab {
 		let sheet = self.document.get_sheet();
 		let _animation = sheet
 			.get_animation(&old_name)
-			.ok_or(DocumentError::AnimationNotInDocument)?;
+			.ok_or(StateError::AnimationNotInDocument)?;
 		self.transient.item_being_renamed =
 			Some(RenameItem::Animation(old_name.as_ref().to_owned()));
 		self.transient.rename_buffer = Some(old_name.as_ref().to_owned());
@@ -356,9 +356,9 @@ impl Tab {
 		let sheet = self.document.get_sheet_mut();
 		let _hitbox = sheet
 			.get_frame(&frame_path)
-			.ok_or(DocumentError::FrameNotInDocument)?
+			.ok_or(StateError::FrameNotInDocument)?
 			.get_hitbox(old_name.as_ref())
-			.ok_or(DocumentError::HitboxNotInFrame)?;
+			.ok_or(StateError::HitboxNotInFrame)?;
 		self.transient.item_being_renamed = Some(RenameItem::Hitbox(
 			frame_path.as_ref().to_owned(),
 			old_name.as_ref().to_owned(),
@@ -394,11 +394,11 @@ impl Tab {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyAnimation)?;
+		.ok_or(StateError::NotEditingAnyAnimation)?;
 		self.document
 			.get_sheet_mut()
 			.get_animation_mut(animation_name)
-			.ok_or(DocumentError::AnimationNotInDocument)?
+			.ok_or(StateError::AnimationNotInDocument)?
 			.insert_frame(frame, next_frame_index)?;
 		Ok(())
 	}
@@ -416,12 +416,12 @@ impl Tab {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyAnimation)?;
+		.ok_or(StateError::NotEditingAnyAnimation)?;
 
 		self.document
 			.get_sheet_mut()
 			.get_animation_mut(&animation_name)
-			.ok_or(DocumentError::AnimationNotInDocument)?
+			.ok_or(StateError::AnimationNotInDocument)?
 			.reorder_frame(old_index, new_index)?;
 
 		match self.view.selection {
@@ -449,17 +449,17 @@ impl Tab {
 				Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 				_ => None,
 			}
-			.ok_or(DocumentError::NotEditingAnyAnimation)?;
+			.ok_or(StateError::NotEditingAnyAnimation)?;
 
 			let animation = self
 				.document
 				.get_sheet()
 				.get_animation(animation_name)
-				.ok_or(DocumentError::AnimationNotInDocument)?;
+				.ok_or(StateError::AnimationNotInDocument)?;
 
 			let animation_frame = animation
 				.get_frame(index)
-				.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+				.ok_or(StateError::InvalidAnimationFrameIndex)?;
 
 			animation_frame.get_duration()
 		};
@@ -477,22 +477,22 @@ impl Tab {
 				Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 				_ => None,
 			}
-			.ok_or(DocumentError::NotEditingAnyAnimation)?;
+			.ok_or(StateError::NotEditingAnyAnimation)?;
 
 			let index = self
 				.transient
 				.timeline_frame_being_scaled
-				.ok_or(DocumentError::NotDraggingATimelineFrame)?;
+				.ok_or(StateError::NotDraggingATimelineFrame)?;
 
 			let animation = self
 				.document
 				.get_sheet_mut()
 				.get_animation_mut(&animation_name)
-				.ok_or(DocumentError::AnimationNotInDocument)?;
+				.ok_or(StateError::AnimationNotInDocument)?;
 
 			let animation_frame = animation
 				.get_frame_mut(index)
-				.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+				.ok_or(StateError::InvalidAnimationFrameIndex)?;
 
 			animation_frame.set_duration(new_duration);
 
@@ -500,7 +500,7 @@ impl Tab {
 
 			*frame_times
 				.get(index)
-				.ok_or(DocumentError::InvalidAnimationFrameIndex)?
+				.ok_or(StateError::InvalidAnimationFrameIndex)?
 		};
 
 		if !self.timeline_is_playing {
@@ -533,15 +533,15 @@ impl Tab {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyAnimation)?;
+		.ok_or(StateError::NotEditingAnyAnimation)?;
 		let animation = self
 			.document
 			.get_sheet()
 			.get_animation(animation_name)
-			.ok_or(DocumentError::AnimationNotInDocument)?;
+			.ok_or(StateError::AnimationNotInDocument)?;
 		let _animation_frame = animation
 			.get_frame(animation_frame_index)
-			.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+			.ok_or(StateError::InvalidAnimationFrameIndex)?;
 		self.transient.timeline_frame_being_dragged = Some(animation_frame_index);
 		Ok(())
 	}
@@ -555,18 +555,18 @@ impl Tab {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyAnimation)?;
+		.ok_or(StateError::NotEditingAnyAnimation)?;
 
 		{
 			let animation = self
 				.document
 				.get_sheet_mut()
 				.get_animation_mut(animation_name)
-				.ok_or(DocumentError::AnimationNotInDocument)?;
+				.ok_or(StateError::AnimationNotInDocument)?;
 
 			let animation_frame = animation
 				.get_frame(index)
-				.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+				.ok_or(StateError::InvalidAnimationFrameIndex)?;
 			self.transient.workbench_animation_frame_drag_initial_offset =
 				animation_frame.get_offset();
 		}
@@ -587,12 +587,12 @@ impl Tab {
 			Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyAnimation)?;
+		.ok_or(StateError::NotEditingAnyAnimation)?;
 
 		let animation_index = self
 			.transient
 			.workbench_animation_frame_being_dragged
-			.ok_or(DocumentError::NotDraggingATimelineFrame)?;
+			.ok_or(StateError::NotDraggingATimelineFrame)?;
 
 		let old_offset = self.transient.workbench_animation_frame_drag_initial_offset;
 		let old_mouse_position = self
@@ -612,9 +612,9 @@ impl Tab {
 			.document
 			.get_sheet_mut()
 			.get_animation_mut(animation_name)
-			.ok_or(DocumentError::AnimationNotInDocument)?
+			.ok_or(StateError::AnimationNotInDocument)?
 			.get_frame_mut(animation_index)
-			.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+			.ok_or(StateError::InvalidAnimationFrameIndex)?;
 		animation_frame.set_offset(new_offset);
 
 		Ok(())
@@ -633,13 +633,13 @@ impl Tab {
 				Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 				_ => None,
 			}
-			.ok_or(DocumentError::NotEditingAnyFrame)?;
+			.ok_or(StateError::NotEditingAnyFrame)?;
 
 			let frame = self
 				.document
 				.get_sheet_mut()
 				.get_frame_mut(frame_path)
-				.ok_or(DocumentError::FrameNotInDocument)?;
+				.ok_or(StateError::FrameNotInDocument)?;
 
 			let hitbox = frame.add_hitbox();
 			hitbox.set_position(mouse_position.round().to_i32());
@@ -659,7 +659,7 @@ impl Tab {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyFrame)?;
+		.ok_or(StateError::NotEditingAnyFrame)?;
 
 		let hitbox;
 		let position;
@@ -669,10 +669,10 @@ impl Tab {
 				.document
 				.get_sheet()
 				.get_frame(&frame_path)
-				.ok_or(DocumentError::FrameNotInDocument)?;
+				.ok_or(StateError::FrameNotInDocument)?;
 			hitbox = frame
 				.get_hitbox(&hitbox_name)
-				.ok_or(DocumentError::InvalidHitboxIndex)?;
+				.ok_or(StateError::InvalidHitboxIndex)?;
 			position = hitbox.get_position();
 			size = hitbox.get_size();
 		}
@@ -691,14 +691,14 @@ impl Tab {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyFrame)?;
+		.ok_or(StateError::NotEditingAnyFrame)?;
 
 		let hitbox_name = self
 			.transient
 			.workbench_hitbox_being_scaled
 			.as_ref()
 			.cloned()
-			.ok_or(DocumentError::NotDraggingAHitbox)?;
+			.ok_or(StateError::NotDraggingAHitbox)?;
 
 		let initial_position = self.transient.workbench_hitbox_scale_initial_position;
 		let initial_size = self.transient.workbench_hitbox_scale_initial_size;
@@ -710,9 +710,9 @@ impl Tab {
 			.document
 			.get_sheet_mut()
 			.get_frame_mut(frame_path)
-			.ok_or(DocumentError::FrameNotInDocument)?
+			.ok_or(StateError::FrameNotInDocument)?
 			.get_hitbox_mut(&hitbox_name)
-			.ok_or(DocumentError::InvalidHitboxIndex)?;
+			.ok_or(StateError::InvalidHitboxIndex)?;
 
 		let new_size = vec2(
 			match axis {
@@ -779,7 +779,7 @@ impl Tab {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyFrame)?;
+		.ok_or(StateError::NotEditingAnyFrame)?;
 
 		let hitbox_position;
 		{
@@ -787,10 +787,10 @@ impl Tab {
 				.document
 				.get_sheet()
 				.get_frame(&frame_path)
-				.ok_or(DocumentError::FrameNotInDocument)?;
+				.ok_or(StateError::FrameNotInDocument)?;
 			let hitbox = frame
 				.get_hitbox(&hitbox_name)
-				.ok_or(DocumentError::InvalidHitboxIndex)?;
+				.ok_or(StateError::InvalidHitboxIndex)?;
 			hitbox_position = hitbox.get_position();
 		}
 
@@ -813,14 +813,14 @@ impl Tab {
 			Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
 			_ => None,
 		}
-		.ok_or(DocumentError::NotEditingAnyFrame)?;
+		.ok_or(StateError::NotEditingAnyFrame)?;
 
 		let hitbox_name = self
 			.transient
 			.workbench_hitbox_being_dragged
 			.as_ref()
 			.cloned()
-			.ok_or(DocumentError::NotDraggingAHitbox)?;
+			.ok_or(StateError::NotDraggingAHitbox)?;
 
 		let old_offset = self.transient.workbench_hitbox_drag_initial_offset;
 		let old_mouse_position = self.transient.workbench_hitbox_drag_initial_mouse_position;
@@ -840,9 +840,9 @@ impl Tab {
 			.document
 			.get_sheet_mut()
 			.get_frame_mut(frame_path)
-			.ok_or(DocumentError::FrameNotInDocument)?
+			.ok_or(StateError::FrameNotInDocument)?
 			.get_hitbox_mut(&hitbox_name)
-			.ok_or(DocumentError::InvalidHitboxIndex)?;
+			.ok_or(StateError::InvalidHitboxIndex)?;
 		hitbox.set_position(new_offset);
 
 		Ok(())
@@ -949,7 +949,7 @@ impl Tab {
 		let animation = self.get_workbench_animation()?;
 		let (index, _) = animation
 			.get_frame_at(new_time)
-			.ok_or(DocumentError::NoAnimationFrameForThisTime)?;
+			.ok_or(StateError::NoAnimationFrameForThisTime)?;
 		self.select_animation_frame(index)?;
 		self.view.timeline_clock = new_time;
 		Ok(())
@@ -966,9 +966,9 @@ impl Tab {
 					.document
 					.get_sheet_mut()
 					.get_frame_mut(f)
-					.ok_or(DocumentError::FrameNotInDocument)?
+					.ok_or(StateError::FrameNotInDocument)?
 					.get_hitbox_mut(&h)
-					.ok_or(DocumentError::InvalidHitboxIndex)?;
+					.ok_or(StateError::InvalidHitboxIndex)?;
 				hitbox.set_position(hitbox.get_position() + offset);
 			}
 			Some(Selection::AnimationFrame(a, af)) => {
@@ -976,9 +976,9 @@ impl Tab {
 					.document
 					.get_sheet_mut()
 					.get_animation_mut(a)
-					.ok_or(DocumentError::AnimationNotInDocument)?
+					.ok_or(StateError::AnimationNotInDocument)?
 					.get_frame_mut(*af)
-					.ok_or(DocumentError::InvalidAnimationFrameIndex)?;
+					.ok_or(StateError::InvalidAnimationFrameIndex)?;
 				animation_frame.set_offset(animation_frame.get_offset() + offset);
 			}
 			None => {}
@@ -1041,13 +1041,13 @@ impl Tab {
 			.transient
 			.rename_buffer
 			.clone()
-			.ok_or(DocumentError::NotRenaming)?;
+			.ok_or(StateError::NotRenaming)?;
 
 		match self.transient.item_being_renamed.as_ref().cloned() {
 			Some(RenameItem::Animation(old_name)) => {
 				if old_name != new_name {
 					if self.document.get_sheet().has_animation(&new_name) {
-						return Err(DocumentError::AnimationAlreadyExists.into());
+						return Err(StateError::AnimationAlreadyExists.into());
 					}
 					self.document
 						.get_sheet_mut()
@@ -1067,15 +1067,15 @@ impl Tab {
 						.document
 						.get_sheet()
 						.get_frame(&frame_path)
-						.ok_or(DocumentError::FrameNotInDocument)?
+						.ok_or(StateError::FrameNotInDocument)?
 						.has_hitbox(&new_name)
 					{
-						return Err(DocumentError::HitboxAlreadyExists.into());
+						return Err(StateError::HitboxAlreadyExists.into());
 					}
 					self.document
 						.get_sheet_mut()
 						.get_frame_mut(&frame_path)
-						.ok_or(DocumentError::FrameNotInDocument)?
+						.ok_or(StateError::FrameNotInDocument)?
 						.rename_hitbox(&old_name, &new_name)?;
 					if Some(Selection::Hitbox(frame_path.clone(), old_name.clone()))
 						== self.view.selection
