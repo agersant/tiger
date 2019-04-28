@@ -101,7 +101,7 @@ impl Tab {
 		self.transient == Transient::new()
 	}
 
-	pub fn record_command(
+	fn record_command(
 		&mut self,
 		command: &TabCommand,
 		document: Document,
@@ -1090,6 +1090,89 @@ impl Tab {
 
 		self.transient.item_being_renamed = None;
 		self.transient.rename_buffer = None;
+
+		Ok(())
+	}
+
+	pub fn process_command(&mut self, command: &TabCommand) -> Result<(), Error> {
+		use TabCommand::*;
+
+		let mut new_tab = self.clone();
+
+		match command {
+			EndImport(_, f) => new_tab.document.import(f),
+			BeginExportAs => new_tab.document.begin_export_as(),
+			CancelExportAs => new_tab.document.cancel_export_as(),
+			EndSetExportTextureDestination(_, d) => {
+				new_tab.document.end_set_export_texture_destination(d)?
+			}
+			EndSetExportMetadataDestination(_, d) => {
+				new_tab.document.end_set_export_metadata_destination(d)?
+			}
+			EndSetExportMetadataPathsRoot(_, d) => {
+				new_tab.document.end_set_export_metadata_paths_root(d)?
+			}
+			EndSetExportFormat(_, f) => new_tab.document.end_set_export_format(f.clone())?,
+			EndExportAs => new_tab.document.end_export_as()?,
+			SwitchToContentTab(t) => new_tab.view.switch_to_content_tab(*t),
+			SelectFrame(p) => new_tab.select_frame(&p)?,
+			SelectAnimation(a) => new_tab.select_animation(&a)?,
+			SelectHitbox(h) => new_tab.select_hitbox(&h)?,
+			SelectAnimationFrame(af) => new_tab.select_animation_frame(*af)?,
+			SelectPrevious => new_tab.select_previous()?,
+			SelectNext => new_tab.select_next()?,
+			EditFrame(p) => new_tab.edit_frame(&p)?,
+			EditAnimation(a) => new_tab.edit_animation(&a)?,
+			CreateAnimation => new_tab.create_animation()?,
+			BeginFrameDrag(f) => new_tab.begin_frame_drag(f)?,
+			EndFrameDrag => new_tab.transient.content_frame_being_dragged = None,
+			InsertAnimationFrameBefore(f, n) => new_tab.insert_animation_frame_before(f, *n)?,
+			ReorderAnimationFrame(a, b) => new_tab.reorder_animation_frame(*a, *b)?,
+			BeginAnimationFrameDurationDrag(a) => {
+				new_tab.begin_animation_frame_duration_drag(*a)?
+			}
+			UpdateAnimationFrameDurationDrag(d) => {
+				new_tab.update_animation_frame_duration_drag(*d)?
+			}
+			EndAnimationFrameDurationDrag => new_tab.end_animation_frame_duration_drag(),
+			BeginAnimationFrameDrag(a) => new_tab.begin_animation_frame_drag(*a)?,
+			EndAnimationFrameDrag => new_tab.transient.timeline_frame_being_dragged = None,
+			BeginAnimationFrameOffsetDrag(a, m) => {
+				new_tab.begin_animation_frame_offset_drag(*a, *m)?
+			}
+			UpdateAnimationFrameOffsetDrag(o, b) => {
+				new_tab.update_animation_frame_offset_drag(*o, *b)?
+			}
+			EndAnimationFrameOffsetDrag => new_tab.end_animation_frame_offset_drag(),
+			WorkbenchZoomIn => new_tab.view.workbench_zoom_in(),
+			WorkbenchZoomOut => new_tab.view.workbench_zoom_out(),
+			WorkbenchResetZoom => new_tab.view.workbench_reset_zoom(),
+			Pan(delta) => new_tab.view.pan(*delta),
+			CreateHitbox(p) => new_tab.create_hitbox(*p)?,
+			BeginHitboxScale(h, a, p) => new_tab.begin_hitbox_scale(&h, *a, *p)?,
+			UpdateHitboxScale(p) => new_tab.update_hitbox_scale(*p)?,
+			EndHitboxScale => new_tab.end_hitbox_scale(),
+			BeginHitboxDrag(a, m) => new_tab.begin_hitbox_drag(&a, *m)?,
+			UpdateHitboxDrag(o, b) => new_tab.update_hitbox_drag(*o, *b)?,
+			EndHitboxDrag => new_tab.end_hitbox_drag(),
+			TogglePlayback => new_tab.toggle_playback()?,
+			SnapToPreviousFrame => new_tab.snap_to_previous_frame()?,
+			SnapToNextFrame => new_tab.snap_to_next_frame()?,
+			ToggleLooping => new_tab.toggle_looping()?,
+			TimelineZoomIn => new_tab.view.timeline_zoom_in(),
+			TimelineZoomOut => new_tab.view.timeline_zoom_out(),
+			TimelineResetZoom => new_tab.view.timeline_reset_zoom(),
+			BeginScrub => new_tab.transient.timeline_scrubbing = true,
+			UpdateScrub(t) => new_tab.update_timeline_scrub(*t)?,
+			EndScrub => new_tab.transient.timeline_scrubbing = false,
+			NudgeSelection(d, l) => new_tab.nudge_selection(*d, *l)?,
+			DeleteSelection => new_tab.delete_selection(),
+			BeginRenameSelection => new_tab.begin_rename_selection()?,
+			UpdateRenameSelection(n) => new_tab.transient.rename_buffer = Some(n.to_owned()),
+			EndRenameSelection => new_tab.end_rename_selection()?,
+		};
+
+		self.record_command(command, new_tab.document, new_tab.view, new_tab.transient);
 
 		Ok(())
 	}
