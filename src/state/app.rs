@@ -1361,6 +1361,8 @@ impl AppState {
     }
 
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
+        // TODO split SyncCommand into multiple enums based on what they interact with (no tab, specific tab, current tab)?
+
         let mut tab = match command {
             SyncCommand::EndNewDocument(_)
             | SyncCommand::EndOpenDocument(_)
