@@ -89,8 +89,7 @@ impl AppState {
             let tab = Tab::open(&path)?;
             self.add_tab(tab);
         }
-        self.current_tab = Some(path.as_ref().to_path_buf());
-        Ok(())
+        self.focus_document(path)
     }
 
     fn relocate_document<T: AsRef<Path>, U: AsRef<Path>>(
@@ -108,6 +107,15 @@ impl AppState {
             }
         }
         Err(StateError::DocumentNotFound.into())
+    }
+
+    fn focus_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
+        let tab = self
+            .get_tab_mut(&path)
+            .ok_or(StateError::DocumentNotFound)?;
+        tab.transient = Default::default();
+        self.current_tab = Some(path.as_ref().to_owned());
+        Ok(())
     }
 
     fn add_tab(&mut self, added_tab: Tab) {
@@ -154,11 +162,7 @@ impl AppState {
             EndNewDocument(p) => self.end_new_document(p)?,
             EndOpenDocument(p) => self.end_open_document(p)?,
             RelocateDocument(from, to) => self.relocate_document(from, to)?,
-            FocusDocument(p) => {
-                if self.is_opened(&p) {
-                    self.current_tab = Some(p.clone());
-                }
-            }
+            FocusDocument(p) => self.focus_document(p)?,
             CloseCurrentDocument => self.close_current_document()?,
             CloseAllDocuments => self.close_all_documents(),
             SaveAllDocuments => self.save_all_documents()?,
