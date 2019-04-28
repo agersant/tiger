@@ -150,296 +150,298 @@ impl AppState {
     pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
         // TODO split SyncCommand into multiple enums based on what they interact with (no tab, specific tab, current tab)?
 
+        use SyncCommand::*;
+
         let mut tab = match command {
-            SyncCommand::EndNewDocument(_)
-            | SyncCommand::EndOpenDocument(_)
-            | SyncCommand::RelocateDocument(_, _)
-            | SyncCommand::FocusDocument(_)
-            | SyncCommand::CloseCurrentDocument
-            | SyncCommand::CloseAllDocuments
-            | SyncCommand::SaveAllDocuments => None,
-            SyncCommand::EndImport(p, _)
-            | SyncCommand::EndSetExportTextureDestination(p, _)
-            | SyncCommand::EndSetExportMetadataDestination(p, _)
-            | SyncCommand::EndSetExportMetadataPathsRoot(p, _)
-            | SyncCommand::EndSetExportFormat(p, _) => self.get_tab(p),
+            EndNewDocument(_)
+            | EndOpenDocument(_)
+            | RelocateDocument(_, _)
+            | FocusDocument(_)
+            | CloseCurrentDocument
+            | CloseAllDocuments
+            | SaveAllDocuments => None,
+            EndImport(p, _)
+            | EndSetExportTextureDestination(p, _)
+            | EndSetExportMetadataDestination(p, _)
+            | EndSetExportMetadataPathsRoot(p, _)
+            | EndSetExportFormat(p, _) => self.get_tab(p),
             _ => self.get_current_tab(),
         }
         .cloned();
 
         match command {
-            SyncCommand::EndNewDocument(p) => self.end_new_document(p)?,
-            SyncCommand::EndOpenDocument(p) => self.end_open_document(p)?,
-            SyncCommand::RelocateDocument(from, to) => self.relocate_document(from, to)?,
-            SyncCommand::FocusDocument(p) => {
+            EndNewDocument(p) => self.end_new_document(p)?,
+            EndOpenDocument(p) => self.end_open_document(p)?,
+            RelocateDocument(from, to) => self.relocate_document(from, to)?,
+            FocusDocument(p) => {
                 if self.is_opened(&p) {
                     self.current_tab = Some(p.clone());
                 }
             }
-            SyncCommand::CloseCurrentDocument => self.close_current_document()?,
-            SyncCommand::CloseAllDocuments => self.close_all_documents(),
-            SyncCommand::SaveAllDocuments => self.save_all_documents()?,
-            SyncCommand::Undo => self
+            CloseCurrentDocument => self.close_current_document()?,
+            CloseAllDocuments => self.close_all_documents(),
+            SaveAllDocuments => self.save_all_documents()?,
+            Undo => self
                 .get_current_tab_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .undo()?,
-            SyncCommand::Redo => self
+            Redo => self
                 .get_current_tab_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .redo()?,
-            SyncCommand::EndImport(_, f) => tab
+            EndImport(_, f) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .import(f),
-            SyncCommand::BeginExportAs => tab
+            BeginExportAs => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .document
                 .begin_export_as(),
-            SyncCommand::CancelExportAs => tab
+            CancelExportAs => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .cancel_export_as(),
-            SyncCommand::EndSetExportTextureDestination(_, d) => tab
+            EndSetExportTextureDestination(_, d) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .end_set_export_texture_destination(d)?,
-            SyncCommand::EndSetExportMetadataDestination(_, d) => tab
+            EndSetExportMetadataDestination(_, d) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .end_set_export_metadata_destination(d)?,
-            SyncCommand::EndSetExportMetadataPathsRoot(_, d) => tab
+            EndSetExportMetadataPathsRoot(_, d) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .end_set_export_metadata_paths_root(d)?,
-            SyncCommand::EndSetExportFormat(_, f) => tab
+            EndSetExportFormat(_, f) => tab
                 .as_mut()
                 .ok_or(StateError::DocumentNotFound)?
                 .document
                 .end_set_export_format(f.clone())?,
-            SyncCommand::EndExportAs => tab
+            EndExportAs => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .document
                 .end_export_as()?,
-            SyncCommand::SwitchToContentTab(t) => tab
+            SwitchToContentTab(t) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .switch_to_content_tab(*t),
-            SyncCommand::SelectFrame(p) => tab
+            SelectFrame(p) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_frame(&p)?,
-            SyncCommand::SelectAnimation(a) => tab
+            SelectAnimation(a) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation(&a)?,
-            SyncCommand::SelectHitbox(h) => tab
+            SelectHitbox(h) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_hitbox(&h)?,
-            SyncCommand::SelectAnimationFrame(af) => tab
+            SelectAnimationFrame(af) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_animation_frame(*af)?,
-            SyncCommand::SelectPrevious => tab
+            SelectPrevious => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_previous()?,
-            SyncCommand::SelectNext => tab
+            SelectNext => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .select_next()?,
-            SyncCommand::EditFrame(p) => tab
+            EditFrame(p) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .edit_frame(&p)?,
-            SyncCommand::EditAnimation(a) => tab
+            EditAnimation(a) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .edit_animation(&a)?,
-            SyncCommand::CreateAnimation => tab
+            CreateAnimation => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .create_animation()?,
-            SyncCommand::BeginFrameDrag(f) => tab
+            BeginFrameDrag(f) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_frame_drag(f)?,
-            SyncCommand::EndFrameDrag => {
+            EndFrameDrag => {
                 tab.as_mut()
                     .ok_or(StateError::NoDocumentOpen)?
                     .transient
                     .content_frame_being_dragged = None
             }
-            SyncCommand::InsertAnimationFrameBefore(f, n) => tab
+            InsertAnimationFrameBefore(f, n) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .insert_animation_frame_before(f, *n)?,
-            SyncCommand::ReorderAnimationFrame(a, b) => tab
+            ReorderAnimationFrame(a, b) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .reorder_animation_frame(*a, *b)?,
-            SyncCommand::BeginAnimationFrameDurationDrag(a) => tab
+            BeginAnimationFrameDurationDrag(a) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_duration_drag(*a)?,
-            SyncCommand::UpdateAnimationFrameDurationDrag(d) => tab
+            UpdateAnimationFrameDurationDrag(d) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_duration_drag(*d)?,
-            SyncCommand::EndAnimationFrameDurationDrag => tab
+            EndAnimationFrameDurationDrag => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_duration_drag(),
-            SyncCommand::BeginAnimationFrameDrag(a) => tab
+            BeginAnimationFrameDrag(a) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_drag(*a)?,
-            SyncCommand::EndAnimationFrameDrag => {
+            EndAnimationFrameDrag => {
                 tab.as_mut()
                     .ok_or(StateError::NoDocumentOpen)?
                     .transient
                     .timeline_frame_being_dragged = None
             }
-            SyncCommand::BeginAnimationFrameOffsetDrag(a, m) => tab
+            BeginAnimationFrameOffsetDrag(a, m) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_animation_frame_offset_drag(*a, *m)?,
-            SyncCommand::UpdateAnimationFrameOffsetDrag(o, b) => tab
+            UpdateAnimationFrameOffsetDrag(o, b) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_animation_frame_offset_drag(*o, *b)?,
-            SyncCommand::EndAnimationFrameOffsetDrag => tab
+            EndAnimationFrameOffsetDrag => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_animation_frame_offset_drag(),
-            SyncCommand::WorkbenchZoomIn => tab
+            WorkbenchZoomIn => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .workbench_zoom_in(),
-            SyncCommand::WorkbenchZoomOut => tab
+            WorkbenchZoomOut => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .workbench_zoom_out(),
-            SyncCommand::WorkbenchResetZoom => tab
+            WorkbenchResetZoom => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .workbench_reset_zoom(),
-            SyncCommand::Pan(delta) => tab
+            Pan(delta) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .pan(*delta),
-            SyncCommand::CreateHitbox(p) => tab
+            CreateHitbox(p) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .create_hitbox(*p)?,
-            SyncCommand::BeginHitboxScale(h, a, p) => tab
+            BeginHitboxScale(h, a, p) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_scale(&h, *a, *p)?,
-            SyncCommand::UpdateHitboxScale(p) => tab
+            UpdateHitboxScale(p) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_scale(*p)?,
-            SyncCommand::EndHitboxScale => tab
+            EndHitboxScale => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_hitbox_scale(),
-            SyncCommand::BeginHitboxDrag(a, m) => tab
+            BeginHitboxDrag(a, m) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_hitbox_drag(&a, *m)?,
-            SyncCommand::UpdateHitboxDrag(o, b) => tab
+            UpdateHitboxDrag(o, b) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_hitbox_drag(*o, *b)?,
-            SyncCommand::EndHitboxDrag => tab
+            EndHitboxDrag => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_hitbox_drag(),
-            SyncCommand::TogglePlayback => tab
+            TogglePlayback => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_playback()?,
-            SyncCommand::SnapToPreviousFrame => tab
+            SnapToPreviousFrame => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .snap_to_previous_frame()?,
-            SyncCommand::SnapToNextFrame => tab
+            SnapToNextFrame => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .snap_to_next_frame()?,
-            SyncCommand::ToggleLooping => tab
+            ToggleLooping => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .toggle_looping()?,
-            SyncCommand::TimelineZoomIn => tab
+            TimelineZoomIn => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .timeline_zoom_in(),
-            SyncCommand::TimelineZoomOut => tab
+            TimelineZoomOut => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .timeline_zoom_out(),
-            SyncCommand::TimelineResetZoom => tab
+            TimelineResetZoom => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .view
                 .timeline_reset_zoom(),
-            SyncCommand::BeginScrub => {
+            BeginScrub => {
                 tab.as_mut()
                     .ok_or(StateError::NoDocumentOpen)?
                     .transient
                     .timeline_scrubbing = true
             }
-            SyncCommand::UpdateScrub(t) => tab
+            UpdateScrub(t) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .update_timeline_scrub(*t)?,
-            SyncCommand::EndScrub => {
+            EndScrub => {
                 tab.as_mut()
                     .ok_or(StateError::NoDocumentOpen)?
                     .transient
                     .timeline_scrubbing = false
             }
-            SyncCommand::NudgeSelection(d, l) => tab
+            NudgeSelection(d, l) => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .nudge_selection(*d, *l)?,
-            SyncCommand::DeleteSelection => tab
+            DeleteSelection => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .delete_selection(),
-            SyncCommand::BeginRenameSelection => tab
+            BeginRenameSelection => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .begin_rename_selection()?,
-            SyncCommand::UpdateRenameSelection(n) => {
+            UpdateRenameSelection(n) => {
                 tab.as_mut()
                     .ok_or(StateError::NoDocumentOpen)?
                     .transient
                     .rename_buffer = Some(n.to_owned())
             }
-            SyncCommand::EndRenameSelection => tab
+            EndRenameSelection => tab
                 .as_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .end_rename_selection()?,
         };
 
-        if *command != SyncCommand::Undo && *command != SyncCommand::Redo {
+        if *command != Undo && *command != Redo {
             if let Some(tab) = tab {
                 if let Some(persistent_tab) = self.get_tab_mut(&tab.source) {
                     persistent_tab.record_command(command, tab.document, tab.view, tab.transient);
