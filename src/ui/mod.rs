@@ -75,7 +75,7 @@ pub fn init(window: &glutin::Window) -> ImGui {
 
 pub fn run<'a>(
     ui: &Ui<'a>,
-    state: &AppState,
+    app_state: &AppState,
     texture_cache: &TextureCache,
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
@@ -86,7 +86,7 @@ pub fn run<'a>(
     let content_width = 0.12 * window_width;
     let hitboxes_width = 0.12 * window_width;
 
-    let (_, menu_height) = draw_main_menu(ui, state, &mut commands);
+    let (_, menu_height) = draw_main_menu(ui, app_state, &mut commands);
 
     {
         let workbench_width = window_width - content_width - hitboxes_width;
@@ -96,12 +96,12 @@ pub fn run<'a>(
             workbench_width,
             window_height - menu_height,
         );
-        workbench_window::draw(ui, &workbench_rect, state, &mut commands, texture_cache);
+        workbench_window::draw(ui, &workbench_rect, app_state, &mut commands, texture_cache);
     }
 
     {
         let documents_rect = rect(content_width, menu_height, window_width, 0.0);
-        draw_documents_window(ui, &documents_rect, state, &mut commands);
+        draw_documents_window(ui, &documents_rect, app_state, &mut commands);
     }
 
     let panels_height = window_height - menu_height;
@@ -109,7 +109,7 @@ pub fn run<'a>(
 
     {
         let content_rect = rect(0.0, menu_height, content_width, content_height);
-        content_window::draw(ui, &content_rect, state, &mut commands);
+        content_window::draw(ui, &content_rect, app_state, &mut commands);
     }
 
     {
@@ -122,7 +122,7 @@ pub fn run<'a>(
             selection_width,
             selection_height,
         );
-        selection_window::draw(ui, &selection_rect, state, texture_cache);
+        selection_window::draw(ui, &selection_rect, app_state, texture_cache);
     }
 
     {
@@ -134,7 +134,7 @@ pub fn run<'a>(
             timeline_width,
             timeline_height,
         );
-        timeline_window::draw(ui, &timeline_rect, state, &mut commands);
+        timeline_window::draw(ui, &timeline_rect, app_state, &mut commands);
     }
 
     {
@@ -145,22 +145,26 @@ pub fn run<'a>(
             hitboxes_width,
             hitboxes_height,
         );
-        hitboxes_window::draw(ui, &hitboxes_rect, state, &mut commands);
+        hitboxes_window::draw(ui, &hitboxes_rect, app_state, &mut commands);
     }
 
-    draw_export_popup(ui, state, &mut commands);
-    draw_rename_popup(ui, state, &mut commands);
+    draw_export_popup(ui, app_state, &mut commands);
+    draw_rename_popup(ui, app_state, &mut commands);
 
-    update_drag_and_drop(ui, state, &mut commands);
-    draw_drag_and_drop(ui, state, texture_cache);
-    process_shortcuts(ui, state, &mut commands);
+    update_drag_and_drop(ui, app_state, &mut commands);
+    draw_drag_and_drop(ui, app_state, texture_cache);
+    process_shortcuts(ui, app_state, &mut commands);
 
     Ok(commands)
 }
 
-fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) -> (f32, f32) {
+fn draw_main_menu<'a>(
+    ui: &Ui<'a>,
+    app_state: &AppState,
+    commands: &mut CommandBuffer,
+) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
-    let has_document = state.get_current_tab().is_some();
+    let has_document = app_state.get_current_tab().is_some();
 
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.main_menu_bar(|| {
@@ -186,7 +190,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = state.get_current_tab() {
+                    if let Some(tab) = app_state.get_current_tab() {
                         commands.save(&tab.source, &tab.document);
                     }
                 }
@@ -196,7 +200,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = state.get_current_tab() {
+                    if let Some(tab) = app_state.get_current_tab() {
                         commands.save_as(&tab.source, &tab.document);
                     }
                 }
@@ -214,7 +218,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
                     .enabled(has_document)
                     .build()
                 {
-                    if let Some(tab) = state.get_current_tab() {
+                    if let Some(tab) = app_state.get_current_tab() {
                         commands.export(&tab.document);
                     }
                 }
@@ -320,7 +324,7 @@ fn draw_main_menu<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffe
 fn draw_documents_window<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &AppState,
+    app_state: &AppState,
     commands: &mut CommandBuffer,
 ) -> (f32, f32) {
     let size = &mut (0.0, 0.0);
@@ -335,7 +339,7 @@ fn draw_documents_window<'a>(
             .menu_bar(false)
             .movable(false)
             .build(|| {
-                for tab in state.tabs_iter() {
+                for tab in app_state.tabs_iter() {
                     if ui.small_button(&ImString::new(tab.source.to_string_lossy())) {
                         commands.focus_tab(tab);
                     }
@@ -348,8 +352,8 @@ fn draw_documents_window<'a>(
     *size
 }
 
-fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = state.get_current_tab() {
+fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+    if let Some(tab) = app_state.get_current_tab() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
             if tab.transient.content_frame_being_dragged.is_some() {
                 commands.end_frame_drag();
@@ -380,8 +384,8 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut Comman
     }
 }
 
-fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &TextureCache) {
-    if let Some(tab) = state.get_current_tab() {
+fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &TextureCache) {
+    if let Some(tab) = app_state.get_current_tab() {
         if let Some(ref path) = tab.transient.content_frame_being_dragged {
             if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
                 ui.tooltip(|| {
@@ -406,8 +410,8 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, state: &AppState, texture_cache: &Texture
     }
 }
 
-fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = state.get_current_tab() {
+fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+    if let Some(tab) = app_state.get_current_tab() {
         if let Some(settings) = tab.document.get_export_settings() {
             let popup_id = im_str!("Export Options");
             ui.popup_modal(&popup_id)
@@ -488,8 +492,8 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
     }
 }
 
-fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
-    if let Some(tab) = state.get_current_tab() {
+fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+    if let Some(tab) = app_state.get_current_tab() {
         let max_length = match tab.transient.item_being_renamed {
             Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
             Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
@@ -520,7 +524,7 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
     }
 }
 
-fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBuffer) {
+fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if ui.want_capture_keyboard() {
         return;
     }
@@ -583,19 +587,19 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, state: &AppState, commands: &mut CommandBu
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     commands.save_as(&tab.source, &tab.document);
                 }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
-            } else if let Some(tab) = state.get_current_tab() {
+            } else if let Some(tab) = app_state.get_current_tab() {
                 commands.save(&tab.source, &tab.document);
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
             if ui.imgui().key_shift() {
                 commands.begin_export_as();
-            } else if let Some(tab) = state.get_current_tab() {
+            } else if let Some(tab) = app_state.get_current_tab() {
                 commands.export(&tab.document);
             }
         }

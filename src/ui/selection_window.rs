@@ -68,7 +68,7 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
 
 fn draw_animation<'a>(
     ui: &Ui<'a>,
-    state: &AppState,
+    app_state: &AppState,
     texture_cache: &TextureCache,
     animation: &Animation,
 ) {
@@ -80,7 +80,7 @@ fn draw_animation<'a>(
             if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32().to_vector()) {
                 let duration = animation.get_duration().unwrap(); // TODO no unwrap
                 let time = Duration::from_millis(
-                    state.get_clock().as_millis() as u64 % u64::from(duration),
+                    app_state.get_clock().as_millis() as u64 % u64::from(duration),
                 ); // TODO pause on first and last frame for non looping animation?
                 let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 match texture_cache.get(animation_frame.get_frame()) {
@@ -145,7 +145,7 @@ fn draw_animation_frame<'a>(
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: &TextureCache) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -154,7 +154,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: 
             .resizable(false)
             .movable(false)
             .build(|| {
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     match tab.view.get_selection() {
                         Some(Selection::Frame(path)) => {
                             if let Some(frame) = tab.document.get_sheet().get_frame(path) {
@@ -163,7 +163,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: 
                         }
                         Some(Selection::Animation(name)) => {
                             if let Some(animation) = tab.document.get_sheet().get_animation(name) {
-                                draw_animation(ui, state, texture_cache, animation);
+                                draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
                         Some(Selection::AnimationFrame(name, index)) => {

@@ -438,7 +438,7 @@ fn draw_animation<'a>(
     }
 }
 
-fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
+fn draw_grid<'a>(ui: &Ui<'a>, app_state: &AppState) {
     let draw_list = ui.get_window_draw_list();
     let thickness = 0.5; // TODO DPI?
     let spacing = 16; // TODO DPI?
@@ -447,7 +447,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
     ui.set_cursor_pos((0.0, 0.0));
 
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
-    let offset = state
+    let offset = app_state
         .get_current_tab()
         .map(|t| t.view.get_workbench_offset())
         .unwrap_or_else(Vector2D::<f32>::zero);
@@ -540,7 +540,7 @@ fn draw_item_name<'a, T: AsRef<str>>(ui: &Ui<'a>, name: T) {
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &AppState,
+    app_state: &AppState,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
@@ -557,9 +557,9 @@ pub fn draw<'a>(
             .scroll_bar(false)
             .no_bring_to_front_on_focus(true)
             .build(|| {
-                draw_grid(ui, state);
+                draw_grid(ui, app_state);
 
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     match tab.view.get_workbench_item() {
                         Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = tab.document.get_sheet().get_frame(path) {

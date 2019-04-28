@@ -91,7 +91,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab) {
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -101,7 +101,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .movable(false)
             .build(|| {
                 // TODO draw something before document is loaded?
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     draw_tabs(ui, commands);
                     ui.separator();
                     match tab.view.get_content_tab() {

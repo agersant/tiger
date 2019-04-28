@@ -380,7 +380,7 @@ fn handle_drag_and_drop<'a>(
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Timeline"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -390,7 +390,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .movable(false)
             .always_horizontal_scrollbar(true)
             .build(|| {
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     if let Some(WorkbenchItem::Animation(animation_name)) =
                         tab.view.get_workbench_item()
                     {

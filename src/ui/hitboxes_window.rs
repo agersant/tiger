@@ -26,7 +26,7 @@ fn draw_hitboxes<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, tab: &Tab, frame
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Hitboxes"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -35,7 +35,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .resizable(false)
             .movable(false)
             .build(|| {
-                if let Some(tab) = state.get_current_tab() {
+                if let Some(tab) = app_state.get_current_tab() {
                     if let Some(WorkbenchItem::Frame(frame_path)) = tab.view.get_workbench_item() {
                         if let Some(frame) = tab.document.get_sheet().get_frame(frame_path) {
                             draw_hitboxes(ui, commands, tab, frame);

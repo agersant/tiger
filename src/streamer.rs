@@ -27,13 +27,13 @@ pub fn init() -> (Sender<StreamerPayload>, Receiver<StreamerPayload>) {
 }
 
 pub fn load_from_disk(
-    state: &AppState,
+    app_state: &AppState,
     texture_cache: Arc<Mutex<TextureCache>>,
     sender: &Sender<StreamerPayload>,
 ) {
     // List textures we want loaded
     let mut desired_textures = HashSet::new();
-    for document in state.documents_iter() {
+    for document in app_state.documents_iter() {
         for frame in document.get_sheet().frames_iter() {
             desired_textures.insert(frame.get_source().to_owned());
         }
