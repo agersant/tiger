@@ -43,9 +43,24 @@ impl Tab {
 
 	pub fn open<T: AsRef<Path>>(path: T) -> Result<Tab, Error> {
 		let mut tab = Tab::new(&path);
-		tab.document = Document::open(&path)?;
+
+		let mut directory = path.as_ref().to_path_buf();
+		directory.pop();
+		let sheet: Sheet = compat::read_sheet(path.as_ref())?;
+		let sheet = sheet.with_absolute_paths(&directory)?;
+		tab.document = Default::default();
+		tab.document.sheet = sheet;
+
 		tab.history[0].document = tab.document.clone();
 		Ok(tab)
+	}
+
+	pub fn save<T: AsRef<Path>>(document: &Document, to: T) -> Result<(), Error> {
+		let mut directory = to.as_ref().to_path_buf();
+		directory.pop();
+		let sheet = document.sheet.with_relative_paths(directory)?;
+		compat::write_sheet(to, &sheet)?;
+		Ok(())
 	}
 
 	pub fn tick(&mut self, delta: Duration) {
@@ -1144,7 +1159,7 @@ impl Tab {
 		let mut new_tab = self.clone();
 
 		match command {
-			EndImport(_, f) => new_tab.document.import(f),
+			EndImport(_, f) => new_tab.document.get_sheet_mut().add_frame(f),
 			BeginExportAs => new_tab.begin_export_as(),
 			CancelExportAs => new_tab.cancel_export_as(),
 			EndSetExportTextureDestination(_, d) => {

@@ -150,7 +150,7 @@ impl AppState {
 
     fn save_all_documents(&mut self) -> Result<(), Error> {
         for tab in &mut self.tabs {
-            tab.document.save(&tab.source)?;
+            Tab::save(&tab.document, &tab.source)?;
         }
         Ok(())
     }
@@ -339,7 +339,7 @@ pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Er
     match command {
         AsyncCommand::BeginNewDocument => begin_new_document(),
         AsyncCommand::BeginOpenDocument => begin_open_document(),
-        AsyncCommand::Save(p, d) => d.save(p).and(Ok(no_commands)),
+        AsyncCommand::Save(p, d) => Tab::save(d, p).and(Ok(no_commands)),
         AsyncCommand::SaveAs(p, d) => save_as(p, d),
         AsyncCommand::BeginSetExportTextureDestination(p) => {
             begin_set_export_texture_destination(p)
