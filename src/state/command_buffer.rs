@@ -191,6 +191,10 @@ impl CommandBuffer {
         ))));
     }
 
+    pub fn clear_selection(&mut self) {
+        self.queue.push(Sync(Document(ClearSelection)));
+    }
+
     pub fn select_frame(&mut self, frame: &Frame) {
         self.queue
             .push(Sync(Document(SelectFrame(frame.get_source().to_owned()))));

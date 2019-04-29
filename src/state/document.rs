@@ -180,6 +180,10 @@ impl Document {
 		.ok_or_else(|| StateError::NotEditingAnyAnimation.into())
 	}
 
+	pub fn clear_selection(&mut self) {
+		self.view.selection = None;
+	}
+
 	pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
 		if !self.sheet.has_frame(&path) {
 			return Err(StateError::FrameNotInDocument.into());
@@ -738,12 +742,16 @@ impl Document {
 		Ok(())
 	}
 
-	pub fn end_hitbox_scale(&mut self) {
+	pub fn end_hitbox_scale(&mut self) -> Result<(), Error> {
+		if let Some(hitbox_name) = self.transient.workbench_hitbox_being_scaled.clone() {
+			self.select_hitbox(hitbox_name)?;
+		}
 		self.transient.workbench_hitbox_scale_axis = ResizeAxis::N;
 		self.transient.workbench_hitbox_scale_initial_mouse_position = Vector2D::<f32>::zero();
 		self.transient.workbench_hitbox_scale_initial_position = Vector2D::<i32>::zero();
 		self.transient.workbench_hitbox_scale_initial_size = Vector2D::<u32>::zero();
 		self.transient.workbench_hitbox_being_scaled = None;
+		Ok(())
 	}
 
 	pub fn begin_hitbox_drag<T: AsRef<str>>(
@@ -1141,6 +1149,7 @@ impl Document {
 			EndSetExportFormat(_, f) => new_document.end_set_export_format(f.clone())?,
 			EndExportAs => new_document.end_export_as()?,
 			SwitchToContentTab(t) => new_document.view.content_tab = *t,
+			ClearSelection => new_document.clear_selection(),
 			SelectFrame(p) => new_document.select_frame(&p)?,
 			SelectAnimation(a) => new_document.select_animation(&a)?,
 			SelectHitbox(h) => new_document.select_hitbox(&h)?,
@@ -1179,7 +1188,7 @@ impl Document {
 			CreateHitbox(p) => new_document.create_hitbox(*p)?,
 			BeginHitboxScale(h, a, p) => new_document.begin_hitbox_scale(&h, *a, *p)?,
 			UpdateHitboxScale(p) => new_document.update_hitbox_scale(*p)?,
-			EndHitboxScale => new_document.end_hitbox_scale(),
+			EndHitboxScale => new_document.end_hitbox_scale()?,
 			BeginHitboxDrag(a, m) => new_document.begin_hitbox_drag(&a, *m)?,
 			UpdateHitboxDrag(o, b) => new_document.update_hitbox_drag(*o, *b)?,
 			EndHitboxDrag => new_document.end_hitbox_drag(),

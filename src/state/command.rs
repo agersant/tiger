@@ -43,6 +43,7 @@ pub enum DocumentCommand {
     EndExportAs,
     SwitchToContentTab(ContentTab),
     EndImport(PathBuf, PathBuf),
+    ClearSelection,
     SelectFrame(PathBuf),
     SelectAnimation(String),
     SelectHitbox(String),

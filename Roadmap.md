@@ -39,8 +39,8 @@
 - [x] Automatically select hitbox after creating it
 - [x] Select hitbox when clicking it
 - [x] Select animation frame when clicking it
+- [x] Selected hitbox should have handles for resizing instead of using invisible buttons along borders
 - [x] When creating an animation, automatically select it
-- [ ] Duplicate animation / animation frame (within same sheet)
 - [x] Grid
 - [ ] Drag and drop frames to workbench
 - ~~[ ] Grid snapping?~~
@@ -59,11 +59,11 @@
 - [x] Fix bug where reordering animation frames changes selected animation frame
 - [x] Fix bug where a console window opens alongside Tiger on Windows
 - [x] Workbench should illustrate selected hitbox or animation frame (w/ borders)
-- [ ] Clicking blank space within the workbench gets rid of the current selection
+- [x] Clicking blank space within the workbench gets rid of the current selection
+- [ ] Space to center workbench when editing frame
 
 ## Tiger 0.3
 - [ ] Error dialogs
-- [ ] Selected hitbox should have 8 handles for resizing instead of using borders
 - [ ] Add option to hide hitboxes while looking at animations in workbench
 - [ ] Multiple selections
 - [x] Jump to next/previous frame
@@ -80,6 +80,7 @@
 - [ ] Draw hitbox names in workbench
 - [ ] Onion skin?
 - [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
+- [ ] Duplicate animation / animation frame (within same sheet)
 
 ## Tiger 0.4
 - [ ] Review TODO dpi
