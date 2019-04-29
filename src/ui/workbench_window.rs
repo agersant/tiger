@@ -14,8 +14,8 @@ fn screen_to_workbench<'a>(
 ) -> Vector2D<f32> {
     let window_position: Vector2D<f32> = ui.get_window_pos().into();
     let window_size: Vector2D<f32> = ui.get_window_size().into();
-    let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
+    let zoom = document.view.get_workbench_zoom_factor();
+    let offset = document.view.workbench_offset;
     (screen_coords - offset - window_position - window_size / 2.0) / zoom
 }
 
@@ -59,15 +59,15 @@ fn draw_resize_handle<'a>(
 
 fn draw_hitbox_controls<'a>(
     ui: &Ui<'a>,
-    document: &Document,
     commands: &mut CommandBuffer,
+    document: &Document,
     hitbox: &Hitbox,
     is_scaling: &mut bool,
     is_dragging: &mut bool,
 ) {
     let space: Vector2D<f32> = ui.get_window_size().into();
-    let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
+    let zoom = document.view.get_workbench_zoom_factor();
+    let offset = document.view.workbench_offset;
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_shift_down = ui.imgui().key_shift();
@@ -82,17 +82,17 @@ fn draw_hitbox_controls<'a>(
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
     if *is_scaling {
-        match document.get_workbench_hitbox_being_scaled() {
-            Some(n) if n == hitbox.get_name() => {
+        match document.transient.workbench_hitbox_being_scaled {
+            Some(ref n) if n == hitbox.get_name() => {
                 commands.update_hitbox_scale(mouse_position_in_workbench);
-                let axis = document.get_workbench_hitbox_axis_being_scaled();
+                let axis = document.transient.workbench_hitbox_scale_axis;
                 ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
             }
             _ => (),
         };
     } else if *is_dragging {
-        match document.get_workbench_hitbox_being_dragged() {
-            Some(n) if n == hitbox.get_name() => {
+        match document.transient.workbench_hitbox_being_dragged {
+            Some(ref n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
                     let mouse_pos = ui.imgui().mouse_pos().into();
@@ -240,8 +240,8 @@ fn draw_hitbox<'a>(
     is_selectable: bool,
     offset: Vector2D<i32>,
 ) {
-    let zoom = document.get_workbench_zoom_factor();
-    let workbench_offset = document.get_workbench_offset();
+    let zoom = document.view.get_workbench_zoom_factor();
+    let workbench_offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
     let cursor_pos = workbench_offset
@@ -256,7 +256,7 @@ fn draw_hitbox<'a>(
     let mouse_pos: Point2D<f32> = ui.imgui().mouse_pos().into();
 
     let is_hovered = is_selectable && hitbox_rect.contains(&mouse_pos);
-    let is_selected = *document.get_selection()
+    let is_selected = document.view.selection
         == Some(Selection::Hitbox(
             frame.get_source().to_path_buf(),
             hitbox.get_name().to_owned(),
@@ -284,8 +284,8 @@ fn draw_frame<'a>(
     document: &Document,
     frame: &Frame,
 ) {
-    let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
+    let zoom = document.view.get_workbench_zoom_factor();
+    let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&frame.get_source()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -299,8 +299,9 @@ fn draw_frame<'a>(
 
             let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
             let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-            let mut is_scaling_hitbox = document.get_workbench_hitbox_being_scaled().is_some();
-            let mut is_dragging_hitbox = document.get_workbench_hitbox_being_dragged().is_some();
+            let mut is_scaling_hitbox = document.transient.workbench_hitbox_being_scaled.is_some();
+            let mut is_dragging_hitbox =
+                document.transient.workbench_hitbox_being_dragged.is_some();
 
             let mouse_pos = ui.imgui().mouse_pos().into();
             let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
@@ -309,8 +310,8 @@ fn draw_frame<'a>(
                 draw_hitbox(ui, document, frame, hitbox, true, vec2(0, 0));
                 draw_hitbox_controls(
                     ui,
-                    document,
                     commands,
+                    document,
                     hitbox,
                     &mut is_scaling_hitbox,
                     &mut is_dragging_hitbox,
@@ -343,8 +344,8 @@ fn draw_animation_frame<'a>(
     animation_frame: &AnimationFrame,
     is_selected: bool,
 ) {
-    let zoom = document.get_workbench_zoom_factor();
-    let offset = document.get_workbench_offset();
+    let zoom = document.view.get_workbench_zoom_factor();
+    let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&animation_frame.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -357,7 +358,7 @@ fn draw_animation_frame<'a>(
             ui.image(texture.id, draw_size.to_tuple()).build();
             let is_hovered = ui.is_item_hovered();
 
-            if let Some(frame) = document.get_sheet().get_frame(animation_frame.get_frame()) {
+            if let Some(frame) = document.sheet.get_frame(animation_frame.get_frame()) {
                 for hitbox in frame.hitboxes_iter() {
                     draw_hitbox(ui, document, frame, hitbox, false, frame_offset.to_i32());
                 }
@@ -397,9 +398,9 @@ fn draw_animation<'a>(
     document: &Document,
     animation: &Animation,
 ) {
-    let now = document.get_timeline_clock();
+    let now = document.view.timeline_clock;
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = *document.get_selection()
+        let is_selected = document.view.selection
             == Some(Selection::AnimationFrame(
                 animation.get_name().to_owned(),
                 frame_index,
@@ -411,7 +412,7 @@ fn draw_animation<'a>(
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
         let is_shift_down = ui.imgui().key_shift();
 
-        match document.get_workbench_animation_frame_being_dragged() {
+        match document.transient.workbench_animation_frame_being_dragged {
             None => {
                 if ui.is_item_hovered() {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
@@ -427,8 +428,8 @@ fn draw_animation<'a>(
                     let mouse_pos = ui.imgui().mouse_pos().into();
                     commands.update_animation_frame_offset_drag(mouse_pos, !is_shift_down);
                 }
-                if *dragged_frame_index != frame_index {
-                    if let Some(animation_frame) = animation.get_frame(*dragged_frame_index) {
+                if dragged_frame_index != frame_index {
+                    if let Some(animation_frame) = animation.get_frame(dragged_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
                             draw_animation_frame(
                                 ui,
@@ -445,7 +446,7 @@ fn draw_animation<'a>(
     }
 }
 
-fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
+fn draw_grid<'a>(ui: &Ui<'a>, app_state: &AppState) {
     let draw_list = ui.get_window_draw_list();
     let thickness = 0.5; // TODO DPI?
     let spacing = 16; // TODO DPI?
@@ -454,10 +455,10 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
     ui.set_cursor_pos((0.0, 0.0));
 
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
-    let offset = state
+    let offset = app_state
         .get_current_document()
-        .map(Document::get_workbench_offset)
-        .unwrap_or(Vector2D::<f32>::zero());
+        .map(|t| t.view.workbench_offset)
+        .unwrap_or_else(Vector2D::<f32>::zero);
     let space: Vector2D<f32> = ui.get_window_size().into();
 
     let line_color_main = [1.0, 1.0, 1.0, 0.02]; // TODO.style
@@ -506,7 +507,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, state: &AppState) {
 }
 
 fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
-    let offset = document.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     let size = 10.0; // TODO DPI?
     let thickness = 1.0; // TODO DPI?
 
@@ -547,7 +548,7 @@ fn draw_item_name<'a, T: AsRef<str>>(ui: &Ui<'a>, name: T) {
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
-    state: &AppState,
+    app_state: &AppState,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
 ) {
@@ -564,23 +565,23 @@ pub fn draw<'a>(
             .scroll_bar(false)
             .no_bring_to_front_on_focus(true)
             .build(|| {
-                draw_grid(ui, state);
+                draw_grid(ui, app_state);
 
-                if let Some(document) = state.get_current_document() {
-                    match document.get_workbench_item() {
+                if let Some(document) = app_state.get_current_document() {
+                    match &document.view.workbench_item {
                         Some(WorkbenchItem::Frame(path)) => {
-                            if let Some(frame) = document.get_sheet().get_frame(path) {
+                            if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, commands, texture_cache, document, frame);
                                 let name = frame
                                     .get_source()
                                     .file_name()
                                     .map(|s| s.to_string_lossy().into_owned())
-                                    .unwrap_or("".to_string());
+                                    .unwrap_or_else(|| "".to_string());
                                 draw_item_name(ui, name);
                             }
                         }
                         Some(WorkbenchItem::Animation(name)) => {
-                            if let Some(animation) = document.get_sheet().get_animation(name) {
+                            if let Some(animation) = document.sheet.get_animation(name) {
                                 draw_animation(ui, commands, texture_cache, document, animation);
                                 draw_origin(ui, document);
                                 draw_item_name(ui, animation.get_name());

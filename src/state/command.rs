@@ -2,31 +2,38 @@ use euclid::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::sheet::ExportFormat;
+use crate::sheet::*;
 use crate::state::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
-    SaveDocument(Document),
-    SaveDocumentAs(Document),
+    Save(PathBuf, Sheet),
+    SaveAs(PathBuf, Sheet),
     BeginSetExportTextureDestination(PathBuf),
     BeginSetExportMetadataDestination(PathBuf),
     BeginSetExportMetadataPathsRoot(PathBuf),
     BeginSetExportFormat(PathBuf),
-    Export(Document),
+    BeginImport(PathBuf),
+    Export(Sheet),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SyncCommand {
+pub enum AppCommand {
     EndNewDocument(PathBuf),
-    EndOpenDocument(PathBuf),
-    RelocateDocument(PathBuf, PathBuf),
-    FocusDocument(PathBuf),
+    EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
     CloseCurrentDocument,
     CloseAllDocuments,
-    SaveAllDocuments,
+    SaveAllDocuments, // TODO This should be async (has IO)
+    FocusDocument(PathBuf),
+    RelocateDocument(PathBuf, PathBuf),
+    Undo,
+    Redo,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DocumentCommand {
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
     EndSetExportMetadataDestination(PathBuf, PathBuf),
@@ -35,7 +42,7 @@ pub enum SyncCommand {
     CancelExportAs,
     EndExportAs,
     SwitchToContentTab(ContentTab),
-    Import,
+    EndImport(PathBuf, PathBuf),
     SelectFrame(PathBuf),
     SelectAnimation(String),
     SelectHitbox(String),
@@ -83,6 +90,12 @@ pub enum SyncCommand {
     BeginRenameSelection,
     UpdateRenameSelection(String),
     EndRenameSelection,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SyncCommand {
+    App(AppCommand),
+    Document(DocumentCommand),
 }
 
 #[derive(Debug, Clone, PartialEq)]

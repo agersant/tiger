@@ -33,14 +33,6 @@ pub enum SheetError {
 }
 
 impl Sheet {
-    pub fn new() -> Sheet {
-        Sheet {
-            frames: vec![],
-            animations: vec![],
-            export_settings: None,
-        }
-    }
-
     pub fn with_relative_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<Sheet, Error> {
         let mut sheet = self.clone();
         for frame in sheet.frames_iter_mut() {

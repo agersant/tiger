@@ -18,10 +18,10 @@ fn draw_tabs<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer) {
 
 fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Document) {
     if ui.small_button(im_str!("Import…")) {
-        commands.import();
+        commands.import(document);
     }
     let mut frames: Vec<(&OsStr, &Frame)> = document
-        .get_sheet()
+        .sheet
         .frames_iter()
         .filter_map(|f| {
             if let Some(name) = f.get_source().file_name() {
@@ -33,7 +33,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
         .collect();
     frames.sort_unstable();
     for (name, frame) in frames.iter() {
-        let is_selected = match document.get_selection() {
+        let is_selected = match &document.view.selection {
             Some(Selection::Frame(p)) => p == frame.get_source(),
             _ => false,
         };
@@ -53,10 +53,9 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             }
         }
 
-        if document.get_content_frame_being_dragged().is_none()
-            && ui.is_item_hovered()
-            && ui.imgui().is_mouse_down(ImMouseButton::Left)
-            && !ui.imgui().is_mouse_dragging(ImMouseButton::Left)
+        if document.transient.content_frame_being_dragged.is_none()
+            && ui.is_item_active()
+            && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
             commands.begin_frame_drag(frame);
         }
@@ -67,10 +66,10 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     if ui.small_button(im_str!("Add")) {
         commands.create_animation();
     }
-    let mut animations: Vec<&Animation> = document.get_sheet().animations_iter().collect();
+    let mut animations: Vec<&Animation> = document.sheet.animations_iter().collect();
     animations.sort_unstable();
     for animation in animations.iter() {
-        let is_selected = match document.get_selection() {
+        let is_selected = match &document.view.selection {
             Some(Selection::Animation(a)) => a == animation.get_name(),
             _ => false,
         };
@@ -91,7 +90,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     }
 }
 
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut CommandBuffer) {
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &mut CommandBuffer) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Content"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -101,10 +100,10 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, commands: &mut 
             .movable(false)
             .build(|| {
                 // TODO draw something before document is loaded?
-                if let Some(document) = state.get_current_document() {
+                if let Some(document) = app_state.get_current_document() {
                     draw_tabs(ui, commands);
                     ui.separator();
-                    match document.get_content_tab() {
+                    match document.view.content_tab {
                         ContentTab::Frames => draw_frames(ui, commands, document),
                         ContentTab::Animations => draw_animations(ui, commands, document),
                     }

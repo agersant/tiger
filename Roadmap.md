@@ -27,7 +27,7 @@
 
 ## Tiger 0.2
 - [ ] Unsaved file marker and warnings
-- [ ] Undo/Redo
+- [x] Undo/Redo
 - [x] Allow interactions while file dialogs are open or I/O is in progress
 - [x] Keyboard shortcuts for playback controls
 - [x] Keyboard shortcuts menu entries
