@@ -26,7 +26,8 @@
 - [x] Fix bugs when manipulating extremely short animation frames
 
 ## Tiger 0.2
-- [ ] Unsaved file marker and warnings
+- [ ] Unsaved file marker
+- [ ] Offer to save on exit if needed
 - [x] Undo/Redo
 - [x] Allow interactions while file dialogs are open or I/O is in progress
 - [x] Keyboard shortcuts for playback controls
