@@ -60,7 +60,7 @@
 - [x] Fix bug where a console window opens alongside Tiger on Windows
 - [x] Workbench should illustrate selected hitbox or animation frame (w/ borders)
 - [x] Clicking blank space within the workbench gets rid of the current selection
-- [ ] Space to center workbench when editing frame
+- [x] Ctrl+Space to center workbench
 
 ## Tiger 0.3
 - [ ] Error dialogs

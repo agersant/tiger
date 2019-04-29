@@ -82,6 +82,10 @@ impl View {
 		self.workbench_zoom_level = 1;
 	}
 
+	pub fn workbench_center(&mut self) {
+		self.workbench_offset = Default::default();
+	}
+
 	pub fn timeline_zoom_in(&mut self) {
 		if self.timeline_zoom_level >= 1 {
 			self.timeline_zoom_level *= 2;

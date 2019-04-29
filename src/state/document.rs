@@ -1184,6 +1184,7 @@ impl Document {
 			WorkbenchZoomIn => new_document.view.workbench_zoom_in(),
 			WorkbenchZoomOut => new_document.view.workbench_zoom_out(),
 			WorkbenchResetZoom => new_document.view.workbench_reset_zoom(),
+			WorkbenchCenter => new_document.view.workbench_center(),
 			Pan(delta) => new_document.view.pan(*delta),
 			CreateHitbox(p) => new_document.create_hitbox(*p)?,
 			BeginHitboxScale(h, a, p) => new_document.begin_hitbox_scale(&h, *a, *p)?,

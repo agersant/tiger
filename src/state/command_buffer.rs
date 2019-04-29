@@ -333,6 +333,10 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(WorkbenchResetZoom)));
     }
 
+    pub fn workbench_center(&mut self) {
+        self.queue.push(Sync(Document(WorkbenchCenter)));
+    }
+
     pub fn pan(&mut self, delta: Vector2D<f32>) {
         self.queue.push(Sync(Document(Pan(delta))));
     }

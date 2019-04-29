@@ -270,6 +270,13 @@ fn draw_main_menu<'a>(
 
             ui.menu(im_str!("View")).build(|| {
                 if ui
+                    .menu_item(im_str!("Center Workbench"))
+                    .shortcut(im_str!("Ctrl+Space"))
+                    .build()
+                {
+                    commands.workbench_center();
+                }
+                if ui
                     .menu_item(im_str!("Zoom In (Workbench)"))
                     .shortcut(im_str!("Ctrl++"))
                     .build()
@@ -529,14 +536,17 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
         return;
     }
 
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Delete as _) {
-        commands.delete_selection();
-    }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::F2 as _) {
-        commands.begin_rename_selection();
-    }
-    if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
-        commands.toggle_playback();
+    // Global shortcuts
+    if !ui.imgui().key_ctrl() {
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Delete as _) {
+            commands.delete_selection();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::F2 as _) {
+            commands.begin_rename_selection();
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
+            commands.toggle_playback();
+        }
     }
 
     // Arrow shortcuts
@@ -636,6 +646,9 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
             } else {
                 commands.workbench_reset_zoom();
             }
+        }
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
+            commands.workbench_center();
         }
     }
 }
