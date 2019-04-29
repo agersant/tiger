@@ -209,14 +209,12 @@ fn draw_animation_frame<'a>(
             ui.is_item_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem)
         };
 
-        let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let dragging_frame = document.transient.content_frame_being_dragged.is_some();
         let dragging_animation_frame = document.transient.timeline_frame_being_dragged.is_some();
 
         if !dragging_frame & !dragging_animation_frame
-            && is_mouse_down
-            && !is_mouse_dragging
+            && is_mouse_dragging
             && is_hovering_frame_exact
         {
             commands.begin_animation_frame_drag(animation_frame_index);
