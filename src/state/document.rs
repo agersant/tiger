@@ -107,6 +107,7 @@ impl Document {
 		self.view = new_document.view.clone();
 		self.transient = new_document.transient.clone();
 		self.export_settings_edit = new_document.export_settings_edit.clone();
+		self.timeline_is_playing = new_document.timeline_is_playing;
 
 		if self.can_use_undo_system() {
 			let new_undo_state = HistoryEntry {
