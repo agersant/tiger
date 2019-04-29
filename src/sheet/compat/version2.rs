@@ -24,7 +24,7 @@ pub fn read_file<T: AsRef<Path>>(version: Version, path: T) -> Result<Sheet, Err
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Sheet {
     pub frames: Vec<Frame>,
     pub animations: Vec<Animation>,

@@ -254,16 +254,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "euclid"
 version = "0.19.8"
-source = "git+https://github.com/servo/euclid?rev=650b129#650b1294c3109533d535dd059aa90750771fbb61"
+source = "git+https://github.com/agersant/euclid#5fd8bb8122ee4883b4b1d0c6e668bd3febacb9d5"
 dependencies = [
- "euclid_macros 0.1.0 (git+https://github.com/servo/euclid?rev=650b129)",
+ "euclid_macros 0.1.0 (git+https://github.com/agersant/euclid)",
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "euclid_macros"
 version = "0.1.0"
-source = "git+https://github.com/servo/euclid?rev=650b129#650b1294c3109533d535dd059aa90750771fbb61"
+source = "git+https://github.com/agersant/euclid#5fd8bb8122ee4883b4b1d0c6e668bd3febacb9d5"
 dependencies = [
  "proc-macro2 0.4.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1230,7 +1230,7 @@ name = "tiger"
 version = "0.1.0"
 dependencies = [
  "dunce 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "euclid 0.19.8 (git+https://github.com/servo/euclid?rev=650b129)",
+ "euclid 0.19.8 (git+https://github.com/agersant/euclid)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_core 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1487,8 +1487,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum draw_state 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "33cf9537e2d06891448799b96d5a8c8083e0e90522a7fdabe6ebf4f41d79d651"
 "checksum dunce 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e86b07356baf1cc7058c95807ffba0bebe0c8cadd0df4c40b292c86194eabb37"
 "checksum either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5527cfe0d098f36e3f8839852688e63c8fff1c90b2b405aef730615f9a7bcf7b"
-"checksum euclid 0.19.8 (git+https://github.com/servo/euclid?rev=650b129)" = "<none>"
-"checksum euclid_macros 0.1.0 (git+https://github.com/servo/euclid?rev=650b129)" = "<none>"
+"checksum euclid 0.19.8 (git+https://github.com/agersant/euclid)" = "<none>"
+"checksum euclid_macros 0.1.0 (git+https://github.com/agersant/euclid)" = "<none>"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
 "checksum failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ea1063915fd7ef4309e222a5a07cf9c319fb9c7836b1f89b85458672dbb127e1"
 "checksum foreign-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"

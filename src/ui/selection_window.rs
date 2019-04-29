@@ -3,7 +3,7 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
 
-use crate::sheet::{Animation, AnimationFrame, Frame};
+use crate::sheet::*;
 use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::spinner::*;
@@ -33,9 +33,42 @@ fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
     }
 }
 
+fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
+    let position = hitbox.get_position();
+    let size = hitbox.get_size();
+    ui.text(&ImString::new(format!("Tag: {}", hitbox.get_name())));
+    ui.text(&ImString::new(format!(
+        "Offset: {}, {}",
+        position.x, position.y
+    )));
+    ui.text(&ImString::new(format!(
+        "Dimensions: {} x {}",
+        size.x, size.y
+    )));
+
+    let space: Vector2D<f32> = ui.get_content_region_avail().into();
+    let padding = 0.2;
+
+    if let Some(fill) = utils::fill(space * (1.0 - padding), size.to_f32()) {
+        let cursor_screen_pos: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+        let draw_list = ui.get_window_draw_list();
+        let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
+        draw_list
+            .add_rect(
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.origin.to_vector())
+                    .to_tuple(),
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.bottom_right().to_vector())
+                    .to_tuple(),
+                color,
+            )
+            .thickness(2.0) // TODO dpi
+            .build();
+    }
+}
+
 fn draw_animation<'a>(
     ui: &Ui<'a>,
-    state: &AppState,
+    app_state: &AppState,
     texture_cache: &TextureCache,
     animation: &Animation,
 ) {
@@ -47,7 +80,7 @@ fn draw_animation<'a>(
             if let Some(fill) = utils::fill(space, bbox.rect.size.to_f32().to_vector()) {
                 let duration = animation.get_duration().unwrap(); // TODO no unwrap
                 let time = Duration::from_millis(
-                    state.get_clock().as_millis() as u64 % u64::from(duration),
+                    app_state.get_clock().as_millis() as u64 % u64::from(duration),
                 ); // TODO pause on first and last frame for non looping animation?
                 let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 match texture_cache.get(animation_frame.get_frame()) {
@@ -111,7 +144,8 @@ fn draw_animation_frame<'a>(
         }
     }
 }
-pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: &TextureCache) {
+
+pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cache: &TextureCache) {
     ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
         ui.window(im_str!("Selection"))
             .position(rect.origin.to_tuple(), ImGuiCond::Always)
@@ -120,26 +154,33 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, state: &AppState, texture_cache: 
             .resizable(false)
             .movable(false)
             .build(|| {
-                if let Some(document) = state.get_current_document() {
-                    match document.get_selection() {
+                if let Some(document) = app_state.get_current_document() {
+                    match &document.view.selection {
                         Some(Selection::Frame(path)) => {
-                            if let Some(frame) = document.get_sheet().get_frame(path) {
+                            if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
                         Some(Selection::Animation(name)) => {
-                            if let Some(animation) = document.get_sheet().get_animation(name) {
-                                draw_animation(ui, state, texture_cache, animation);
+                            if let Some(animation) = document.sheet.get_animation(name) {
+                                draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
                         Some(Selection::AnimationFrame(name, index)) => {
-                            if let Some(animation) = document.get_sheet().get_animation(name) {
+                            if let Some(animation) = document.sheet.get_animation(name) {
                                 if let Some(animation_frame) = animation.get_frame(*index) {
                                     draw_animation_frame(ui, texture_cache, animation_frame);
                                 }
                             }
                         }
-                        _ => (), // TODO
+                        Some(Selection::Hitbox(path, name)) => {
+                            if let Some(frame) = document.sheet.get_frame(path) {
+                                if let Some(hitbox) = frame.get_hitbox(name) {
+                                    draw_hitbox(ui, hitbox);
+                                }
+                            }
+                        }
+                        None => (),
                     }
                 }
             });
