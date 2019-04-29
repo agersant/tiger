@@ -250,18 +250,31 @@ fn draw_main_menu<'a>(
             });
 
             ui.menu(im_str!("Edit")).build(|| {
+                let undo_command_name = app_state
+                    .get_current_document()
+                    .and_then(|d| d.get_undo_command())
+                    .and_then(|c| Some(format!("Undo {}", c)));
                 if ui
-                    .menu_item(im_str!("Undo"))
+                    .menu_item(&ImString::new(
+                        undo_command_name.clone().unwrap_or("Undo".to_owned()),
+                    ))
                     .shortcut(im_str!("Ctrl+Z"))
-                    .enabled(has_document) // TODO disable when undo stack is empty
+                    .enabled(undo_command_name.is_some())
                     .build()
                 {
                     commands.undo();
                 }
+
+                let redo_command_name = app_state
+                    .get_current_document()
+                    .and_then(|d| d.get_redo_command())
+                    .and_then(|c| Some(format!("Redo {}", c)));
                 if ui
-                    .menu_item(im_str!("Redo"))
+                    .menu_item(&ImString::new(
+                        redo_command_name.clone().unwrap_or("Redo".to_owned()),
+                    ))
                     .shortcut(im_str!("Ctrl+Shift+Z"))
-                    .enabled(has_document) // TODO disable when at the end of undo stack
+                    .enabled(redo_command_name.is_some())
                     .build()
                 {
                     commands.redo();

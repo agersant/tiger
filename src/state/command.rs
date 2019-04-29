@@ -1,4 +1,5 @@
 use euclid::*;
+use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -41,8 +42,8 @@ pub enum DocumentCommand {
     EndSetExportFormat(PathBuf, ExportFormat),
     CancelExportAs,
     EndExportAs,
-    SwitchToContentTab(ContentTab),
     EndImport(PathBuf, PathBuf),
+    SwitchToContentTab(ContentTab),
     ClearSelection,
     SelectFrame(PathBuf),
     SelectAnimation(String),
@@ -92,6 +93,81 @@ pub enum DocumentCommand {
     BeginRenameSelection,
     UpdateRenameSelection(String),
     EndRenameSelection,
+}
+
+impl fmt::Display for DocumentCommand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use DocumentCommand::*;
+        match self {
+            EndImport(_, _) => write!(f, "Import Image"),
+
+            // Export
+            BeginExportAs
+            | EndSetExportTextureDestination(_, _)
+            | EndSetExportMetadataDestination(_, _)
+            | EndSetExportMetadataPathsRoot(_, _)
+            | EndSetExportFormat(_, _)
+            | CancelExportAs
+            | EndExportAs => write!(f, "Change Export Options"),
+
+            // Navigation
+            SwitchToContentTab(_)
+            | ClearSelection
+            | SelectFrame(_)
+            | SelectAnimation(_)
+            | SelectHitbox(_)
+            | SelectAnimationFrame(_)
+            | SelectPrevious
+            | SelectNext
+            | EditFrame(_)
+            | EditAnimation(_)
+            | WorkbenchZoomIn
+            | WorkbenchZoomOut
+            | WorkbenchResetZoom
+            | WorkbenchCenter
+            | TogglePlayback
+            | SnapToPreviousFrame
+            | SnapToNextFrame
+            | TimelineZoomIn
+            | TimelineZoomOut
+            | TimelineResetZoom
+            | BeginScrub
+            | UpdateScrub(_)
+            | EndScrub
+            | Pan(_) => write!(f, "Navigation"),
+
+            // Animation
+            CreateAnimation => write!(f, "Create Animation"),
+            ToggleLooping => write!(f, "Toggle Looping"),
+            BeginFrameDrag(_) | EndFrameDrag | InsertAnimationFrameBefore(_, _) => {
+                write!(f, "Create Frame")
+            }
+            BeginAnimationFrameDrag(_) | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {
+                write!(f, "Re-order Frames")
+            }
+            BeginAnimationFrameDurationDrag(_)
+            | UpdateAnimationFrameDurationDrag(_)
+            | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
+            BeginAnimationFrameOffsetDrag(_, _)
+            | UpdateAnimationFrameOffsetDrag(_, _)
+            | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
+
+            // Hitbox
+            CreateHitbox(_) => write!(f, "Create Hitbox"),
+            BeginHitboxScale(_, _, _) | UpdateHitboxScale(_) | EndHitboxScale => {
+                write!(f, "Resize Hitbox")
+            }
+            BeginHitboxDrag(_, _) | UpdateHitboxDrag(_, _) | EndHitboxDrag => {
+                write!(f, "Move Hitbox")
+            }
+
+            NudgeSelection(_, _) => write!(f, "Nudge"),
+            DeleteSelection => write!(f, "Delete"),
+            BeginRenameSelection | UpdateRenameSelection(_) | EndRenameSelection => {
+                write!(f, "Rename")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

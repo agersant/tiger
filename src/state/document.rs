@@ -156,6 +156,18 @@ impl Document {
 		Ok(())
 	}
 
+	pub fn get_undo_command(&self) -> Option<&DocumentCommand> {
+		self.history[self.history_index].last_command.as_ref()
+	}
+
+	pub fn get_redo_command(&self) -> Option<&DocumentCommand> {
+		if self.history_index < self.history.len() - 1 {
+			self.history[self.history_index + 1].last_command.as_ref()
+		} else {
+			None
+		}
+	}
+
 	fn get_workbench_animation(&self) -> Result<&Animation, Error> {
 		match &self.view.workbench_item {
 			Some(WorkbenchItem::Animation(n)) => Some(
