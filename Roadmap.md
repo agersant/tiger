@@ -43,7 +43,7 @@
 - [x] Selected hitbox should have handles for resizing instead of using invisible buttons along borders
 - [x] When creating an animation, automatically select it
 - [x] Grid
-- [ ] Drag and drop frames to workbench
+- [x] Drag and drop frames to workbench
 - ~~[ ] Grid snapping?~~
 - [x] Content of selection window when selecting animation frame
 - [x] Content of selection window when selecting hitbox

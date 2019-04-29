@@ -515,6 +515,25 @@ fn draw_item_name<'a, T: AsRef<str>>(ui: &Ui<'a>, name: T) {
     ui.text_colored(color, &ImString::new(name.as_ref()));
 }
 
+fn handle_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+    let is_window_hovered =
+        ui.is_window_hovered_with_flags(ImGuiHoveredFlags::AllowWhenBlockedByActiveItem);
+    let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
+
+    if is_window_hovered && !is_mouse_down {
+        if let Some(document) = app_state.get_current_document() {
+            if let Some(WorkbenchItem::Animation(animation_name)) = &document.view.workbench_item {
+                if let Some(animation) = document.sheet.get_animation(animation_name) {
+                    if let Some(dragged_frame) = &document.transient.content_frame_being_dragged {
+                        let index = animation.get_num_frames();
+                        commands.insert_animation_frame_before(dragged_frame, index);
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn draw<'a>(
     ui: &Ui<'a>,
     rect: &Rect<f32>,
@@ -541,6 +560,7 @@ pub fn draw<'a>(
                 if ui.invisible_button(im_str!("workbench_dead_zone"), rect.size.to_tuple()) {
                     commands.clear_selection();
                 }
+                handle_drag_and_drop(ui, app_state, commands);
                 ui.set_item_allow_overlap();
 
                 if let Some(document) = app_state.get_current_document() {
