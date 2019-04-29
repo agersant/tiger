@@ -155,7 +155,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
             .movable(false)
             .build(|| {
                 if let Some(document) = app_state.get_current_document() {
-                    match document.view.get_selection() {
+                    match &document.view.selection {
                         Some(Selection::Frame(path)) => {
                             if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);

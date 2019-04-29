@@ -127,7 +127,7 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = document.view.get_selection()
+    let is_selected = &document.view.selection
         == &Some(Selection::AnimationFrame(
             animation.get_name().to_string(),
             animation_frame_index,
@@ -261,7 +261,7 @@ fn draw_playback_head<'a>(ui: &Ui<'a>, document: &Document, animation: &Animatio
     let duration = animation.get_duration().unwrap_or(0);
 
     let now_ms = {
-        let now = document.view.get_timeline_clock();
+        let now = document.view.timeline_clock;
         let ms = now.as_millis();
         std::cmp::min(ms, duration.into()) as u32
     };
@@ -392,7 +392,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
             .build(|| {
                 if let Some(document) = app_state.get_current_document() {
                     if let Some(WorkbenchItem::Animation(animation_name)) =
-                        document.view.get_workbench_item()
+                        &document.view.workbench_item
                     {
                         if let Some(animation) = document.sheet.get_animation(animation_name) {
                             if ui.small_button(im_str!("Play/Pause")) {

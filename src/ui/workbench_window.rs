@@ -15,7 +15,7 @@ fn screen_to_workbench<'a>(
     let window_position: Vector2D<f32> = ui.get_window_pos().into();
     let window_size: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.view.get_workbench_zoom_factor();
-    let offset = document.view.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     (screen_coords - offset - window_position - window_size / 2.0) / zoom
 }
 
@@ -67,7 +67,7 @@ fn draw_hitbox_controls<'a>(
 ) {
     let space: Vector2D<f32> = ui.get_window_size().into();
     let zoom = document.view.get_workbench_zoom_factor();
-    let offset = document.view.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_shift_down = ui.imgui().key_shift();
@@ -241,7 +241,7 @@ fn draw_hitbox<'a>(
     offset: Vector2D<i32>,
 ) {
     let zoom = document.view.get_workbench_zoom_factor();
-    let workbench_offset = document.view.get_workbench_offset();
+    let workbench_offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
     let cursor_pos = workbench_offset
@@ -256,7 +256,7 @@ fn draw_hitbox<'a>(
     let mouse_pos: Point2D<f32> = ui.imgui().mouse_pos().into();
 
     let is_hovered = is_selectable && hitbox_rect.contains(&mouse_pos);
-    let is_selected = *document.view.get_selection()
+    let is_selected = document.view.selection
         == Some(Selection::Hitbox(
             frame.get_source().to_path_buf(),
             hitbox.get_name().to_owned(),
@@ -285,7 +285,7 @@ fn draw_frame<'a>(
     frame: &Frame,
 ) {
     let zoom = document.view.get_workbench_zoom_factor();
-    let offset = document.view.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&frame.get_source()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -345,7 +345,7 @@ fn draw_animation_frame<'a>(
     is_selected: bool,
 ) {
     let zoom = document.view.get_workbench_zoom_factor();
-    let offset = document.view.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
     match texture_cache.get(&animation_frame.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
@@ -398,9 +398,9 @@ fn draw_animation<'a>(
     document: &Document,
     animation: &Animation,
 ) {
-    let now = document.view.get_timeline_clock();
+    let now = document.view.timeline_clock;
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = *document.view.get_selection()
+        let is_selected = document.view.selection
             == Some(Selection::AnimationFrame(
                 animation.get_name().to_owned(),
                 frame_index,
@@ -457,7 +457,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, app_state: &AppState) {
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let offset = app_state
         .get_current_document()
-        .map(|t| t.view.get_workbench_offset())
+        .map(|t| t.view.workbench_offset)
         .unwrap_or_else(Vector2D::<f32>::zero);
     let space: Vector2D<f32> = ui.get_window_size().into();
 
@@ -507,7 +507,7 @@ fn draw_grid<'a>(ui: &Ui<'a>, app_state: &AppState) {
 }
 
 fn draw_origin<'a>(ui: &Ui<'a>, document: &Document) {
-    let offset = document.view.get_workbench_offset();
+    let offset = document.view.workbench_offset;
     let size = 10.0; // TODO DPI?
     let thickness = 1.0; // TODO DPI?
 
@@ -568,7 +568,7 @@ pub fn draw<'a>(
                 draw_grid(ui, app_state);
 
                 if let Some(document) = app_state.get_current_document() {
-                    match document.view.get_workbench_item() {
+                    match &document.view.workbench_item {
                         Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, commands, texture_cache, document, frame);

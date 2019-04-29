@@ -633,7 +633,7 @@ impl Document {
 		axis: ResizeAxis,
 		mouse_position: Vector2D<f32>,
 	) -> Result<(), Error> {
-		let frame_path = match self.view.get_workbench_item() {
+		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
@@ -1140,7 +1140,7 @@ impl Document {
 			}
 			EndSetExportFormat(_, f) => new_document.end_set_export_format(f.clone())?,
 			EndExportAs => new_document.end_export_as()?,
-			SwitchToContentTab(t) => new_document.view.switch_to_content_tab(*t),
+			SwitchToContentTab(t) => new_document.view.content_tab = *t,
 			SelectFrame(p) => new_document.select_frame(&p)?,
 			SelectAnimation(a) => new_document.select_animation(&a)?,
 			SelectHitbox(h) => new_document.select_hitbox(&h)?,

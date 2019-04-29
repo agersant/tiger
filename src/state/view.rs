@@ -24,7 +24,7 @@ pub enum WorkbenchItem {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct View {
-	pub content_current_tab: ContentTab,
+	pub content_tab: ContentTab,
 	pub selection: Option<Selection>,
 	pub workbench_item: Option<WorkbenchItem>,
 	pub workbench_offset: Vector2D<f32>,
@@ -36,7 +36,7 @@ pub struct View {
 impl Default for View {
 	fn default() -> View {
 		View {
-			content_current_tab: ContentTab::Frames,
+			content_tab: ContentTab::Frames,
 			selection: None,
 			workbench_item: None,
 			workbench_offset: Vector2D::<f32>::zero(),
@@ -48,30 +48,6 @@ impl Default for View {
 }
 
 impl View {
-	pub fn switch_to_content_tab(&mut self, tab: ContentTab) {
-		self.content_current_tab = tab;
-	}
-
-	pub fn get_content_tab(&self) -> &ContentTab {
-		&self.content_current_tab
-	}
-
-	pub fn get_selection(&self) -> &Option<Selection> {
-		&self.selection
-	}
-
-	pub fn get_workbench_item(&self) -> &Option<WorkbenchItem> {
-		&self.workbench_item
-	}
-
-	pub fn get_workbench_offset(&self) -> Vector2D<f32> {
-		self.workbench_offset
-	}
-
-	pub fn get_timeline_clock(&self) -> Duration {
-		self.timeline_clock
-	}
-
 	pub fn get_workbench_zoom_factor(&self) -> f32 {
 		if self.workbench_zoom_level >= 0 {
 			self.workbench_zoom_level as f32

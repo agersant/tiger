@@ -14,7 +14,7 @@ fn draw_hitboxes<'a>(
     let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
     hitboxes.sort_unstable();
     for hitbox in hitboxes.iter() {
-        let is_selected = match document.view.get_selection() {
+        let is_selected = match &document.view.selection {
             Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == hitbox.get_name(),
             _ => false,
         };
@@ -41,9 +41,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
             .movable(false)
             .build(|| {
                 if let Some(document) = app_state.get_current_document() {
-                    if let Some(WorkbenchItem::Frame(frame_path)) =
-                        document.view.get_workbench_item()
-                    {
+                    if let Some(WorkbenchItem::Frame(frame_path)) = &document.view.workbench_item {
                         if let Some(frame) = document.sheet.get_frame(frame_path) {
                             draw_hitboxes(ui, commands, document, frame);
                         }
