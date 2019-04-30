@@ -1,6 +1,5 @@
 use euclid::*;
 use failure::Error;
-use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -687,18 +686,73 @@ impl Document {
 		}
 		.ok_or(StateError::NotEditingAnyFrame)?;
 
+		let axis = self.transient.workbench_hitbox_scale_axis;
+		let initial_mouse_position = self.transient.workbench_hitbox_scale_initial_mouse_position;
+		let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
+
+		let initial_hitbox = Rect::new(
+			self.transient
+				.workbench_hitbox_scale_initial_position
+				.to_point(),
+			self.transient
+				.workbench_hitbox_scale_initial_size
+				.to_i32()
+				.to_size(),
+		);
+
+		let new_hitbox = Rect::from_points(match axis {
+			ResizeAxis::NW => vec![
+				initial_hitbox.bottom_right(),
+				initial_hitbox.origin + mouse_delta,
+			],
+			ResizeAxis::NE => vec![
+				initial_hitbox.bottom_left(),
+				initial_hitbox.top_right() + mouse_delta,
+			],
+			ResizeAxis::SW => vec![
+				initial_hitbox.top_right(),
+				initial_hitbox.bottom_left() + mouse_delta,
+			],
+			ResizeAxis::SE => vec![
+				initial_hitbox.origin,
+				initial_hitbox.bottom_right() + mouse_delta,
+			],
+			ResizeAxis::N => vec![
+				initial_hitbox.bottom_left(),
+				point2(
+					initial_hitbox.max_x(),
+					initial_hitbox.min_y() + mouse_delta.y,
+				),
+			],
+			ResizeAxis::W => vec![
+				initial_hitbox.top_right(),
+				point2(
+					initial_hitbox.min_x() + mouse_delta.x,
+					initial_hitbox.max_y(),
+				),
+			],
+			ResizeAxis::S => vec![
+				initial_hitbox.origin,
+				point2(
+					initial_hitbox.max_x(),
+					initial_hitbox.max_y() + mouse_delta.y,
+				),
+			],
+			ResizeAxis::E => vec![
+				initial_hitbox.origin,
+				point2(
+					initial_hitbox.max_x() + mouse_delta.x,
+					initial_hitbox.max_y(),
+				),
+			],
+		});
+
 		let hitbox_name = self
 			.transient
 			.workbench_hitbox_being_scaled
 			.as_ref()
 			.cloned()
 			.ok_or(StateError::NotDraggingAHitbox)?;
-
-		let initial_position = self.transient.workbench_hitbox_scale_initial_position;
-		let initial_size = self.transient.workbench_hitbox_scale_initial_size;
-		let axis = self.transient.workbench_hitbox_scale_axis;
-		let initial_mouse_position = self.transient.workbench_hitbox_scale_initial_mouse_position;
-		let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
 
 		let hitbox = self
 			.sheet
@@ -707,50 +761,8 @@ impl Document {
 			.get_hitbox_mut(&hitbox_name)
 			.ok_or(StateError::InvalidHitboxIndex)?;
 
-		let new_size = vec2(
-			match axis {
-				ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-					(initial_size.x as i32 + mouse_delta.x).abs() as u32
-				}
-				ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-					(initial_size.x as i32 - mouse_delta.x).abs() as u32
-				}
-				_ => initial_size.x,
-			} as u32,
-			match axis {
-				ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-					(initial_size.y as i32 + mouse_delta.y).abs() as u32
-				}
-				ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-					(initial_size.y as i32 - mouse_delta.y).abs() as u32
-				}
-				_ => initial_size.y,
-			} as u32,
-		);
-
-		let new_position = vec2(
-			match axis {
-				ResizeAxis::E | ResizeAxis::SE | ResizeAxis::NE => {
-					initial_position.x + min(0, initial_size.x as i32 + mouse_delta.x)
-				}
-				ResizeAxis::W | ResizeAxis::SW | ResizeAxis::NW => {
-					initial_position.x + min(mouse_delta.x, initial_size.x as i32)
-				}
-				_ => initial_position.x,
-			} as i32,
-			match axis {
-				ResizeAxis::S | ResizeAxis::SW | ResizeAxis::SE => {
-					initial_position.y + min(0, initial_size.y as i32 + mouse_delta.y)
-				}
-				ResizeAxis::N | ResizeAxis::NW | ResizeAxis::NE => {
-					initial_position.y + min(mouse_delta.y, initial_size.y as i32)
-				}
-				_ => initial_position.y,
-			} as i32,
-		);
-
-		hitbox.set_position(new_position);
-		hitbox.set_size(new_size);
+		hitbox.set_position(new_hitbox.origin.to_vector());
+		hitbox.set_size(new_hitbox.size.to_u32().to_vector());
 
 		Ok(())
 	}
