@@ -200,7 +200,7 @@ fn draw_hitbox<'a>(
     if *is_scaling {
         match &document.transient.workbench_hitbox_being_scaled {
             Some(n) if n == hitbox.get_name() => {
-                commands.update_hitbox_scale(mouse_position_in_workbench);
+                commands.update_hitbox_scale(mouse_position_in_workbench, is_shift_down);
                 let axis = document.transient.workbench_hitbox_scale_axis;
                 ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
             }

@@ -679,16 +679,18 @@ impl Document {
 		Ok(())
 	}
 
-	pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
+	pub fn update_hitbox_scale(
+		&mut self,
+		mouse_position: Vector2D<f32>,
+		preserve_aspect_ratio: bool,
+	) -> Result<(), Error> {
+		use ResizeAxis::*;
+
 		let frame_path = match &self.view.workbench_item {
 			Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
 			_ => None,
 		}
 		.ok_or(StateError::NotEditingAnyFrame)?;
-
-		let axis = self.transient.workbench_hitbox_scale_axis;
-		let initial_mouse_position = self.transient.workbench_hitbox_scale_initial_mouse_position;
-		let mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
 
 		let initial_hitbox = Rect::new(
 			self.transient
@@ -700,45 +702,66 @@ impl Document {
 				.to_size(),
 		);
 
+		let initial_mouse_position = self.transient.workbench_hitbox_scale_initial_mouse_position;
+		let mut mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
+
+		let axis = self.transient.workbench_hitbox_scale_axis;
+		if preserve_aspect_ratio && axis.is_diagonal() {
+			let aspect_ratio =
+				initial_hitbox.size.width.max(1) as f32 / initial_hitbox.size.height.max(1) as f32;
+			let odd_axis_factor = if axis == NE || axis == SW { -1 } else { 1 };
+			mouse_delta = if mouse_delta.x.abs() > mouse_delta.y.abs() {
+				vec2(
+					mouse_delta.x,
+					odd_axis_factor * (mouse_delta.x as f32 / aspect_ratio).round() as i32,
+				)
+			} else {
+				vec2(
+					odd_axis_factor * (mouse_delta.y as f32 * aspect_ratio).round() as i32,
+					mouse_delta.y,
+				)
+			};
+		}
+
 		let new_hitbox = Rect::from_points(match axis {
-			ResizeAxis::NW => vec![
+			NW => vec![
 				initial_hitbox.bottom_right(),
 				initial_hitbox.origin + mouse_delta,
 			],
-			ResizeAxis::NE => vec![
+			NE => vec![
 				initial_hitbox.bottom_left(),
 				initial_hitbox.top_right() + mouse_delta,
 			],
-			ResizeAxis::SW => vec![
+			SW => vec![
 				initial_hitbox.top_right(),
 				initial_hitbox.bottom_left() + mouse_delta,
 			],
-			ResizeAxis::SE => vec![
+			SE => vec![
 				initial_hitbox.origin,
 				initial_hitbox.bottom_right() + mouse_delta,
 			],
-			ResizeAxis::N => vec![
+			N => vec![
 				initial_hitbox.bottom_left(),
 				point2(
 					initial_hitbox.max_x(),
 					initial_hitbox.min_y() + mouse_delta.y,
 				),
 			],
-			ResizeAxis::W => vec![
+			W => vec![
 				initial_hitbox.top_right(),
 				point2(
 					initial_hitbox.min_x() + mouse_delta.x,
 					initial_hitbox.max_y(),
 				),
 			],
-			ResizeAxis::S => vec![
+			S => vec![
 				initial_hitbox.origin,
 				point2(
 					initial_hitbox.max_x(),
 					initial_hitbox.max_y() + mouse_delta.y,
 				),
 			],
-			ResizeAxis::E => vec![
+			E => vec![
 				initial_hitbox.origin,
 				point2(
 					initial_hitbox.max_x() + mouse_delta.x,
@@ -751,7 +774,6 @@ impl Document {
 			.transient
 			.workbench_hitbox_being_scaled
 			.as_ref()
-			.cloned()
 			.ok_or(StateError::NotDraggingAHitbox)?;
 
 		let hitbox = self
@@ -1213,7 +1235,7 @@ impl Document {
 			Pan(delta) => new_document.view.pan(*delta),
 			CreateHitbox(p) => new_document.create_hitbox(*p)?,
 			BeginHitboxScale(h, a, p) => new_document.begin_hitbox_scale(&h, *a, *p)?,
-			UpdateHitboxScale(p) => new_document.update_hitbox_scale(*p)?,
+			UpdateHitboxScale(p, ar) => new_document.update_hitbox_scale(*p, *ar)?,
 			EndHitboxScale => new_document.end_hitbox_scale()?,
 			BeginHitboxDrag(a, m) => new_document.begin_hitbox_drag(&a, *m)?,
 			UpdateHitboxDrag(o, b) => new_document.update_hitbox_drag(*o, *b)?,

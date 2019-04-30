@@ -26,6 +26,13 @@ impl Default for ResizeAxis {
 	}
 }
 
+impl ResizeAxis {
+	pub fn is_diagonal(self) -> bool {
+		use ResizeAxis::*;
+		self == NW || self == NE || self == SW || self == SE
+	}
+}
+
 // State preventing undo/redo while not default
 // Reset when focusing different document
 #[derive(Clone, Debug, Default, PartialEq)]

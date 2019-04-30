@@ -359,9 +359,15 @@ impl CommandBuffer {
         ))));
     }
 
-    pub fn update_hitbox_scale(&mut self, mouse_position: Vector2D<f32>) {
-        self.queue
-            .push(Sync(Document(UpdateHitboxScale(mouse_position))));
+    pub fn update_hitbox_scale(
+        &mut self,
+        mouse_position: Vector2D<f32>,
+        preserve_aspect_ratio: bool,
+    ) {
+        self.queue.push(Sync(Document(UpdateHitboxScale(
+            mouse_position,
+            preserve_aspect_ratio,
+        ))));
     }
 
     pub fn end_hitbox_scale(&mut self) {

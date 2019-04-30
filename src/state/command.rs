@@ -73,7 +73,7 @@ pub enum DocumentCommand {
     Pan(Vector2D<f32>),
     CreateHitbox(Vector2D<f32>),
     BeginHitboxScale(String, ResizeAxis, Vector2D<f32>),
-    UpdateHitboxScale(Vector2D<f32>),
+    UpdateHitboxScale(Vector2D<f32>, bool),
     EndHitboxScale,
     BeginHitboxDrag(String, Vector2D<f32>),
     UpdateHitboxDrag(Vector2D<f32>, bool),
@@ -154,7 +154,7 @@ impl fmt::Display for DocumentCommand {
 
             // Hitbox
             CreateHitbox(_) => write!(f, "Create Hitbox"),
-            BeginHitboxScale(_, _, _) | UpdateHitboxScale(_) | EndHitboxScale => {
+            BeginHitboxScale(_, _, _) | UpdateHitboxScale(_, _) | EndHitboxScale => {
                 write!(f, "Resize Hitbox")
             }
             BeginHitboxDrag(_, _) | UpdateHitboxDrag(_, _) | EndHitboxDrag => {
