@@ -654,7 +654,7 @@ impl Document {
             hitbox.set_position(mouse_position.floor().to_i32());
             hitbox.get_name().to_owned()
         };
-        self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;
+        self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE)?;
         self.select_hitbox(&hitbox_name)
     }
 
@@ -662,7 +662,6 @@ impl Document {
         &mut self,
         hitbox_name: T,
         axis: ResizeAxis,
-        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -687,7 +686,6 @@ impl Document {
 
         self.transient.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
         self.transient.workbench_hitbox_scale_axis = axis;
-        self.transient.workbench_hitbox_scale_initial_mouse_position = mouse_position;
         self.transient.workbench_hitbox_scale_initial_position = position;
         self.transient.workbench_hitbox_scale_initial_size = size;
 
@@ -696,7 +694,7 @@ impl Document {
 
     pub fn update_hitbox_scale(
         &mut self,
-        mouse_position: Vector2D<f32>,
+        mut mouse_delta: Vector2D<f32>,
         preserve_aspect_ratio: bool,
     ) -> Result<(), Error> {
         use ResizeAxis::*;
@@ -717,26 +715,26 @@ impl Document {
                 .to_size(),
         );
 
-        let initial_mouse_position = self.transient.workbench_hitbox_scale_initial_mouse_position;
-        let mut mouse_delta = (mouse_position - initial_mouse_position).round().to_i32();
-
         let axis = self.transient.workbench_hitbox_scale_axis;
         if preserve_aspect_ratio && axis.is_diagonal() {
             let aspect_ratio =
                 initial_hitbox.size.width.max(1) as f32 / initial_hitbox.size.height.max(1) as f32;
-            let odd_axis_factor = if axis == NE || axis == SW { -1 } else { 1 };
+            let odd_axis_factor = if axis == NE || axis == SW { -1.0 } else { 1.0 };
             mouse_delta = if mouse_delta.x.abs() > mouse_delta.y.abs() {
                 vec2(
                     mouse_delta.x,
-                    odd_axis_factor * (mouse_delta.x as f32 / aspect_ratio).round() as i32,
+                    odd_axis_factor * (mouse_delta.x / aspect_ratio).round(),
                 )
             } else {
                 vec2(
-                    odd_axis_factor * (mouse_delta.y as f32 * aspect_ratio).round() as i32,
+                    odd_axis_factor * (mouse_delta.y * aspect_ratio).round(),
                     mouse_delta.y,
                 )
             };
         }
+
+        let zoom = self.view.get_workbench_zoom_factor();
+        let mouse_delta = (mouse_delta / zoom).round().to_i32();
 
         let new_hitbox = Rect::from_points(match axis {
             NW => vec![
@@ -809,7 +807,6 @@ impl Document {
             self.select_hitbox(hitbox_name)?;
         }
         self.transient.workbench_hitbox_scale_axis = ResizeAxis::N;
-        self.transient.workbench_hitbox_scale_initial_mouse_position = Vector2D::<f32>::zero();
         self.transient.workbench_hitbox_scale_initial_position = Vector2D::<i32>::zero();
         self.transient.workbench_hitbox_scale_initial_size = Vector2D::<u32>::zero();
         self.transient.workbench_hitbox_being_scaled = None;
@@ -1246,11 +1243,11 @@ impl Document {
             WorkbenchCenter => new_document.view.workbench_center(),
             Pan(delta) => new_document.view.pan(*delta),
             CreateHitbox(p) => new_document.create_hitbox(*p)?,
-            BeginHitboxScale(h, a, p) => new_document.begin_hitbox_scale(&h, *a, *p)?,
-            UpdateHitboxScale(p, ar) => new_document.update_hitbox_scale(*p, *ar)?,
+            BeginHitboxScale(h, a) => new_document.begin_hitbox_scale(&h, *a)?,
+            UpdateHitboxScale(delta, ar) => new_document.update_hitbox_scale(*delta, *ar)?,
             EndHitboxScale => new_document.end_hitbox_scale()?,
             BeginHitboxDrag(a) => new_document.begin_hitbox_drag(&a)?,
-            UpdateHitboxDrag(d, b) => new_document.update_hitbox_drag(*d, *b)?,
+            UpdateHitboxDrag(delta, b) => new_document.update_hitbox_drag(*delta, *b)?,
             EndHitboxDrag => new_document.end_hitbox_drag(),
             TogglePlayback => new_document.toggle_playback()?,
             SnapToPreviousFrame => new_document.snap_to_previous_frame()?,

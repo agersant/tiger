@@ -44,7 +44,6 @@ pub struct Transient {
     pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
     pub workbench_hitbox_being_scaled: Option<String>,
     pub workbench_hitbox_scale_axis: ResizeAxis,
-    pub workbench_hitbox_scale_initial_mouse_position: Vector2D<f32>,
     pub workbench_hitbox_scale_initial_position: Vector2D<i32>,
     pub workbench_hitbox_scale_initial_size: Vector2D<u32>,
     pub workbench_animation_frame_being_dragged: Option<usize>,

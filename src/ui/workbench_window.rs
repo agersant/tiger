@@ -44,8 +44,6 @@ fn draw_hitbox_resize_controls<'a>(
     let zoom = document.view.get_workbench_zoom_factor();
     let offset = document.view.workbench_offset;
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-    let mouse_position = ui.imgui().mouse_pos().into();
-    let mouse_position_in_workbench = screen_to_workbench(ui, mouse_position, document);
 
     let rectangle = hitbox
         .get_rectangle()
@@ -109,7 +107,7 @@ fn draw_hitbox_resize_controls<'a>(
             }
             if !*is_dragging && !*is_scaling {
                 if ui.is_item_active() && is_mouse_dragging {
-                    commands.begin_hitbox_scale(hitbox, axis, mouse_position_in_workbench);
+                    commands.begin_hitbox_scale(hitbox, axis);
                     *is_scaling = true;
                 }
             }
@@ -133,8 +131,7 @@ fn draw_hitbox<'a>(
     let space: Vector2D<f32> = ui.get_window_size().into();
     let rectangle = hitbox.get_rectangle();
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-    let mouse_position = ui.imgui().mouse_pos().into();
-    let mouse_position_in_workbench = screen_to_workbench(ui, mouse_position, document);
+    let drag_delta: Vector2D<f32> = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
     let is_shift_down = ui.imgui().key_shift();
 
     let cursor_pos = workbench_offset
@@ -190,7 +187,6 @@ fn draw_hitbox<'a>(
             Some(n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
-                    let drag_delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
                     commands.update_hitbox_drag(drag_delta, !is_shift_down);
                 }
             }
@@ -201,9 +197,11 @@ fn draw_hitbox<'a>(
     if *is_scaling {
         match &document.transient.workbench_hitbox_being_scaled {
             Some(n) if n == hitbox.get_name() => {
-                commands.update_hitbox_scale(mouse_position_in_workbench, is_shift_down);
                 let axis = document.transient.workbench_hitbox_scale_axis;
                 ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
+                if is_mouse_dragging {
+                    commands.update_hitbox_scale(drag_delta, is_shift_down);
+                }
             }
             _ => (),
         };
