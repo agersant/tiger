@@ -507,7 +507,7 @@ dependencies = [
 [[package]]
 name = "imgui"
 version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#933b9a65cd19ffcecf6c7ff3d4ea813f1d028700"
+source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
 dependencies = [
  "imgui-sys 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
 ]
@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "imgui-gfx-renderer"
 version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#933b9a65cd19ffcecf6c7ff3d4ea813f1d028700"
+source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
 dependencies = [
  "gfx 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
@@ -525,7 +525,7 @@ dependencies = [
 [[package]]
 name = "imgui-sys"
 version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#933b9a65cd19ffcecf6c7ff3d4ea813f1d028700"
+source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -536,7 +536,7 @@ dependencies = [
 [[package]]
 name = "imgui-winit-support"
 version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#933b9a65cd19ffcecf6c7ff3d4ea813f1d028700"
+source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
 dependencies = [
  "imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
  "winit 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",

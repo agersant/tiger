@@ -660,7 +660,7 @@ impl Document {
                 .ok_or(StateError::FrameNotInDocument)?;
 
             let hitbox = frame.add_hitbox();
-            hitbox.set_position(mouse_position.round().to_i32());
+            hitbox.set_position(mouse_position.floor().to_i32());
             hitbox.get_name().to_owned()
         };
         self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE, mouse_position)?;

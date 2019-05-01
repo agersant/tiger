@@ -266,7 +266,8 @@ fn draw_frame<'a>(
                 && ui.is_window_hovered()
                 && is_mouse_dragging
             {
-                commands.create_hitbox(mouse_position_in_workbench);
+                let drag_delta: Vector2D<f32> =  ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                commands.create_hitbox(mouse_position_in_workbench - drag_delta / zoom);
             }
         }
         Some(TextureCacheResult::Loading) => {
