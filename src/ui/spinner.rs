@@ -12,14 +12,7 @@ pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vect
     let thickness = 1.0; // TODO dpi?
     let num_control_points = 4;
 
-    // TODO use imgui's get_time() and remove jank offset
-    use std::time::SystemTime;
-    let time = (SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_millis()
-        - 1555564915622) as f32
-        / 1000.0;
+    let time = ui.imgui().get_time() as f32;
 
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     if let Some(fill) = utils::fill(space, vec2(size, size)) {
