@@ -202,6 +202,7 @@ impl AppState {
         use DocumentCommand::*;
         let document = match command {
             EndImport(p, _)
+            | MarkAsSaved(p, _)
             | EndSetExportTextureDestination(p, _)
             | EndSetExportMetadataDestination(p, _)
             | EndSetExportMetadataPathsRoot(p, _)
