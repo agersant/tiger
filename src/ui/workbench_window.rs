@@ -147,7 +147,7 @@ fn draw_hitbox<'a>(
 
     let is_selected = document.view.selection
         == Some(Selection::Hitbox(
-            frame.get_source().to_path_buf(),
+            frame.get_source().to_owned(),
             hitbox.get_name().to_owned(),
         ));
 

@@ -35,7 +35,7 @@ impl CommandBuffer {
 
     pub fn end_new_document<T: AsRef<Path>>(&mut self, path: T) {
         self.queue
-            .push(Sync(App(EndNewDocument(path.as_ref().to_path_buf()))));
+            .push(Sync(App(EndNewDocument(path.as_ref().to_owned()))));
     }
 
     pub fn begin_open_document(&mut self) {
@@ -44,13 +44,13 @@ impl CommandBuffer {
 
     pub fn end_open_document<T: AsRef<Path>>(&mut self, path: T) {
         self.queue
-            .push(Sync(App(EndOpenDocument(path.as_ref().to_path_buf()))));
+            .push(Sync(App(EndOpenDocument(path.as_ref().to_owned()))));
     }
 
     pub fn relocate_document<T: AsRef<Path>, U: AsRef<Path>>(&mut self, from: T, to: U) {
         self.queue.push(Sync(App(RelocateDocument(
-            from.as_ref().to_path_buf(),
-            to.as_ref().to_path_buf(),
+            from.as_ref().to_owned(),
+            to.as_ref().to_owned(),
         ))));
     }
 
@@ -69,7 +69,7 @@ impl CommandBuffer {
 
     pub fn save<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet, version: i32) {
         self.queue.push(Async(Save(
-            path.as_ref().to_path_buf(),
+            path.as_ref().to_owned(),
             sheet.clone(),
             version,
         )));
@@ -77,7 +77,7 @@ impl CommandBuffer {
 
     pub fn save_as<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet, version: i32) {
         self.queue.push(Async(SaveAs(
-            path.as_ref().to_path_buf(),
+            path.as_ref().to_owned(),
             sheet.clone(),
             version,
         )));
@@ -108,7 +108,7 @@ impl CommandBuffer {
 
     pub fn begin_set_export_texture_destination(&mut self, document: &crate::state::Document) {
         self.queue.push(Async(BeginSetExportTextureDestination(
-            document.source.to_path_buf(),
+            document.source.to_owned(),
         )));
     }
 
@@ -119,14 +119,14 @@ impl CommandBuffer {
     ) {
         self.queue
             .push(Sync(Document(EndSetExportTextureDestination(
-                document_path.as_ref().to_path_buf(),
-                texture_path.as_ref().to_path_buf(),
+                document_path.as_ref().to_owned(),
+                texture_path.as_ref().to_owned(),
             ))));
     }
 
     pub fn begin_set_export_metadata_destination(&mut self, document: &crate::state::Document) {
         self.queue.push(Async(BeginSetExportMetadataDestination(
-            document.source.to_path_buf(),
+            document.source.to_owned(),
         )));
     }
 
@@ -137,14 +137,14 @@ impl CommandBuffer {
     ) {
         self.queue
             .push(Sync(Document(EndSetExportMetadataDestination(
-                document_path.as_ref().to_path_buf(),
-                metadata_path.as_ref().to_path_buf(),
+                document_path.as_ref().to_owned(),
+                metadata_path.as_ref().to_owned(),
             ))));
     }
 
     pub fn begin_set_export_metadata_paths_root(&mut self, document: &crate::state::Document) {
         self.queue.push(Async(BeginSetExportMetadataPathsRoot(
-            document.source.to_path_buf(),
+            document.source.to_owned(),
         )));
     }
 
@@ -154,14 +154,14 @@ impl CommandBuffer {
         paths_root: U,
     ) {
         self.queue.push(Sync(Document(EndSetExportMetadataPathsRoot(
-            document_path.as_ref().to_path_buf(),
-            paths_root.as_ref().to_path_buf(),
+            document_path.as_ref().to_owned(),
+            paths_root.as_ref().to_owned(),
         ))));
     }
 
     pub fn begin_set_export_format(&mut self, document: &crate::state::Document) {
         self.queue
-            .push(Async(BeginSetExportFormat(document.source.to_path_buf())));
+            .push(Async(BeginSetExportFormat(document.source.to_owned())));
     }
 
     pub fn end_set_export_format<T: AsRef<Path>>(
@@ -170,7 +170,7 @@ impl CommandBuffer {
         format: ExportFormat,
     ) {
         self.queue.push(Sync(Document(EndSetExportFormat(
-            document_path.as_ref().to_path_buf(),
+            document_path.as_ref().to_owned(),
             format,
         ))));
     }
@@ -199,8 +199,8 @@ impl CommandBuffer {
 
     pub fn end_import<T: AsRef<Path>, U: AsRef<Path>>(&mut self, into: T, path: U) {
         self.queue.push(Sync(Document(EndImport(
-            into.as_ref().to_path_buf(),
-            path.as_ref().to_path_buf(),
+            into.as_ref().to_owned(),
+            path.as_ref().to_owned(),
         ))));
     }
 
@@ -254,7 +254,7 @@ impl CommandBuffer {
 
     pub fn begin_frame_drag(&mut self, frame: &Frame) {
         self.queue.push(Sync(Document(BeginFrameDrag(
-            frame.get_source().to_path_buf(),
+            frame.get_source().to_owned(),
         ))));
     }
 
@@ -268,7 +268,7 @@ impl CommandBuffer {
         animation_frame_index: usize,
     ) {
         self.queue.push(Sync(Document(InsertAnimationFrameBefore(
-            frame.as_ref().to_path_buf(),
+            frame.as_ref().to_owned(),
             animation_frame_index,
         ))));
     }

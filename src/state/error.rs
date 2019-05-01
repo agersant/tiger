@@ -8,7 +8,7 @@ pub enum StateError {
     NoExistingExportSettings,
     #[fail(display = "Cannot perform undo operation")]
     UndoOperationNowAllowed,
-	#[fail(display = "Requested frame is not in document")]
+    #[fail(display = "Requested frame is not in document")]
     FrameNotInDocument,
     #[fail(display = "Requested animation is not in document")]
     AnimationNotInDocument,
