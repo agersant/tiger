@@ -310,11 +310,9 @@ impl CommandBuffer {
     pub fn begin_animation_frame_offset_drag(
         &mut self,
         frame_index: usize,
-        mouse_position: Vector2D<f32>,
     ) {
         self.queue.push(Sync(Document(BeginAnimationFrameOffsetDrag(
             frame_index,
-            mouse_position,
         ))));
     }
 

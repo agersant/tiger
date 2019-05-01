@@ -570,7 +570,6 @@ impl Document {
     pub fn begin_animation_frame_offset_drag(
         &mut self,
         index: usize,
-        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
@@ -592,14 +591,12 @@ impl Document {
         }
 
         self.transient.workbench_animation_frame_being_dragged = Some(index);
-        self.transient
-            .workbench_animation_frame_drag_initial_mouse_position = mouse_position;
         self.select_animation_frame(index)
     }
 
     pub fn update_animation_frame_offset_drag(
         &mut self,
-        mouse_position: Vector2D<f32>,
+        mut mouse_delta: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.view.get_workbench_zoom_factor();
@@ -615,10 +612,6 @@ impl Document {
             .ok_or(StateError::NotDraggingATimelineFrame)?;
 
         let old_offset = self.transient.workbench_animation_frame_drag_initial_offset;
-        let old_mouse_position = self
-            .transient
-            .workbench_animation_frame_drag_initial_mouse_position;
-        let mut mouse_delta = mouse_position - old_mouse_position;
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
                 mouse_delta.y = 0.0;
@@ -641,8 +634,6 @@ impl Document {
 
     pub fn end_animation_frame_offset_drag(&mut self) {
         self.transient.workbench_animation_frame_drag_initial_offset = Vector2D::<i32>::zero();
-        self.transient
-            .workbench_animation_frame_drag_initial_mouse_position = Vector2D::<f32>::zero();
         self.transient.workbench_animation_frame_being_dragged = None;
     }
 
@@ -1247,8 +1238,8 @@ impl Document {
             EndAnimationFrameDurationDrag => new_document.end_animation_frame_duration_drag(),
             BeginAnimationFrameDrag(a) => new_document.begin_animation_frame_drag(*a)?,
             EndAnimationFrameDrag => new_document.transient.timeline_frame_being_dragged = None,
-            BeginAnimationFrameOffsetDrag(a, m) => {
-                new_document.begin_animation_frame_offset_drag(*a, *m)?
+            BeginAnimationFrameOffsetDrag(a) => {
+                new_document.begin_animation_frame_offset_drag(*a)?
             }
             UpdateAnimationFrameOffsetDrag(o, b) => {
                 new_document.update_animation_frame_offset_drag(*o, *b)?

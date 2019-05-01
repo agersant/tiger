@@ -64,7 +64,7 @@ pub enum DocumentCommand {
     EndAnimationFrameDurationDrag,
     BeginAnimationFrameDrag(usize),
     EndAnimationFrameDrag,
-    BeginAnimationFrameOffsetDrag(usize, Vector2D<f32>),
+    BeginAnimationFrameOffsetDrag(usize),
     UpdateAnimationFrameOffsetDrag(Vector2D<f32>, bool),
     EndAnimationFrameOffsetDrag,
     WorkbenchZoomIn,
@@ -151,7 +151,7 @@ impl fmt::Display for DocumentCommand {
             BeginAnimationFrameDurationDrag(_)
             | UpdateAnimationFrameDurationDrag(_)
             | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
-            BeginAnimationFrameOffsetDrag(_, _)
+            | BeginAnimationFrameOffsetDrag(_)
             | UpdateAnimationFrameOffsetDrag(_, _)
             | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
 

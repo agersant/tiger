@@ -387,15 +387,14 @@ fn draw_animation<'a>(
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 }
                 if ui.is_item_active() && is_mouse_dragging {
-                    let mouse_pos = ui.imgui().mouse_pos().into();
-                    commands.begin_animation_frame_offset_drag(frame_index, mouse_pos);
+                    commands.begin_animation_frame_offset_drag(frame_index);
                 }
             }
             Some(dragged_frame_index) => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
-                    let mouse_pos = ui.imgui().mouse_pos().into();
-                    commands.update_animation_frame_offset_drag(mouse_pos, !is_shift_down);
+                    let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                    commands.update_animation_frame_offset_drag(delta, !is_shift_down);
                 }
                 if dragged_frame_index != frame_index {
                     if let Some(animation_frame) = animation.get_frame(dragged_frame_index) {
