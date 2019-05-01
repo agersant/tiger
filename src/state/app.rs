@@ -99,16 +99,31 @@ impl AppState {
         from: T,
         to: U,
     ) -> Result<(), Error> {
+        if from.as_ref() == to.as_ref() {
+            return Ok(());
+        }
+
+        if !self
+            .documents
+            .iter()
+            .map(|d| &d.source)
+            .any(|s| s == from.as_ref())
+        {
+            return Err(StateError::DocumentNotFound.into());
+        }
+
+        self.documents.retain(|d| d.source != to.as_ref());
+
         for document in &mut self.documents {
             if document.source == from.as_ref() {
-                document.source = to.as_ref().to_path_buf();
-                if Some(from.as_ref().to_path_buf()) == self.current_document {
-                    self.current_document = Some(to.as_ref().to_path_buf());
+                document.source = to.as_ref().to_owned();
+                if Some(from.as_ref().to_owned()) == self.current_document {
+                    self.current_document = Some(to.as_ref().to_owned());
                 }
-                return Ok(());
             }
         }
-        Err(StateError::DocumentNotFound.into())
+
+        return Ok(());
     }
 
     fn focus_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
