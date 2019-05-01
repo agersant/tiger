@@ -186,7 +186,7 @@ fn draw_hitbox<'a>(
         match &document.transient.workbench_hitbox_being_dragged {
             Some(n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                if is_mouse_dragging {
+                if is_mouse_dragging { // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
                     commands.update_hitbox_drag(drag_delta, !is_shift_down);
                 }
             }
@@ -199,7 +199,7 @@ fn draw_hitbox<'a>(
             Some(n) if n == hitbox.get_name() => {
                 let axis = document.transient.workbench_hitbox_scale_axis;
                 ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
-                if is_mouse_dragging {
+                if is_mouse_dragging { // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
                     commands.update_hitbox_scale(drag_delta, is_shift_down);
                 }
             }
