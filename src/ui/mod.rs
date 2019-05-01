@@ -440,7 +440,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
 
 fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
-        if let Some(settings) = &document.export_settings_edit {
+        if let Some(settings) = &document.persistent.export_settings_edit {
             let popup_id = im_str!("Export Options");
             ui.window(&popup_id)
                 .collapsible(false)

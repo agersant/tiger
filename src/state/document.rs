@@ -14,18 +14,23 @@ struct HistoryEntry {
     version: i32,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct Persistent {
+    pub export_settings_edit: Option<ExportSettings>,
+    timeline_is_playing: bool,
+    disk_version: i32,
+}
+
 #[derive(Clone, Debug)]
 pub struct Document {
     pub source: PathBuf,
-    pub sheet: Sheet,
-    pub view: View,
-    pub transient: Transient,
-    pub export_settings_edit: Option<ExportSettings>,
+    pub sheet: Sheet,           // Sheet being edited, fully recorded in history
+    pub view: View,             // View state, collapsed and recorded in history
+    pub transient: Transient, // State preventing undo actions when not default, not recorded in history
+    pub persistent: Persistent, // Other state, not recorded in history
     next_version: i32,
-    disk_version: i32,
     history: Vec<HistoryEntry>,
     history_index: usize,
-    timeline_is_playing: bool,
 }
 
 impl Document {
@@ -37,11 +42,9 @@ impl Document {
             sheet: history_entry.sheet.clone(),
             view: history_entry.view.clone(),
             transient: Default::default(),
+            persistent: Default::default(),
             next_version: history_entry.version,
-            disk_version: history_entry.version - 1,
             history_index: 0,
-            timeline_is_playing: false,
-            export_settings_edit: None,
         }
     }
 
@@ -54,7 +57,7 @@ impl Document {
         document.sheet = sheet.with_absolute_paths(&directory)?;
 
         document.history[0].sheet = document.sheet.clone();
-        document.disk_version = document.next_version;
+        document.persistent.disk_version = document.next_version;
 
         Ok(document)
     }
@@ -68,7 +71,7 @@ impl Document {
     }
 
     pub fn is_saved(&self) -> bool {
-        self.disk_version == self.get_version()
+        self.persistent.disk_version == self.get_version()
     }
 
     pub fn get_version(&self) -> i32 {
@@ -76,7 +79,7 @@ impl Document {
     }
 
     pub fn tick(&mut self, delta: Duration) {
-        if self.timeline_is_playing {
+        if self.persistent.timeline_is_playing {
             self.view.timeline_clock += delta;
             if let Some(WorkbenchItem::Animation(animation_name)) = &self.view.workbench_item {
                 if let Some(animation) = self.sheet.get_animation(animation_name) {
@@ -90,14 +93,14 @@ impl Document {
 
                             // Stop playhead at the end of animation
                             } else if clock_ms >= u128::from(d) {
-                                self.timeline_is_playing = false;
+                                self.persistent.timeline_is_playing = false;
                                 self.view.timeline_clock = Duration::from_millis(u64::from(d))
                             }
                         }
 
                         // Reset playhead
                         _ => {
-                            self.timeline_is_playing = false;
+                            self.persistent.timeline_is_playing = false;
                             self.view.timeline_clock = Duration::new(0, 0);
                         }
                     };
@@ -120,9 +123,7 @@ impl Document {
         self.sheet = new_document.sheet.clone();
         self.view = new_document.view.clone();
         self.transient = new_document.transient.clone();
-        self.export_settings_edit = new_document.export_settings_edit.clone();
-        self.timeline_is_playing = new_document.timeline_is_playing;
-        self.disk_version = new_document.disk_version;
+        self.persistent = new_document.persistent.clone();
 
         if self.can_use_undo_system() {
             let has_sheet_changes = &self.history[self.history_index].sheet != &new_document.sheet;
@@ -161,7 +162,7 @@ impl Document {
             self.history_index -= 1;
             self.sheet = self.history[self.history_index].sheet.clone();
             self.view = self.history[self.history_index].view.clone();
-            self.timeline_is_playing = false;
+            self.persistent.timeline_is_playing = false;
         }
         Ok(())
     }
@@ -174,7 +175,7 @@ impl Document {
             self.history_index += 1;
             self.sheet = self.history[self.history_index].sheet.clone();
             self.view = self.history[self.history_index].view.clone();
-            self.timeline_is_playing = false;
+            self.persistent.timeline_is_playing = false;
         }
         Ok(())
     }
@@ -279,7 +280,7 @@ impl Document {
         let is_playhead_in_frame = clock >= frame_start_time
             && (clock < (frame_start_time + duration)
                 || frame_index == animation.get_num_frames() - 1);
-        if !self.timeline_is_playing && !is_playhead_in_frame {
+        if !self.persistent.timeline_is_playing && !is_playhead_in_frame {
             self.view.timeline_clock = Duration::from_millis(frame_start_time);
         }
 
@@ -359,7 +360,7 @@ impl Document {
         self.view.workbench_item = Some(WorkbenchItem::Animation(name.as_ref().to_owned()));
         self.view.workbench_offset = Vector2D::zero();
         self.view.timeline_clock = Duration::new(0, 0);
-        self.timeline_is_playing = false;
+        self.persistent.timeline_is_playing = false;
         Ok(())
     }
 
@@ -524,7 +525,7 @@ impl Document {
                 .ok_or(StateError::InvalidAnimationFrameIndex)?
         };
 
-        if !self.timeline_is_playing {
+        if !self.persistent.timeline_is_playing {
             let initial_clock = self
                 .transient
                 .timeline_frame_scale_initial_clock
@@ -911,7 +912,7 @@ impl Document {
         {
             let animation = self.get_workbench_animation()?;
 
-            if !self.timeline_is_playing {
+            if !self.persistent.timeline_is_playing {
                 if let Some(d) = animation.get_duration() {
                     if d > 0
                         && !animation.is_looping()
@@ -923,7 +924,7 @@ impl Document {
             }
         }
 
-        self.timeline_is_playing = !self.timeline_is_playing;
+        self.persistent.timeline_is_playing = !self.persistent.timeline_is_playing;
         self.view.timeline_clock = new_timeline_clock;
 
         Ok(())
@@ -1141,13 +1142,14 @@ impl Document {
     }
 
     fn get_export_settings_edit_mut(&mut self) -> Result<&mut ExportSettings, Error> {
-        self.export_settings_edit
+        self.persistent
+            .export_settings_edit
             .as_mut()
             .ok_or(StateError::NotExporting.into())
     }
 
     fn begin_export_as(&mut self) {
-        self.export_settings_edit = self
+        self.persistent.export_settings_edit = self
             .sheet
             .get_export_settings()
             .as_ref()
@@ -1156,7 +1158,7 @@ impl Document {
     }
 
     fn cancel_export_as(&mut self) {
-        self.export_settings_edit = None;
+        self.persistent.export_settings_edit = None;
     }
 
     fn end_set_export_texture_destination<T: AsRef<Path>>(
@@ -1194,7 +1196,7 @@ impl Document {
     fn end_export_as(&mut self) -> Result<(), Error> {
         let export_settings = self.get_export_settings_edit_mut()?.clone();
         self.sheet.set_export_settings(export_settings);
-        self.export_settings_edit = None;
+        self.persistent.export_settings_edit = None;
         Ok(())
     }
 
@@ -1204,7 +1206,7 @@ impl Document {
         let mut new_document = self.clone();
 
         match command {
-            MarkAsSaved(_, v) => new_document.disk_version = *v,
+            MarkAsSaved(_, v) => new_document.persistent.disk_version = *v,
             EndImport(_, f) => new_document.sheet.add_frame(f),
             BeginExportAs => new_document.begin_export_as(),
             CancelExportAs => new_document.cancel_export_as(),
