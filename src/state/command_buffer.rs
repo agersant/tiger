@@ -67,18 +67,31 @@ impl CommandBuffer {
         self.queue.push(Sync(App(CloseAllDocuments)));
     }
 
-    pub fn save<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet) {
-        self.queue
-            .push(Async(Save(path.as_ref().to_path_buf(), sheet.clone())));
+    pub fn save<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet, version: i32) {
+        self.queue.push(Async(Save(
+            path.as_ref().to_path_buf(),
+            sheet.clone(),
+            version,
+        )));
     }
 
-    pub fn save_as<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet) {
-        self.queue
-            .push(Async(SaveAs(path.as_ref().to_path_buf(), sheet.clone())));
+    pub fn save_as<T: AsRef<Path>>(&mut self, path: T, sheet: &Sheet, version: i32) {
+        self.queue.push(Async(SaveAs(
+            path.as_ref().to_path_buf(),
+            sheet.clone(),
+            version,
+        )));
     }
 
     pub fn save_all(&mut self) {
         self.queue.push(Sync(App(SaveAllDocuments)));
+    }
+
+    pub fn mark_as_saved<T: AsRef<Path>>(&mut self, path: T, version: i32) {
+        self.queue.push(Sync(Document(MarkAsSaved(
+            path.as_ref().to_owned(),
+            version,
+        ))));
     }
 
     pub fn undo(&mut self) {

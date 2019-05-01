@@ -191,7 +191,7 @@ fn draw_main_menu<'a>(
                     .build()
                 {
                     if let Some(document) = app_state.get_current_document() {
-                        commands.save(&document.source, &document.sheet);
+                        commands.save(&document.source, &document.sheet, document.get_version());
                     }
                 }
                 if ui
@@ -201,7 +201,7 @@ fn draw_main_menu<'a>(
                     .build()
                 {
                     if let Some(document) = app_state.get_current_document() {
-                        commands.save_as(&document.source, &document.sheet);
+                        commands.save_as(&document.source, &document.sheet, document.get_version());
                     }
                 }
                 if ui
@@ -360,7 +360,15 @@ fn draw_documents_window<'a>(
             .movable(false)
             .build(|| {
                 for document in app_state.documents_iter() {
-                    if ui.small_button(&ImString::new(document.source.to_string_lossy())) {
+                    let mut document_name = document
+                        .source
+                        .file_name()
+                        .and_then(|f| Some(f.to_string_lossy().into_owned()))
+                        .unwrap_or("???".to_owned());
+                    if !document.is_saved() {
+                        document_name += " [Modified]";
+                    }
+                    if ui.small_button(&ImString::new(document_name)) {
                         commands.focus_document(document);
                     }
                     ui.same_line(0.0);
@@ -611,12 +619,12 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
         if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
             if ui.imgui().key_shift() {
                 if let Some(document) = app_state.get_current_document() {
-                    commands.save_as(&document.source, &document.sheet);
+                    commands.save_as(&document.source, &document.sheet, document.get_version());
                 }
             } else if ui.imgui().key_alt() {
                 commands.save_all();
             } else if let Some(document) = app_state.get_current_document() {
-                commands.save(&document.source, &document.sheet);
+                commands.save(&document.source, &document.sheet, document.get_version());
             }
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {

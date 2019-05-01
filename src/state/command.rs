@@ -10,8 +10,8 @@ use crate::state::*;
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
-    Save(PathBuf, Sheet),
-    SaveAs(PathBuf, Sheet),
+    Save(PathBuf, Sheet, i32),
+    SaveAs(PathBuf, Sheet, i32),
     BeginSetExportTextureDestination(PathBuf),
     BeginSetExportMetadataDestination(PathBuf),
     BeginSetExportMetadataPathsRoot(PathBuf),
@@ -42,6 +42,7 @@ pub enum DocumentCommand {
     EndSetExportFormat(PathBuf, ExportFormat),
     CancelExportAs,
     EndExportAs,
+    MarkAsSaved(PathBuf, i32),
     EndImport(PathBuf, PathBuf),
     SwitchToContentTab(ContentTab),
     ClearSelection,
@@ -135,6 +136,8 @@ impl fmt::Display for DocumentCommand {
             | UpdateScrub(_)
             | EndScrub
             | Pan(_) => write!(f, "Navigation"),
+
+            MarkAsSaved(_, _) => write!(f, "Mark As Saved"),
 
             // Animation
             CreateAnimation => write!(f, "Create Animation"),

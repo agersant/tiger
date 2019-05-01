@@ -11,6 +11,7 @@ struct HistoryEntry {
 	last_command: Option<DocumentCommand>,
 	sheet: Sheet,
 	view: View,
+	version: i32,
 }
 
 #[derive(Clone, Debug)]
@@ -20,6 +21,8 @@ pub struct Document {
 	pub view: View,
 	pub transient: Transient,
 	pub export_settings_edit: Option<ExportSettings>,
+	next_version: i32,
+	disk_version: i32,
 	history: Vec<HistoryEntry>,
 	history_index: usize,
 	timeline_is_playing: bool,
@@ -34,6 +37,8 @@ impl Document {
 			sheet: history_entry.sheet.clone(),
 			view: history_entry.view.clone(),
 			transient: Default::default(),
+			next_version: history_entry.version,
+			disk_version: history_entry.version - 1,
 			history_index: 0,
 			timeline_is_playing: false,
 			export_settings_edit: None,
@@ -49,6 +54,8 @@ impl Document {
 		document.sheet = sheet.with_absolute_paths(&directory)?;
 
 		document.history[0].sheet = document.sheet.clone();
+		document.disk_version = document.next_version;
+
 		Ok(document)
 	}
 
@@ -58,6 +65,14 @@ impl Document {
 		let sheet = sheet.with_relative_paths(directory)?;
 		compat::write_sheet(to, &sheet)?;
 		Ok(())
+	}
+
+	pub fn is_saved(&self) -> bool {
+		self.disk_version == self.get_version()
+	}
+
+	pub fn get_version(&self) -> i32 {
+		self.history[self.history_index].version
 	}
 
 	pub fn tick(&mut self, delta: Duration) {
@@ -107,15 +122,23 @@ impl Document {
 		self.transient = new_document.transient.clone();
 		self.export_settings_edit = new_document.export_settings_edit.clone();
 		self.timeline_is_playing = new_document.timeline_is_playing;
+		self.disk_version = new_document.disk_version;
 
 		if self.can_use_undo_system() {
+			let has_sheet_changes = &self.history[self.history_index].sheet != &new_document.sheet;
+
+			if has_sheet_changes {
+				self.next_version += 1;
+			}
+
 			let new_undo_state = HistoryEntry {
 				sheet: new_document.sheet,
 				view: new_document.view,
 				last_command: Some(command.clone()),
+				version: self.next_version,
 			};
 
-			if &self.history[self.history_index].sheet != &new_undo_state.sheet {
+			if has_sheet_changes {
 				self.push_undo_state(new_undo_state);
 			} else if &self.history[self.history_index].view != &new_undo_state.view {
 				let merge = self.history_index > 0
@@ -1181,6 +1204,7 @@ impl Document {
 		let mut new_document = self.clone();
 
 		match command {
+			MarkAsSaved(_, v) => new_document.disk_version = *v,
 			EndImport(_, f) => new_document.sheet.add_frame(f),
 			BeginExportAs => new_document.begin_export_as(),
 			CancelExportAs => new_document.cancel_export_as(),

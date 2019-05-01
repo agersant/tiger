@@ -26,7 +26,7 @@
 - [x] Fix bugs when manipulating extremely short animation frames
 
 ## Tiger 0.2
-- [ ] Unsaved file marker
+- [x] Unsaved file marker
 - [ ] Offer to save on exit if needed
 - [x] Undo/Redo
 - [x] Allow interactions while file dialogs are open or I/O is in progress
@@ -64,6 +64,7 @@
 - [x] Ctrl+Space to center workbench
 - [ ] Fix issue where hitboxes are not created precisely where the mouse is clicked because we dont create until the mouse is dragging.
 - [ ] Pass in mouse drag deltas to drag/resize logic instead of mouse positions. See GetMouseDragDelta in imgui
+- [ ] Handle scenario when using "Save as" onto a file that is already open
 
 ## Tiger 0.3
 - [ ] Error dialogs

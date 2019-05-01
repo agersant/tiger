@@ -238,7 +238,14 @@ fn begin_open_document() -> Result<CommandBuffer, Error> {
     Ok(buffer)
 }
 
-fn save_as<T: AsRef<Path>>(sheet: &Sheet, source: T) -> Result<CommandBuffer, Error> {
+fn save<T: AsRef<Path>>(sheet: &Sheet, source: T, version: i32) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    Document::save(sheet, source.as_ref())?;
+    buffer.mark_as_saved(source, version);
+    Ok(buffer)
+}
+
+fn save_as<T: AsRef<Path>>(sheet: &Sheet, source: T, version: i32) -> Result<CommandBuffer, Error> {
     let mut buffer = CommandBuffer::new();
     if let nfd::Response::Okay(path_string) =
         nfd::open_save_dialog(Some(SHEET_FILE_EXTENSION), None)?
@@ -246,7 +253,7 @@ fn save_as<T: AsRef<Path>>(sheet: &Sheet, source: T) -> Result<CommandBuffer, Er
         let mut new_path = std::path::PathBuf::from(path_string);
         new_path.set_extension(SHEET_FILE_EXTENSION);
         buffer.relocate_document(source, &new_path);
-        buffer.save(&new_path, sheet);
+        buffer.save(&new_path, sheet, version);
     };
     Ok(buffer)
 }
@@ -342,8 +349,8 @@ pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Er
     match command {
         AsyncCommand::BeginNewDocument => begin_new_document(),
         AsyncCommand::BeginOpenDocument => begin_open_document(),
-        AsyncCommand::Save(p, sheet) => Document::save(sheet, p).and(Ok(no_commands)),
-        AsyncCommand::SaveAs(p, sheet) => save_as(sheet, p),
+        AsyncCommand::Save(p, sheet, version) => save(sheet, p, *version),
+        AsyncCommand::SaveAs(p, sheet, version) => save_as(sheet, p, *version),
         AsyncCommand::BeginSetExportTextureDestination(p) => {
             begin_set_export_texture_destination(p)
         }
