@@ -318,12 +318,12 @@ impl CommandBuffer {
 
     pub fn update_animation_frame_offset_drag(
         &mut self,
-        mouse_position: Vector2D<f32>,
+        mouse_delta: Vector2D<f32>,
         both_axis: bool,
     ) {
         self.queue
             .push(Sync(Document(UpdateAnimationFrameOffsetDrag(
-                mouse_position,
+                mouse_delta,
                 both_axis,
             ))));
     }
@@ -385,16 +385,15 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(EndHitboxScale)));
     }
 
-    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox, mouse_position: Vector2D<f32>) {
+    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox) {
         self.queue.push(Sync(Document(BeginHitboxDrag(
             hitbox.get_name().to_owned(),
-            mouse_position,
         ))));
     }
 
-    pub fn update_hitbox_drag(&mut self, mouse_position: Vector2D<f32>, both_axis: bool) {
+    pub fn update_hitbox_drag(&mut self, mouse_delta: Vector2D<f32>, both_axis: bool) {
         self.queue
-            .push(Sync(Document(UpdateHitboxDrag(mouse_position, both_axis))));
+            .push(Sync(Document(UpdateHitboxDrag(mouse_delta, both_axis))));
     }
 
     pub fn end_hitbox_drag(&mut self) {

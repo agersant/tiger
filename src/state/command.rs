@@ -76,7 +76,7 @@ pub enum DocumentCommand {
     BeginHitboxScale(String, ResizeAxis, Vector2D<f32>),
     UpdateHitboxScale(Vector2D<f32>, bool),
     EndHitboxScale,
-    BeginHitboxDrag(String, Vector2D<f32>),
+    BeginHitboxDrag(String),
     UpdateHitboxDrag(Vector2D<f32>, bool),
     EndHitboxDrag,
     TogglePlayback,
@@ -160,7 +160,7 @@ impl fmt::Display for DocumentCommand {
             BeginHitboxScale(_, _, _) | UpdateHitboxScale(_, _) | EndHitboxScale => {
                 write!(f, "Resize Hitbox")
             }
-            BeginHitboxDrag(_, _) | UpdateHitboxDrag(_, _) | EndHitboxDrag => {
+            BeginHitboxDrag(_) | UpdateHitboxDrag(_, _) | EndHitboxDrag => {
                 write!(f, "Move Hitbox")
             }
 

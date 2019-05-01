@@ -819,7 +819,6 @@ impl Document {
     pub fn begin_hitbox_drag<T: AsRef<str>>(
         &mut self,
         hitbox_name: T,
-        mouse_position: Vector2D<f32>,
     ) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
@@ -840,7 +839,6 @@ impl Document {
         }
 
         self.transient.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
-        self.transient.workbench_hitbox_drag_initial_mouse_position = mouse_position;
         self.transient.workbench_hitbox_drag_initial_offset = hitbox_position;
         self.select_hitbox(hitbox_name)?;
 
@@ -849,7 +847,7 @@ impl Document {
 
     pub fn update_hitbox_drag(
         &mut self,
-        mouse_position: Vector2D<f32>,
+        mut mouse_delta: Vector2D<f32>,
         both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.view.get_workbench_zoom_factor();
@@ -868,8 +866,6 @@ impl Document {
             .ok_or(StateError::NotDraggingAHitbox)?;
 
         let old_offset = self.transient.workbench_hitbox_drag_initial_offset;
-        let old_mouse_position = self.transient.workbench_hitbox_drag_initial_mouse_position;
-        let mut mouse_delta = mouse_position - old_mouse_position;
 
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
@@ -893,7 +889,6 @@ impl Document {
     }
 
     pub fn end_hitbox_drag(&mut self) {
-        self.transient.workbench_hitbox_drag_initial_mouse_position = Vector2D::<f32>::zero();
         self.transient.workbench_hitbox_drag_initial_offset = Vector2D::<i32>::zero();
         self.transient.workbench_hitbox_being_dragged = None;
     }
@@ -1254,8 +1249,8 @@ impl Document {
             BeginHitboxScale(h, a, p) => new_document.begin_hitbox_scale(&h, *a, *p)?,
             UpdateHitboxScale(p, ar) => new_document.update_hitbox_scale(*p, *ar)?,
             EndHitboxScale => new_document.end_hitbox_scale()?,
-            BeginHitboxDrag(a, m) => new_document.begin_hitbox_drag(&a, *m)?,
-            UpdateHitboxDrag(o, b) => new_document.update_hitbox_drag(*o, *b)?,
+            BeginHitboxDrag(a) => new_document.begin_hitbox_drag(&a)?,
+            UpdateHitboxDrag(d, b) => new_document.update_hitbox_drag(*d, *b)?,
             EndHitboxDrag => new_document.end_hitbox_drag(),
             TogglePlayback => new_document.toggle_playback()?,
             SnapToPreviousFrame => new_document.snap_to_previous_frame()?,

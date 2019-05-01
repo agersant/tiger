@@ -190,7 +190,8 @@ fn draw_hitbox<'a>(
             Some(n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 if is_mouse_dragging {
-                    commands.update_hitbox_drag(mouse_position, !is_shift_down);
+                    let drag_delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                    commands.update_hitbox_drag(drag_delta, !is_shift_down);
                 }
             }
             _ => (),
@@ -210,7 +211,7 @@ fn draw_hitbox<'a>(
 
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if !*is_dragging && !*is_scaling && is_active && is_mouse_dragging {
-        commands.begin_hitbox_drag(hitbox, mouse_position);
+        commands.begin_hitbox_drag(hitbox);
         *is_dragging = true;
     }
 

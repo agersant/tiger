@@ -41,7 +41,6 @@ pub struct Transient {
     pub item_being_renamed: Option<RenameItem>,
     pub rename_buffer: Option<String>,
     pub workbench_hitbox_being_dragged: Option<String>,
-    pub workbench_hitbox_drag_initial_mouse_position: Vector2D<f32>,
     pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
     pub workbench_hitbox_being_scaled: Option<String>,
     pub workbench_hitbox_scale_axis: ResizeAxis,
