@@ -2,7 +2,7 @@
 
 Tiger is a graphical tool for generating spritesheets and metadata about the animation and hitboxes they contain.
 
-![Tiger](res/readme/screenshot-0.1.0.png?raw=true "Tiger")
+![Tiger](res/readme/screenshot-0.2.0.png?raw=true "Tiger")
 
 # Key Features
 
