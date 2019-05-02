@@ -150,12 +150,19 @@ pub fn run<'a>(
 
     draw_export_popup(ui, app_state, &mut commands);
     draw_rename_popup(ui, app_state, &mut commands);
+    draw_exit_popup(ui, app_state, &mut commands);
 
     update_drag_and_drop(ui, app_state, &mut commands);
     draw_drag_and_drop(ui, app_state, texture_cache);
     process_shortcuts(ui, app_state, &mut commands);
 
     Ok(commands)
+}
+
+fn save_all(app_state: &AppState, commands: &mut CommandBuffer) {
+    for document in app_state.documents_iter() {
+        commands.save(&document.source, &document.sheet, document.get_version());
+    }
 }
 
 fn draw_main_menu<'a>(
@@ -210,7 +217,7 @@ fn draw_main_menu<'a>(
                     .enabled(has_document)
                     .build()
                 {
-                    commands.save_all();
+                    save_all(app_state, commands);
                 }
                 if ui
                     .menu_item(im_str!("Export"))
@@ -552,6 +559,58 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
     }
 }
 
+fn draw_exit_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+    match app_state.get_exit_state() {
+        Some(ExitState::Requested) => {
+            let popup_id = im_str!("Unsaved Changes");
+            ui.popup_modal(&popup_id)
+                .title_bar(true)
+                .resizable(false)
+                .always_auto_resize(true)
+                .build(|| {
+                    ui.text(im_str!("Would you like to save changes before exiting?"));
+                    if ui.small_button(im_str!("Save")) {
+                        save_all(app_state, commands);
+                        commands.exit_after_saving();
+                    }
+                    ui.same_line(0.0);
+                    if ui.small_button(im_str!("Don't Save")) {
+                        commands.exit_without_saving();
+                    }
+                    ui.same_line(0.0);
+                    if ui.small_button(im_str!("Cancel")) {
+                        commands.cancel_exit();
+                    }
+                });
+            ui.open_popup(&popup_id);
+        }
+
+        Some(ExitState::Saving) | Some(ExitState::Allowed) => {
+            let frame_size = ui.frame_size().logical_size;
+            ui.window(&im_str!("Saving"))
+                .title_bar(false)
+                .resizable(false)
+                .position(
+                    (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
+                    ImGuiCond::Always,
+                )
+                .position_pivot((0.5, 0.5))
+                .size((80.0, 40.0), ImGuiCond::Always)
+                .movable(false)
+                .build(|| {
+                    ui.set_cursor_pos((0.0, 0.0));
+                    spinner::draw_spinner(
+                        ui,
+                        &ui.get_window_draw_list(),
+                        ui.get_window_size().into(),
+                    );
+                });
+        }
+
+        None => (),
+    }
+}
+
 fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if ui.want_capture_keyboard() {
         return;
@@ -622,7 +681,7 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     commands.save_as(&document.source, &document.sheet, document.get_version());
                 }
             } else if ui.imgui().key_alt() {
-                commands.save_all();
+                save_all(app_state, commands);
             } else if let Some(document) = app_state.get_current_document() {
                 commands.save(&document.source, &document.sheet, document.get_version());
             }

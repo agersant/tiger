@@ -26,11 +26,14 @@ pub enum AppCommand {
     EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
     CloseCurrentDocument,
     CloseAllDocuments,
-    SaveAllDocuments, // TODO This should be async (has IO)
     FocusDocument(PathBuf),
     RelocateDocument(PathBuf, PathBuf),
     Undo,
     Redo,
+    Exit,
+    ExitAfterSaving,
+    ExitWithoutSaving,
+    CancelExit,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -151,7 +154,7 @@ impl fmt::Display for DocumentCommand {
             BeginAnimationFrameDurationDrag(_)
             | UpdateAnimationFrameDurationDrag(_)
             | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
-            | BeginAnimationFrameOffsetDrag(_)
+            BeginAnimationFrameOffsetDrag(_)
             | UpdateAnimationFrameOffsetDrag(_, _)
             | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
 
@@ -160,9 +163,7 @@ impl fmt::Display for DocumentCommand {
             BeginHitboxScale(_, _) | UpdateHitboxScale(_, _) | EndHitboxScale => {
                 write!(f, "Resize Hitbox")
             }
-            BeginHitboxDrag(_) | UpdateHitboxDrag(_, _) | EndHitboxDrag => {
-                write!(f, "Move Hitbox")
-            }
+            BeginHitboxDrag(_) | UpdateHitboxDrag(_, _) | EndHitboxDrag => write!(f, "Move Hitbox"),
 
             NudgeSelection(_, _) => write!(f, "Nudge"),
             DeleteSelection => write!(f, "Delete"),

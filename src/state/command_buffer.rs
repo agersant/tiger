@@ -83,10 +83,6 @@ impl CommandBuffer {
         )));
     }
 
-    pub fn save_all(&mut self) {
-        self.queue.push(Sync(App(SaveAllDocuments)));
-    }
-
     pub fn mark_as_saved<T: AsRef<Path>>(&mut self, path: T, version: i32) {
         self.queue.push(Sync(Document(MarkAsSaved(
             path.as_ref().to_owned(),
@@ -307,13 +303,9 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(EndAnimationFrameDrag)));
     }
 
-    pub fn begin_animation_frame_offset_drag(
-        &mut self,
-        frame_index: usize,
-    ) {
-        self.queue.push(Sync(Document(BeginAnimationFrameOffsetDrag(
-            frame_index,
-        ))));
+    pub fn begin_animation_frame_offset_drag(&mut self, frame_index: usize) {
+        self.queue
+            .push(Sync(Document(BeginAnimationFrameOffsetDrag(frame_index))));
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -357,22 +349,14 @@ impl CommandBuffer {
             .push(Sync(Document(CreateHitbox(mouse_position))));
     }
 
-    pub fn begin_hitbox_scale(
-        &mut self,
-        hitbox: &Hitbox,
-        axis: ResizeAxis,
-    ) {
+    pub fn begin_hitbox_scale(&mut self, hitbox: &Hitbox, axis: ResizeAxis) {
         self.queue.push(Sync(Document(BeginHitboxScale(
             hitbox.get_name().to_owned(),
             axis,
         ))));
     }
 
-    pub fn update_hitbox_scale(
-        &mut self,
-        mouse_delta: Vector2D<f32>,
-        preserve_aspect_ratio: bool,
-    ) {
+    pub fn update_hitbox_scale(&mut self, mouse_delta: Vector2D<f32>, preserve_aspect_ratio: bool) {
         self.queue.push(Sync(Document(UpdateHitboxScale(
             mouse_delta,
             preserve_aspect_ratio,
@@ -474,5 +458,21 @@ impl CommandBuffer {
 
     pub fn end_rename_selection(&mut self) {
         self.queue.push(Sync(Document(EndRenameSelection)));
+    }
+
+    pub fn exit(&mut self) {
+        self.queue.push(Sync(App(Exit)));
+    }
+
+    pub fn exit_after_saving(&mut self) {
+        self.queue.push(Sync(App(ExitAfterSaving)));
+    }
+
+    pub fn exit_without_saving(&mut self) {
+        self.queue.push(Sync(App(ExitWithoutSaving)));
+    }
+
+    pub fn cancel_exit(&mut self) {
+        self.queue.push(Sync(App(CancelExit)));
     }
 }

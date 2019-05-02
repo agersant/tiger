@@ -13,31 +13,40 @@ const TEMPLATE_FILE_EXTENSION: &str = "liquid";
 const IMAGE_IMPORT_FILE_EXTENSIONS: &str = "png;tga;bmp";
 const IMAGE_EXPORT_FILE_EXTENSIONS: &str = "png";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ExitState {
+    Requested,
+    Saving,
+    Allowed,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct AppState {
     documents: Vec<Document>,
     current_document: Option<PathBuf>,
     clock: Duration,
+    exit_state: Option<ExitState>,
 }
 
 impl AppState {
-    pub fn new() -> AppState {
-        AppState {
-            documents: vec![],
-            current_document: None,
-            clock: Duration::new(0, 0),
-        }
-    }
-
     pub fn tick(&mut self, delta: Duration) {
         self.clock += delta;
         if let Some(document) = self.get_current_document_mut() {
             document.tick(delta);
         }
+        if self.exit_state.is_some() {
+            if self.documents.iter().all(|d| d.is_saved()) {
+                self.exit_state = Some(ExitState::Allowed);
+            }
+        }
     }
 
     pub fn get_clock(&self) -> Duration {
         self.clock
+    }
+
+    pub fn get_exit_state(&self) -> Option<ExitState> {
+        self.exit_state
     }
 
     fn is_opened<T: AsRef<Path>>(&self, path: T) -> bool {
@@ -167,11 +176,24 @@ impl AppState {
         self.current_document = None;
     }
 
-    fn save_all_documents(&mut self) -> Result<(), Error> {
-        for document in &mut self.documents {
-            Document::save(&document.sheet, &document.source)?;
+    fn exit(&mut self) {
+        if self.exit_state.is_none() {
+            self.exit_state = Some(ExitState::Requested);
         }
-        Ok(())
+    }
+
+    fn exit_after_saving(&mut self) {
+        if self.exit_state == Some(ExitState::Requested) {
+            self.exit_state = Some(ExitState::Saving);
+        }
+    }
+
+    fn exit_without_saving(&mut self) {
+        self.exit_state = Some(ExitState::Allowed);
+    }
+
+    fn cancel_exit(&mut self) {
+        self.exit_state = None;
     }
 
     fn process_app_command(&mut self, command: &AppCommand) -> Result<(), Error> {
@@ -184,7 +206,6 @@ impl AppState {
             FocusDocument(p) => self.focus_document(p)?,
             CloseCurrentDocument => self.close_current_document()?,
             CloseAllDocuments => self.close_all_documents(),
-            SaveAllDocuments => self.save_all_documents()?,
             Undo => self
                 .get_current_document_mut()
                 .ok_or(StateError::NoDocumentOpen)?
@@ -193,6 +214,10 @@ impl AppState {
                 .get_current_document_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .redo()?,
+            Exit => self.exit(),
+            ExitAfterSaving => self.exit_after_saving(),
+            ExitWithoutSaving => self.exit_without_saving(),
+            CancelExit => self.cancel_exit(),
         }
 
         Ok(())

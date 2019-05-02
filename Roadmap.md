@@ -27,7 +27,7 @@
 
 ## Tiger 0.2
 - [x] Unsaved file marker
-- [ ] Offer to save on exit if needed
+- [x] Offer to save on exit if needed
 - [x] Undo/Redo
 - [x] Allow interactions while file dialogs are open or I/O is in progress
 - [x] Keyboard shortcuts for playback controls
@@ -68,6 +68,7 @@
 
 ## Tiger 0.3
 - [ ] Error dialogs
+- [ ] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
 - [ ] Multiple selections
 - [x] Jump to next/previous frame

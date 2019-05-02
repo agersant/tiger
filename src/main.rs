@@ -97,7 +97,7 @@ fn main() -> Result<(), failure::Error> {
     let async_commands: Arc<(Mutex<AsyncCommands>, Condvar)> =
         Arc::new((Mutex::new(Default::default()), Condvar::new()));
     let async_results: Arc<Mutex<AsyncResults>> = Arc::new(Mutex::new(Default::default()));
-    let state_mutex = Arc::new(Mutex::new(state::AppState::new()));
+    let state_mutex: Arc<Mutex<state::AppState>> = Arc::new(Mutex::new(Default::default()));
     let texture_cache = Arc::new(Mutex::new(streamer::TextureCache::new()));
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
@@ -191,9 +191,6 @@ fn main() -> Result<(), failure::Error> {
                     }
                 }
             });
-            if quit {
-                break;
-            }
             imgui_winit_support::update_mouse_cursor(&imgui_instance, &window);
 
             // Update delta-time
@@ -210,18 +207,25 @@ fn main() -> Result<(), failure::Error> {
                 ui_frame = imgui_instance.frame(frame_size, delta_s);
             }
 
-            // Tick state
-            let mut state;
-            {
-                state = state_mutex.lock().unwrap().clone();
-            }
-            state.tick(delta);
+            let mut state = state_mutex.lock().unwrap().clone();
 
             // Run Tiger UI frame
             let mut new_commands = {
                 let texture_cache = texture_cache.lock().unwrap();
                 ui::run(&ui_frame, &state, &texture_cache)?
             };
+
+            // Exit
+            if quit {
+                new_commands.exit();
+                quit = false;
+            }
+
+            state.tick(delta);
+
+            if state.get_exit_state() == Some(state::ExitState::Allowed) {
+                break;
+            }
 
             // Grab results from async worker
             {
@@ -264,7 +268,6 @@ fn main() -> Result<(), failure::Error> {
                             }
                         }
                         cvar.notify_all();
-                        break;
                     }
                 }
             }
