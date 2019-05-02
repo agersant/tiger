@@ -34,7 +34,6 @@
 - [x] Keyboard shortcuts menu entries
 - [x] Keyboard shortcuts for moving hitbox / animation frame
 - [x] Keyboard shortcuts for list navigation
-- [ ] Fix issue where O key gets stuck after using Ctrl+O shortcut (https://github.com/Gekkio/imgui-rs/pull/215)
 - [x] Loading spinners
 - [x] Begin editing animation after creating it
 - [x] Automatically select hitbox after creating it
@@ -96,6 +95,7 @@
 - [ ] Better rename UX
 - [ ] Right click menu to rename/delete item
 - [ ] Document tabs (imgui 1.67+)
+- [ ] Fix issue where O key gets stuck after using Ctrl+O shortcut (https://github.com/Gekkio/imgui-rs/pull/215)
 - [ ] In-place tutorials instead of blank data
 - [ ] Prettier UI and review TODO.style
 - [ ] Unit-test all the things
