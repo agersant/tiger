@@ -66,6 +66,7 @@
 - [x] Handle scenario when using "Save as" onto a file that is already open
 
 ## Tiger 0.3
+- [x] Cap undo history at 100 entries
 - [ ] Error dialogs
 - [ ] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench

@@ -113,6 +113,11 @@ impl Document {
         self.history.truncate(self.history_index + 1);
         self.history.push(entry);
         self.history_index = self.history.len() - 1;
+
+        while self.history.len() > 100 {
+            self.history.remove(0);
+            self.history_index -= 1;
+        }
     }
 
     fn can_use_undo_system(&self) -> bool {
@@ -567,10 +572,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_animation_frame_offset_drag(
-        &mut self,
-        index: usize,
-    ) -> Result<(), Error> {
+    pub fn begin_animation_frame_offset_drag(&mut self, index: usize) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
             _ => None,
@@ -813,10 +815,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_hitbox_drag<T: AsRef<str>>(
-        &mut self,
-        hitbox_name: T,
-    ) -> Result<(), Error> {
+    pub fn begin_hitbox_drag<T: AsRef<str>>(&mut self, hitbox_name: T) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
