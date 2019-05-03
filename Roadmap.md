@@ -67,6 +67,7 @@
 
 ## Tiger 0.3
 - [x] Cap undo history at 100 entries
+- [x] Offer to save when closing individual documents
 - [ ] Error dialogs
 - [ ] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench

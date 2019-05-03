@@ -60,7 +60,7 @@ impl CommandBuffer {
     }
 
     pub fn close_current_document(&mut self) {
-        self.queue.push(Sync(App(CloseCurrentDocument)));
+        self.queue.push(Sync(Document(Close)));
     }
 
     pub fn close_all_documents(&mut self) {
@@ -464,12 +464,16 @@ impl CommandBuffer {
         self.queue.push(Sync(App(Exit)));
     }
 
-    pub fn exit_after_saving(&mut self) {
-        self.queue.push(Sync(App(ExitAfterSaving)));
+    pub fn close_after_saving(&mut self) {
+        self.queue.push(Sync(Document(CloseAfterSaving)));
     }
 
-    pub fn exit_without_saving(&mut self) {
-        self.queue.push(Sync(App(ExitWithoutSaving)));
+    pub fn close_without_saving(&mut self) {
+        self.queue.push(Sync(Document(CloseWithoutSaving)));
+    }
+
+    pub fn cancel_close(&mut self) {
+        self.queue.push(Sync(Document(CancelClose)));
     }
 
     pub fn cancel_exit(&mut self) {

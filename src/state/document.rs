@@ -14,9 +14,17 @@ struct HistoryEntry {
     version: i32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CloseState {
+    Requested,
+    Saving,
+    Allowed,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Persistent {
     pub export_settings_edit: Option<ExportSettings>,
+    pub close_state: Option<CloseState>,
     timeline_is_playing: bool,
     disk_version: i32,
 }
@@ -78,7 +86,19 @@ impl Document {
         self.history[self.history_index].version
     }
 
+    pub fn get_display_name(&self) -> String {
+        self.source
+            .file_name()
+            .and_then(|f| Some(f.to_string_lossy().into_owned()))
+            .unwrap_or("???".to_owned())
+    }
+
     pub fn tick(&mut self, delta: Duration) {
+        self.advance_timeline(delta);
+        self.try_close();
+    }
+
+    fn advance_timeline(&mut self, delta: Duration) {
         if self.persistent.timeline_is_playing {
             self.view.timeline_clock += delta;
             if let Some(WorkbenchItem::Animation(animation_name)) = &self.view.workbench_item {
@@ -105,6 +125,14 @@ impl Document {
                         }
                     };
                 }
+            }
+        }
+    }
+
+    fn try_close(&mut self) {
+        if self.persistent.close_state == Some(CloseState::Saving) {
+            if self.is_saved() {
+                self.persistent.close_state = Some(CloseState::Allowed);
             }
         }
     }
@@ -1182,6 +1210,16 @@ impl Document {
         Ok(())
     }
 
+    pub fn begin_close(&mut self) {
+        if self.persistent.close_state == None {
+            self.persistent.close_state = Some(if self.is_saved() {
+                CloseState::Allowed
+            } else {
+                CloseState::Requested
+            });
+        }
+    }
+
     pub fn process_command(&mut self, command: &DocumentCommand) -> Result<(), Error> {
         use DocumentCommand::*;
 
@@ -1263,6 +1301,10 @@ impl Document {
             BeginRenameSelection => new_document.begin_rename_selection()?,
             UpdateRenameSelection(n) => new_document.transient.rename_buffer = Some(n.to_owned()),
             EndRenameSelection => new_document.end_rename_selection()?,
+            Close => new_document.begin_close(),
+            CloseAfterSaving => new_document.persistent.close_state = Some(CloseState::Saving),
+            CloseWithoutSaving => new_document.persistent.close_state = Some(CloseState::Allowed),
+            CancelClose => new_document.persistent.close_state = None,
         };
 
         self.record_command(command, new_document);

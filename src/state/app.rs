@@ -16,7 +16,6 @@ const IMAGE_EXPORT_FILE_EXTENSIONS: &str = "png";
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ExitState {
     Requested,
-    Saving,
     Allowed,
 }
 
@@ -34,8 +33,22 @@ impl AppState {
         if let Some(document) = self.get_current_document_mut() {
             document.tick(delta);
         }
-        if self.exit_state.is_some() {
-            if self.documents.iter().all(|d| d.is_saved()) {
+        self.advance_exit();
+    }
+
+    fn advance_exit(&mut self) {
+        let documents_to_close: Vec<PathBuf> = self
+            .documents
+            .iter()
+            .filter(|d| d.persistent.close_state == Some(CloseState::Allowed))
+            .map(|d| d.source.clone())
+            .collect();
+        for path in documents_to_close {
+            self.close_document(path);
+        }
+
+        if Some(ExitState::Requested) == self.exit_state {
+            if self.documents.len() == 0 {
                 self.exit_state = Some(ExitState::Allowed);
             }
         }
@@ -149,47 +162,35 @@ impl AppState {
         self.documents.push(added_document);
     }
 
-    fn close_current_document(&mut self) -> Result<(), Error> {
-        let document = self
-            .get_current_document()
-            .ok_or(StateError::NoDocumentOpen)?;
-        let index = self
+    fn close_document<T: AsRef<Path>>(&mut self, path: T) {
+        if let Some(index) = self
             .documents
             .iter()
-            .position(|d| d as *const Document == document as *const Document)
-            .ok_or(StateError::DocumentNotFound)?;
-        self.documents.remove(index);
-        self.current_document = if self.documents.is_empty() {
-            None
-        } else {
-            Some(
-                self.documents[std::cmp::min(index, self.documents.len() - 1)]
-                    .source
-                    .clone(),
-            )
-        };
-        Ok(())
+            .position(|d| d.source == path.as_ref())
+        {
+            self.documents.remove(index);
+            self.current_document = if self.documents.is_empty() {
+                None
+            } else {
+                Some(
+                    self.documents[std::cmp::min(index, self.documents.len() - 1)]
+                        .source
+                        .clone(),
+                )
+            };
+        }
     }
 
     fn close_all_documents(&mut self) {
-        self.documents.clear();
-        self.current_document = None;
+        for document in self.documents.iter_mut() {
+            document.begin_close();
+        }
     }
 
     fn exit(&mut self) {
         if self.exit_state.is_none() {
             self.exit_state = Some(ExitState::Requested);
         }
-    }
-
-    fn exit_after_saving(&mut self) {
-        if self.exit_state == Some(ExitState::Requested) {
-            self.exit_state = Some(ExitState::Saving);
-        }
-    }
-
-    fn exit_without_saving(&mut self) {
-        self.exit_state = Some(ExitState::Allowed);
     }
 
     fn cancel_exit(&mut self) {
@@ -204,7 +205,6 @@ impl AppState {
             EndOpenDocument(p) => self.end_open_document(p)?,
             RelocateDocument(from, to) => self.relocate_document(from, to)?,
             FocusDocument(p) => self.focus_document(p)?,
-            CloseCurrentDocument => self.close_current_document()?,
             CloseAllDocuments => self.close_all_documents(),
             Undo => self
                 .get_current_document_mut()
@@ -215,8 +215,6 @@ impl AppState {
                 .ok_or(StateError::NoDocumentOpen)?
                 .redo()?,
             Exit => self.exit(),
-            ExitAfterSaving => self.exit_after_saving(),
-            ExitWithoutSaving => self.exit_without_saving(),
             CancelExit => self.cancel_exit(),
         }
 

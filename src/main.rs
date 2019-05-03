@@ -208,6 +208,7 @@ fn main() -> Result<(), failure::Error> {
             }
 
             let mut state = state_mutex.lock().unwrap().clone();
+            state.tick(delta);
 
             // Run Tiger UI frame
             let mut new_commands = {
@@ -217,11 +218,10 @@ fn main() -> Result<(), failure::Error> {
 
             // Exit
             if quit {
+                new_commands.close_all_documents();
                 new_commands.exit();
                 quit = false;
             }
-
-            state.tick(delta);
 
             if state.get_exit_state() == Some(state::ExitState::Allowed) {
                 break;

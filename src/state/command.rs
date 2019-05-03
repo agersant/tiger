@@ -24,15 +24,12 @@ pub enum AsyncCommand {
 pub enum AppCommand {
     EndNewDocument(PathBuf),
     EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
-    CloseCurrentDocument,
     CloseAllDocuments,
     FocusDocument(PathBuf),
     RelocateDocument(PathBuf, PathBuf),
     Undo,
     Redo,
     Exit,
-    ExitAfterSaving,
-    ExitWithoutSaving,
     CancelExit,
 }
 
@@ -97,6 +94,10 @@ pub enum DocumentCommand {
     BeginRenameSelection,
     UpdateRenameSelection(String),
     EndRenameSelection,
+    Close,
+    CloseAfterSaving,
+    CloseWithoutSaving,
+    CancelClose,
 }
 
 impl fmt::Display for DocumentCommand {
@@ -141,6 +142,8 @@ impl fmt::Display for DocumentCommand {
             | Pan(_) => write!(f, "Navigation"),
 
             MarkAsSaved(_, _) => write!(f, "Mark As Saved"),
+
+            Close | CloseAfterSaving | CloseWithoutSaving | CancelClose => write!(f, "Close"),
 
             // Animation
             CreateAnimation => write!(f, "Create Animation"),

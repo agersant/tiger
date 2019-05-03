@@ -367,11 +367,7 @@ fn draw_documents_window<'a>(
             .movable(false)
             .build(|| {
                 for document in app_state.documents_iter() {
-                    let mut document_name = document
-                        .source
-                        .file_name()
-                        .and_then(|f| Some(f.to_string_lossy().into_owned()))
-                        .unwrap_or("???".to_owned());
+                    let mut document_name = document.get_display_name();
                     if !document.is_saved() {
                         document_name += " [Modified]";
                     }
@@ -560,54 +556,65 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 }
 
 fn draw_exit_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
-    match app_state.get_exit_state() {
-        Some(ExitState::Requested) => {
-            let popup_id = im_str!("Unsaved Changes");
-            ui.popup_modal(&popup_id)
-                .title_bar(true)
-                .resizable(false)
-                .always_auto_resize(true)
-                .build(|| {
-                    ui.text(im_str!("Would you like to save changes before exiting?"));
-                    if ui.small_button(im_str!("Save")) {
-                        save_all(app_state, commands);
-                        commands.exit_after_saving();
-                    }
-                    ui.same_line(0.0);
-                    if ui.small_button(im_str!("Don't Save")) {
-                        commands.exit_without_saving();
-                    }
-                    ui.same_line(0.0);
-                    if ui.small_button(im_str!("Cancel")) {
-                        commands.cancel_exit();
-                    }
-                });
-            ui.open_popup(&popup_id);
-        }
+    if let Some(document) = app_state.get_current_document() {
+        match document.persistent.close_state {
+            Some(CloseState::Requested) => {
+                let popup_id = im_str!("Unsaved Changes");
+                ui.popup_modal(&popup_id)
+                    .title_bar(true)
+                    .resizable(false)
+                    .always_auto_resize(true)
+                    .build(|| {
+                        let popup_text = format!(
+                            "{} has been modified. Would you like to save changes?",
+                            document.get_display_name()
+                        );
+                        ui.text(&ImString::new(popup_text));
+                        if ui.small_button(im_str!("Save")) {
+                            commands.save(
+                                &document.source,
+                                &document.sheet,
+                                document.get_version(),
+                            );
+                            commands.close_after_saving();
+                        }
+                        ui.same_line(0.0);
+                        if ui.small_button(im_str!("Don't Save")) {
+                            commands.close_without_saving();
+                        }
+                        ui.same_line(0.0);
+                        if ui.small_button(im_str!("Cancel")) {
+                            commands.cancel_close();
+                            commands.cancel_exit();
+                        }
+                    });
+                ui.open_popup(&popup_id);
+            }
 
-        Some(ExitState::Saving) | Some(ExitState::Allowed) => {
-            let frame_size = ui.frame_size().logical_size;
-            ui.window(&im_str!("Saving"))
-                .title_bar(false)
-                .resizable(false)
-                .position(
-                    (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
-                    ImGuiCond::Always,
-                )
-                .position_pivot((0.5, 0.5))
-                .size((80.0, 40.0), ImGuiCond::Always)
-                .movable(false)
-                .build(|| {
-                    ui.set_cursor_pos((0.0, 0.0));
-                    spinner::draw_spinner(
-                        ui,
-                        &ui.get_window_draw_list(),
-                        ui.get_window_size().into(),
-                    );
-                });
-        }
+            Some(CloseState::Saving) | Some(CloseState::Allowed) => {
+                let frame_size = ui.frame_size().logical_size;
+                ui.window(&im_str!("Saving"))
+                    .title_bar(false)
+                    .resizable(false)
+                    .position(
+                        (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
+                        ImGuiCond::Always,
+                    )
+                    .position_pivot((0.5, 0.5))
+                    .size((80.0, 40.0), ImGuiCond::Always)
+                    .movable(false)
+                    .build(|| {
+                        ui.set_cursor_pos((0.0, 0.0));
+                        spinner::draw_spinner(
+                            ui,
+                            &ui.get_window_draw_list(),
+                            ui.get_window_size().into(),
+                        );
+                    });
+            }
 
-        None => (),
+            None => (),
+        }
     }
 }
 
