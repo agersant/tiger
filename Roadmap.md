@@ -76,7 +76,7 @@
 - [ ] Export perf fixes
 - [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] Copy/paste hitboxes
-- [ ] Auto reload images on frame edit
+- [x] Auto reload images on frame edit
 - [ ] Timeline scrolling follows playback
 - [ ] Timeline scrolling follows frame selection (or double click?)
 - [ ] Time snapping of animation frames
