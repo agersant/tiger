@@ -10,9 +10,11 @@ use imgui_winit_support;
 extern crate serde_derive;
 
 use gfx::Device;
+use notify::DebouncedEvent;
 use std::sync::*;
 
 mod export;
+mod file_watcher;
 mod sheet;
 mod state;
 mod streamer;
@@ -100,6 +102,8 @@ fn main() -> Result<(), failure::Error> {
     let state_mutex: Arc<Mutex<state::AppState>> = Arc::new(Mutex::new(Default::default()));
     let texture_cache = Arc::new(Mutex::new(streamer::TextureCache::new()));
     let (streamer_from_disk, streamer_to_gpu) = streamer::init();
+    let (file_watcher_sender, file_watcher_receiver) = file_watcher::init();
+    let mut file_watcher = file_watcher::FileWatcher::new(file_watcher_sender);
     let main_thread_frame = Arc::new((Mutex::new(false), Condvar::new()));
 
     // Thread processing async commands without blocking the UI
@@ -128,6 +132,20 @@ fn main() -> Result<(), failure::Error> {
         let &(ref commands_mutex, ref _cvar) = &*async_commands_for_worker;
         let mut async_commands = commands_mutex.lock().unwrap();
         async_commands.commands.drain(..commands.len());
+    });
+
+    // File watcher thread
+    let texture_cache_for_file_watcher = texture_cache.clone();
+    std::thread::spawn(move || loop {
+        if let Ok(event) = file_watcher_receiver.recv() {
+            match event {
+                DebouncedEvent::Write(path) | DebouncedEvent::Remove(path) => {
+                    let mut texture_cache = texture_cache_for_file_watcher.lock().unwrap();
+                    texture_cache.remove(path);
+                }
+                _ => (),
+            }
+        }
     });
 
     // Streamer thread
@@ -277,6 +295,9 @@ fn main() -> Result<(), failure::Error> {
                 let mut s = state_mutex.lock().unwrap();
                 *s = state.clone();
             }
+
+            // Update file watches
+            file_watcher.update_watched_files(&state);
 
             // Render screen
             {
