@@ -18,6 +18,7 @@ imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs" }
 imgui-winit-support = { git = "https://github.com/agersant/imgui-rs" }
 liquid = "0.17"
 nfd = "0.0.4"
+notify = "4.0.10"
 pathdiff = "0.1.0"
 serde = "1.0"
 serde_json = "1.0"

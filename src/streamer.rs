@@ -56,11 +56,15 @@ pub fn load_from_disk(
     for path in desired_textures.iter() {
         obsolete_textures.remove(path);
 
-        match cache_content.get(path) {
-            Some(TextureCacheEntry::Loaded(_)) | Some(TextureCacheEntry::Missing) => {
-                continue;
+        if let Some(cache_entry) = cache_content.get(path) {
+            if !cache_entry.outdated {
+                match cache_entry.state {
+                    CacheEntryState::Loaded(_) | CacheEntryState::Missing => {
+                        continue;
+                    }
+                    _ => (),
+                }
             }
-            _ => (),
         }
 
         if io_time.as_millis() < MAX_TEXTURES_LOAD_TIME_PER_TICK {
@@ -147,10 +151,16 @@ struct TextureCacheImage {
 }
 
 #[derive(Clone)]
-enum TextureCacheEntry {
+enum CacheEntryState {
     Loading,
     Loaded(TextureCacheImage),
     Missing,
+}
+
+#[derive(Clone)]
+struct CacheEntry {
+    state: CacheEntryState,
+    outdated: bool,
 }
 
 #[derive(Clone)]
@@ -166,12 +176,12 @@ pub enum TextureCacheResult {
     Missing,
 }
 
-impl From<&TextureCacheEntry> for TextureCacheResult {
-    fn from(entry: &TextureCacheEntry) -> TextureCacheResult {
-        match entry {
-            TextureCacheEntry::Loading => TextureCacheResult::Loading,
-            TextureCacheEntry::Missing => TextureCacheResult::Missing,
-            TextureCacheEntry::Loaded(t) => TextureCacheResult::Loaded(TextureCacheResultImage {
+impl From<&CacheEntry> for TextureCacheResult {
+    fn from(entry: &CacheEntry) -> TextureCacheResult {
+        match &entry.state {
+            CacheEntryState::Loading => TextureCacheResult::Loading,
+            CacheEntryState::Missing => TextureCacheResult::Missing,
+            CacheEntryState::Loaded(t) => TextureCacheResult::Loaded(TextureCacheResultImage {
                 id: t.id,
                 size: t.size.to_f32(),
             }),
@@ -180,7 +190,7 @@ impl From<&TextureCacheEntry> for TextureCacheResult {
 }
 
 pub struct TextureCache {
-    cache: HashMap<PathBuf, TextureCacheEntry>,
+    cache: HashMap<PathBuf, CacheEntry>,
 }
 
 impl TextureCache {
@@ -190,7 +200,7 @@ impl TextureCache {
         }
     }
 
-    fn dump(&self) -> HashMap<PathBuf, TextureCacheEntry> {
+    fn dump(&self) -> HashMap<PathBuf, CacheEntry> {
         self.cache.clone()
     }
 
@@ -198,22 +208,40 @@ impl TextureCache {
         self.cache.get(path.as_ref()).map(|e| e.into())
     }
 
+    fn insert<T: AsRef<Path>>(&mut self, path: T, state: CacheEntryState) {
+        let allow_insert = match state {
+            CacheEntryState::Loading => self.cache.get(path.as_ref()).is_none(),
+            _ => true,
+        };
+        if allow_insert {
+            self.cache.insert(
+                path.as_ref().to_owned(),
+                CacheEntry {
+                    state: state,
+                    outdated: false,
+                },
+            );
+        }
+    }
+
     pub fn insert_entry<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: Vector2D<u32>) {
-        self.cache.insert(
-            path.as_ref().to_owned(),
-            TextureCacheEntry::Loaded(TextureCacheImage { id, size }),
+        self.insert(
+            path,
+            CacheEntryState::Loaded(TextureCacheImage { id, size }),
         );
     }
 
     pub fn insert_error<T: AsRef<Path>>(&mut self, path: T) {
-        self.cache
-            .insert(path.as_ref().to_owned(), TextureCacheEntry::Missing);
+        self.insert(path, CacheEntryState::Missing);
     }
 
     pub fn insert_pending<T: AsRef<Path>>(&mut self, path: T) {
-        if self.cache.get(path.as_ref()).is_none() {
-            self.cache
-                .insert(path.as_ref().to_owned(), TextureCacheEntry::Loading);
+        self.insert(path, CacheEntryState::Loading);
+    }
+
+    pub fn invalidate<T: AsRef<Path>>(&mut self, path: T) {
+        if let Some(entry) = self.cache.get_mut(path.as_ref()) {
+            entry.outdated = true;
         }
     }
 
