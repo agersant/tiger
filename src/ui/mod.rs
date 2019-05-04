@@ -150,7 +150,8 @@ pub fn run<'a>(
 
     draw_export_popup(ui, app_state, &mut commands);
     draw_rename_popup(ui, app_state, &mut commands);
-    draw_exit_popup(ui, app_state, &mut commands);
+    draw_unsaved_changes_popup(ui, app_state, &mut commands);
+    draw_saving_popup(ui, app_state);
 
     update_drag_and_drop(ui, app_state, &mut commands);
     draw_drag_and_drop(ui, app_state, texture_cache);
@@ -518,7 +519,6 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         commands.cancel_export_as();
                     }
                 });
-            ui.open_popup(&popup_id);
         }
     }
 }
@@ -555,15 +555,24 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
     }
 }
 
-fn draw_exit_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+fn draw_unsaved_changes_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
         match document.persistent.close_state {
+            Some(CloseState::Saving) | Some(CloseState::Allowed) | None => (),
             Some(CloseState::Requested) => {
+                let frame_size = ui.frame_size().logical_size;
                 let popup_id = im_str!("Unsaved Changes");
-                ui.popup_modal(&popup_id)
+                ui.window(&popup_id)
                     .title_bar(true)
+                    .collapsible(false)
                     .resizable(false)
+                    .movable(true)
                     .always_auto_resize(true)
+                    .position(
+                        (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
+                        ImGuiCond::Always,
+                    )
+                    .position_pivot((0.5, 0.5))
                     .build(|| {
                         let popup_text = format!(
                             "{} has been modified. Would you like to save changes?",
@@ -588,21 +597,27 @@ fn draw_exit_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Command
                             commands.cancel_exit();
                         }
                     });
-                ui.open_popup(&popup_id);
             }
-
+        }
+    }
+}
+fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState) {
+    if let Some(document) = app_state.get_current_document() {
+        match document.persistent.close_state {
+            Some(CloseState::Requested) | None => (),
             Some(CloseState::Saving) | Some(CloseState::Allowed) => {
                 let frame_size = ui.frame_size().logical_size;
-                ui.window(&im_str!("Saving"))
+                let popup_id = im_str!("Saving");
+                ui.window(&popup_id)
                     .title_bar(false)
                     .resizable(false)
+                    .movable(false)
                     .position(
                         (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
                         ImGuiCond::Always,
                     )
                     .position_pivot((0.5, 0.5))
                     .size((80.0, 40.0), ImGuiCond::Always)
-                    .movable(false)
                     .build(|| {
                         ui.set_cursor_pos((0.0, 0.0));
                         spinner::draw_spinner(
@@ -612,8 +627,6 @@ fn draw_exit_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Command
                         );
                     });
             }
-
-            None => (),
         }
     }
 }
