@@ -139,9 +139,11 @@ fn main() -> Result<(), failure::Error> {
     std::thread::spawn(move || loop {
         if let Ok(event) = file_watcher_receiver.recv() {
             match event {
-                DebouncedEvent::Write(path) | DebouncedEvent::Remove(path) => {
+                DebouncedEvent::Write(path)
+                | DebouncedEvent::Create(path)
+                | DebouncedEvent::Remove(path) => {
                     let mut texture_cache = texture_cache_for_file_watcher.lock().unwrap();
-                    texture_cache.remove(path);
+                    texture_cache.invalidate(path);
                 }
                 _ => (),
             }
