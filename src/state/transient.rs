@@ -42,7 +42,7 @@ pub struct Transient {
     pub dragging_content_frames: bool,
     pub item_being_renamed: Option<RenameItem>,
     pub rename_buffer: Option<String>,
-    pub workbench_hitbox_being_dragged: Option<String>,
+    pub workbench_hitbox_being_dragged: bool,
     pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
     pub workbench_hitbox_being_scaled: bool,
     pub workbench_hitbox_scale_axis: ResizeAxis,

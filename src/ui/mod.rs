@@ -403,7 +403,7 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
             {
                 commands.end_animation_frame_offset_drag();
             }
-            if document.transient.workbench_hitbox_being_dragged.is_some() {
+            if document.transient.workbench_hitbox_being_dragged {
                 commands.end_hitbox_drag();
             }
             if document.transient.workbench_hitbox_being_scaled {

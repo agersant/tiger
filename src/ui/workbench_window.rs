@@ -178,17 +178,12 @@ fn draw_hitbox<'a>(
         ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
     }
 
-    if *is_dragging {
-        match &document.transient.workbench_hitbox_being_dragged {
-            Some(n) if n == hitbox.get_name() => {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                if is_mouse_dragging {
-                    // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
-                    commands.update_hitbox_drag(drag_delta, !is_shift_down);
-                }
-            }
-            _ => (),
-        };
+    if *is_dragging && is_selected {
+        ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+        if is_mouse_dragging {
+            // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
+            commands.update_hitbox_drag(drag_delta, !is_shift_down);
+        }
     }
 
     if *is_scaling && is_selected {
@@ -233,8 +228,7 @@ fn draw_frame<'a>(
 
             let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
             let mut is_scaling_hitbox = document.transient.workbench_hitbox_being_scaled;
-            let mut is_dragging_hitbox =
-                document.transient.workbench_hitbox_being_dragged.is_some();
+            let mut is_dragging_hitbox = document.transient.workbench_hitbox_being_dragged;
 
             let mouse_pos = ui.imgui().mouse_pos().into();
             let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);

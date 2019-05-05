@@ -881,7 +881,7 @@ impl Document {
             hitbox_position = hitbox.get_position();
         }
 
-        self.transient.workbench_hitbox_being_dragged = Some(hitbox_name.as_ref().to_owned());
+        self.transient.workbench_hitbox_being_dragged = true;
         self.transient.workbench_hitbox_drag_initial_offset = hitbox_position;
         self.select_hitbox(hitbox_name)?;
 
@@ -901,12 +901,11 @@ impl Document {
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
 
-        let hitbox_name = self
-            .transient
-            .workbench_hitbox_being_dragged
-            .as_ref()
-            .cloned()
-            .ok_or(StateError::NotDraggingAHitbox)?;
+        let hitbox_name = match &self.view.selection {
+            Some(Selection::Hitbox(n)) => Some(n.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NoHitboxSelected)?;
 
         let old_offset = self.transient.workbench_hitbox_drag_initial_offset;
 
