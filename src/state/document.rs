@@ -654,7 +654,7 @@ impl Document {
                 animation_frame.get_offset();
         }
 
-        self.transient.workbench_animation_frame_being_dragged = Some(index);
+        self.transient.workbench_animation_frame_being_dragged = true;
         self.select_animation_frame(index)
     }
 
@@ -670,10 +670,11 @@ impl Document {
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
 
-        let animation_index = self
-            .transient
-            .workbench_animation_frame_being_dragged
-            .ok_or(StateError::NotDraggingATimelineFrame)?;
+        let frame_index = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(*i),
+            _ => None,
+        }
+        .ok_or(StateError::NoAnimationFrameSelected)?;
 
         let old_offset = self.transient.workbench_animation_frame_drag_initial_offset;
         if !both_axis {
@@ -689,7 +690,7 @@ impl Document {
             .sheet
             .get_animation_mut(animation_name)
             .ok_or(StateError::AnimationNotInDocument)?
-            .get_frame_mut(animation_index)
+            .get_frame_mut(frame_index)
             .ok_or(StateError::InvalidAnimationFrameIndex)?;
         animation_frame.set_offset(new_offset);
 

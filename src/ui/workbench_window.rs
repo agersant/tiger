@@ -363,23 +363,15 @@ fn draw_animation<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_shift_down = ui.imgui().key_shift();
 
-        match document.transient.workbench_animation_frame_being_dragged {
-            None => {
-                if ui.is_item_hovered() {
-                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                }
-                if ui.is_item_active() && is_mouse_dragging {
-                    commands.begin_animation_frame_offset_drag(frame_index);
-                }
+        if document.transient.workbench_animation_frame_being_dragged {
+            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+            if is_mouse_dragging {
+                let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                commands.update_animation_frame_offset_drag(delta, !is_shift_down);
             }
-            Some(dragged_frame_index) => {
-                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                if is_mouse_dragging {
-                    let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
-                    commands.update_animation_frame_offset_drag(delta, !is_shift_down);
-                }
-                if dragged_frame_index != frame_index {
-                    if let Some(animation_frame) = animation.get_frame(dragged_frame_index) {
+            if let Some(Selection::AnimationFrame(selected_frame_index)) = document.view.selection {
+                if selected_frame_index != frame_index {
+                    if let Some(animation_frame) = animation.get_frame(selected_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.2), || {
                             draw_animation_frame(
                                 ui,
@@ -387,14 +379,21 @@ fn draw_animation<'a>(
                                 texture_cache,
                                 document,
                                 animation_frame,
-                                dragged_frame_index,
+                                selected_frame_index,
                                 true,
                             );
                         });
                     }
                 }
             }
-        };
+        } else {
+            if ui.is_item_hovered() {
+                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+            }
+            if ui.is_item_active() && is_mouse_dragging {
+                commands.begin_animation_frame_offset_drag(frame_index);
+            }
+        }
     }
 }
 

@@ -396,11 +396,7 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
             if document.transient.timeline_frame_being_dragged.is_some() {
                 commands.end_animation_frame_drag();
             }
-            if document
-                .transient
-                .workbench_animation_frame_being_dragged
-                .is_some()
-            {
+            if document.transient.workbench_animation_frame_being_dragged {
                 commands.end_animation_frame_offset_drag();
             }
             if document.transient.workbench_hitbox_being_dragged {
