@@ -119,7 +119,6 @@ fn draw_hitbox<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
     document: &Document,
-    frame: &Frame,
     hitbox: &Hitbox,
     is_selectable: bool,
     offset: Vector2D<i32>,
@@ -142,11 +141,8 @@ fn draw_hitbox<'a>(
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
-    let is_selected = document.view.selection
-        == Some(Selection::Hitbox(
-            frame.get_source().to_owned(),
-            hitbox.get_name().to_owned(),
-        ));
+    let is_selected =
+        document.view.selection == Some(Selection::Hitbox(hitbox.get_name().to_owned()));
 
     let (is_hovered, is_active) = if is_selectable && !rectangle.size.is_empty_or_negative() {
         let hitbox_id = ImString::new(format!("hitbox_button_{}", hitbox.get_name()));
@@ -253,7 +249,6 @@ fn draw_frame<'a>(
                     ui,
                     commands,
                     document,
-                    frame,
                     hitbox,
                     true,
                     vec2(0, 0),
@@ -318,7 +313,6 @@ fn draw_animation_frame<'a>(
                         ui,
                         commands,
                         document,
-                        frame,
                         hitbox,
                         false,
                         frame_offset.to_i32(),

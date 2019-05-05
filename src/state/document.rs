@@ -226,6 +226,30 @@ impl Document {
         }
     }
 
+    fn get_workbench_frame(&self) -> Result<&Frame, Error> {
+        match &self.view.workbench_item {
+            Some(WorkbenchItem::Frame(path)) => Some(
+                self.sheet
+                    .get_frame(path)
+                    .ok_or(StateError::FrameNotInDocument)?,
+            ),
+            _ => None,
+        }
+        .ok_or_else(|| StateError::NotEditingAnyFrame.into())
+    }
+
+    fn get_workbench_frame_mut(&mut self) -> Result<&mut Frame, Error> {
+        match &self.view.workbench_item {
+            Some(WorkbenchItem::Frame(path)) => Some(
+                self.sheet
+                    .get_frame_mut(path)
+                    .ok_or(StateError::FrameNotInDocument)?,
+            ),
+            _ => None,
+        }
+        .ok_or_else(|| StateError::NotEditingAnyFrame.into())
+    }
+
     fn get_workbench_animation(&self) -> Result<&Animation, Error> {
         match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(n)) => Some(
@@ -303,10 +327,7 @@ impl Document {
         let _hitbox = frame
             .get_hitbox(&hitbox_name)
             .ok_or(StateError::InvalidHitboxIndex)?;
-        self.view.selection = Some(Selection::Hitbox(
-            frame_path,
-            hitbox_name.as_ref().to_owned(),
-        ));
+        self.view.selection = Some(Selection::Hitbox(hitbox_name.as_ref().to_owned()));
         Ok(())
     }
 
@@ -370,11 +391,15 @@ impl Document {
                     self.view.selection = Some(Selection::Animation(n.get_name().to_owned()));
                 }
             }
-            Some(Selection::Hitbox(p, n)) => {
+            Some(Selection::Hitbox(n)) => {
+                let frame_path = match &self.view.workbench_item {
+                    Some(WorkbenchItem::Frame(p)) => p.clone(),
+                    _ => return Err(StateError::NotEditingAnyFrame.into()),
+                };
                 let frame = self
                     .sheet
                     .frames_iter()
-                    .find(|f| f.get_source() == p)
+                    .find(|f| f.get_source() == frame_path)
                     .ok_or(StateError::FrameNotInDocument)?;
                 let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
                 hitboxes.sort_unstable();
@@ -383,8 +408,7 @@ impl Document {
                     .position(|h| h.get_name() == n)
                     .ok_or(StateError::InvalidHitboxIndex)?;
                 if let Some(h) = hitboxes.get(advance(current_index)) {
-                    self.view.selection =
-                        Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
+                    self.view.selection = Some(Selection::Hitbox(h.get_name().to_owned()));
                 }
             }
             Some(Selection::AnimationFrame(_)) | None => (),
@@ -431,19 +455,13 @@ impl Document {
         Ok(())
     }
 
-    fn begin_hitbox_rename<T: AsRef<Path>, U: AsRef<str>>(
-        &mut self,
-        frame_path: T,
-        old_name: U,
-    ) -> Result<(), Error> {
-        let _hitbox = self
-            .sheet
-            .get_frame(&frame_path)
-            .ok_or(StateError::FrameNotInDocument)?
+    fn begin_hitbox_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
+        let frame = self.get_workbench_frame()?;
+        let _hitbox = frame
             .get_hitbox(old_name.as_ref())
             .ok_or(StateError::HitboxNotInFrame)?;
         self.transient.item_being_renamed = Some(RenameItem::Hitbox(
-            frame_path.as_ref().to_owned(),
+            frame.get_source().to_owned(),
             old_name.as_ref().to_owned(),
         ));
         self.transient.rename_buffer = Some(old_name.as_ref().to_owned());
@@ -1045,14 +1063,12 @@ impl Document {
     pub fn nudge_selection(&mut self, direction: Vector2D<i32>, large: bool) -> Result<(), Error> {
         let amplitude = if large { 10 } else { 1 };
         let offset = direction * amplitude;
-        match &self.view.selection {
+        match self.view.selection.clone() {
             Some(Selection::Animation(_)) => {}
             Some(Selection::Frame(_)) => {}
-            Some(Selection::Hitbox(f, h)) => {
+            Some(Selection::Hitbox(h)) => {
                 let hitbox = self
-                    .sheet
-                    .get_frame_mut(f)
-                    .ok_or(StateError::FrameNotInDocument)?
+                    .get_workbench_frame_mut()?
                     .get_hitbox_mut(&h)
                     .ok_or(StateError::InvalidHitboxIndex)?;
                 hitbox.set_position(hitbox.get_position() + offset);
@@ -1063,7 +1079,7 @@ impl Document {
                     .sheet
                     .get_animation_mut(animation_name)
                     .ok_or(StateError::AnimationNotInDocument)?
-                    .get_frame_mut(*frame_index)
+                    .get_frame_mut(frame_index)
                     .ok_or(StateError::InvalidAnimationFrameIndex)?;
                 animation_frame.set_offset(animation_frame.get_offset() + offset);
             }
@@ -1090,25 +1106,21 @@ impl Document {
                     drag_paths.retain(|p| !deleted_paths.contains(p));
                 }
             }
-            Some(Selection::Hitbox(f, h)) => {
-                self.sheet.delete_hitbox(&f, &h);
-                if self.view.workbench_item == Some(WorkbenchItem::Frame(f.clone())) {
-                    if self.transient.workbench_hitbox_being_dragged == Some(h.to_owned()) {
-                        self.transient.workbench_hitbox_being_dragged = None;
-                    }
-                    if self.transient.workbench_hitbox_being_scaled == Some(h.to_owned()) {
-                        self.transient.workbench_hitbox_being_scaled = None;
-                    }
+            Some(Selection::Hitbox(h)) => {
+                let frame_path = self.get_workbench_frame()?.get_source().to_owned();
+                self.sheet.delete_hitbox(&frame_path, &h);
+                if self.transient.workbench_hitbox_being_dragged == Some(h.to_owned()) {
+                    self.transient.workbench_hitbox_being_dragged = None;
+                }
+                if self.transient.workbench_hitbox_being_scaled == Some(h.to_owned()) {
+                    self.transient.workbench_hitbox_being_scaled = None;
                 }
             }
             Some(Selection::AnimationFrame(frame_index)) => {
                 let animation_name = self.get_workbench_animation()?.get_name().to_owned();
                 self.sheet
                     .delete_animation_frame(&animation_name, *frame_index);
-                if self.view.workbench_item
-                    == Some(WorkbenchItem::Animation(animation_name.to_owned()))
-                    && self.transient.workbench_animation_frame_being_dragged == Some(*frame_index)
-                {
+                if self.transient.workbench_animation_frame_being_dragged == Some(*frame_index) {
                     self.transient.workbench_animation_frame_being_dragged = None;
                 }
             }
@@ -1121,7 +1133,7 @@ impl Document {
     pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
         match &self.view.selection {
             Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
-            Some(Selection::Hitbox(f, h)) => self.begin_hitbox_rename(f.clone(), h.clone())?,
+            Some(Selection::Hitbox(h)) => self.begin_hitbox_rename(h.clone())?,
             Some(Selection::Frame(_f)) => (),
             Some(Selection::AnimationFrame(_af)) => (),
             None => {}
@@ -1166,11 +1178,8 @@ impl Document {
                         .get_frame_mut(&frame_path)
                         .ok_or(StateError::FrameNotInDocument)?
                         .rename_hitbox(&old_name, &new_name)?;
-                    if Some(Selection::Hitbox(frame_path.clone(), old_name.clone()))
-                        == self.view.selection
-                    {
-                        self.view.selection =
-                            Some(Selection::Hitbox(frame_path.clone(), new_name.clone()));
+                    if Some(Selection::Hitbox(old_name.clone())) == self.view.selection {
+                        self.view.selection = Some(Selection::Hitbox(new_name.clone()));
                     }
                 }
             }
