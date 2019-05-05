@@ -355,11 +355,8 @@ impl CommandBuffer {
             .push(Sync(Document(CreateHitbox(mouse_position))));
     }
 
-    pub fn begin_hitbox_scale(&mut self, hitbox: &Hitbox, axis: ResizeAxis) {
-        self.queue.push(Sync(Document(BeginHitboxScale(
-            hitbox.get_name().to_owned(),
-            axis,
-        ))));
+    pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) {
+        self.queue.push(Sync(Document(BeginHitboxScale(axis))));
     }
 
     pub fn update_hitbox_scale(&mut self, mouse_delta: Vector2D<f32>, preserve_aspect_ratio: bool) {

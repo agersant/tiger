@@ -44,7 +44,7 @@ pub struct Transient {
     pub rename_buffer: Option<String>,
     pub workbench_hitbox_being_dragged: Option<String>,
     pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
-    pub workbench_hitbox_being_scaled: Option<String>,
+    pub workbench_hitbox_being_scaled: bool,
     pub workbench_hitbox_scale_axis: ResizeAxis,
     pub workbench_hitbox_scale_initial_position: Vector2D<i32>,
     pub workbench_hitbox_scale_initial_size: Vector2D<u32>,
@@ -62,15 +62,20 @@ impl Transient {
         *self = Default::default();
     }
 
+    pub fn is_default(&self) -> bool {
+        *self == Default::default()
+    }
+
     pub fn should_reset_after(command: &DocumentCommand) -> bool {
         use DocumentCommand::*;
         match command {
-            BeginAnimationFrameDurationDrag(_)
+            BeginFramesDrag
+            | BeginAnimationFrameDurationDrag(_)
             | UpdateAnimationFrameDurationDrag(_)
             | BeginAnimationFrameDrag(_)
             | BeginAnimationFrameOffsetDrag(_)
             | UpdateAnimationFrameOffsetDrag(_, _)
-            | BeginHitboxScale(_, _)
+            | BeginHitboxScale(_)
             | UpdateHitboxScale(_, _)
             | BeginHitboxDrag(_)
             | UpdateHitboxDrag(_, _)

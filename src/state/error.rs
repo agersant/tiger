@@ -12,6 +12,8 @@ pub enum StateError {
     FrameNotInDocument,
     #[fail(display = "Requested animation is not in document")]
     AnimationNotInDocument,
+    #[fail(display = "Expected a hitbox to be selected")]
+    NoHitboxSelected,
     #[fail(display = "Requested hitbox is not in frame")]
     HitboxNotInFrame,
     #[fail(display = "A hitbox with this name already exists")]

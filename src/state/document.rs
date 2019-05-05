@@ -713,20 +713,21 @@ impl Document {
             hitbox.set_position(mouse_position.floor().to_i32());
             hitbox.get_name().to_owned()
         };
-        self.begin_hitbox_scale(&hitbox_name, ResizeAxis::SE)?;
         self.select_hitbox(&hitbox_name)
     }
 
-    pub fn begin_hitbox_scale<T: AsRef<str>>(
-        &mut self,
-        hitbox_name: T,
-        axis: ResizeAxis,
-    ) -> Result<(), Error> {
+    pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_name = match &self.view.selection {
+            Some(Selection::Hitbox(n)) => Some(n.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NoHitboxSelected)?;
 
         let hitbox;
         let position;
@@ -743,7 +744,7 @@ impl Document {
             size = hitbox.get_size();
         }
 
-        self.transient.workbench_hitbox_being_scaled = Some(hitbox_name.as_ref().to_owned());
+        self.transient.workbench_hitbox_being_scaled = true;
         self.transient.workbench_hitbox_scale_axis = axis;
         self.transient.workbench_hitbox_scale_initial_position = position;
         self.transient.workbench_hitbox_scale_initial_size = size;
@@ -763,6 +764,12 @@ impl Document {
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_name = match &self.view.selection {
+            Some(Selection::Hitbox(n)) => Some(n.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NoHitboxSelected)?;
 
         let initial_hitbox = Rect::new(
             self.transient
@@ -842,12 +849,6 @@ impl Document {
             ],
         });
 
-        let hitbox_name = self
-            .transient
-            .workbench_hitbox_being_scaled
-            .as_ref()
-            .ok_or(StateError::NotDraggingAHitbox)?;
-
         let hitbox = self
             .sheet
             .get_frame_mut(frame_path)
@@ -858,14 +859,6 @@ impl Document {
         hitbox.set_position(new_hitbox.origin.to_vector());
         hitbox.set_size(new_hitbox.size.to_u32().to_vector());
 
-        Ok(())
-    }
-
-    pub fn end_hitbox_scale(&mut self) -> Result<(), Error> {
-        if let Some(hitbox_name) = self.transient.workbench_hitbox_being_scaled.clone() {
-            self.select_hitbox(hitbox_name)?;
-        }
-        self.transient.reset();
         Ok(())
     }
 
@@ -1091,7 +1084,6 @@ impl Document {
             None => {}
         };
         self.view.selection = None;
-        self.transient.reset();
         Ok(())
     }
 
@@ -1150,9 +1142,6 @@ impl Document {
             }
             None => (),
         }
-
-        self.transient.reset();
-
         Ok(())
     }
 
@@ -1260,7 +1249,6 @@ impl Document {
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
             BeginFramesDrag => new_document.transient.dragging_content_frames = true,
-            EndFramesDrag => new_document.transient.reset(),
             InsertAnimationFramesBefore(frames, n) => {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
@@ -1271,28 +1259,23 @@ impl Document {
             UpdateAnimationFrameDurationDrag(d) => {
                 new_document.update_animation_frame_duration_drag(*d)?
             }
-            EndAnimationFrameDurationDrag => new_document.transient.reset(),
             BeginAnimationFrameDrag(a) => new_document.begin_animation_frame_drag(*a)?,
-            EndAnimationFrameDrag => new_document.transient.reset(),
             BeginAnimationFrameOffsetDrag(a) => {
                 new_document.begin_animation_frame_offset_drag(*a)?
             }
             UpdateAnimationFrameOffsetDrag(o, b) => {
                 new_document.update_animation_frame_offset_drag(*o, *b)?
             }
-            EndAnimationFrameOffsetDrag => new_document.transient.reset(),
             WorkbenchZoomIn => new_document.view.workbench_zoom_in(),
             WorkbenchZoomOut => new_document.view.workbench_zoom_out(),
             WorkbenchResetZoom => new_document.view.workbench_reset_zoom(),
             WorkbenchCenter => new_document.view.workbench_center(),
             Pan(delta) => new_document.view.pan(*delta),
             CreateHitbox(p) => new_document.create_hitbox(*p)?,
-            BeginHitboxScale(h, a) => new_document.begin_hitbox_scale(&h, *a)?,
+            BeginHitboxScale(axis) => new_document.begin_hitbox_scale(*axis)?,
             UpdateHitboxScale(delta, ar) => new_document.update_hitbox_scale(*delta, *ar)?,
-            EndHitboxScale => new_document.end_hitbox_scale()?,
             BeginHitboxDrag(a) => new_document.begin_hitbox_drag(&a)?,
             UpdateHitboxDrag(delta, b) => new_document.update_hitbox_drag(*delta, *b)?,
-            EndHitboxDrag => new_document.transient.reset(),
             TogglePlayback => new_document.toggle_playback()?,
             SnapToPreviousFrame => new_document.snap_to_previous_frame()?,
             SnapToNextFrame => new_document.snap_to_next_frame()?,
@@ -1302,7 +1285,6 @@ impl Document {
             TimelineResetZoom => new_document.view.timeline_reset_zoom(),
             BeginScrub => new_document.transient.timeline_scrubbing = true,
             UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
-            EndScrub => new_document.transient.reset(),
             NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
             DeleteSelection => new_document.delete_selection()?,
             BeginRenameSelection => new_document.begin_rename_selection()?,
@@ -1312,10 +1294,17 @@ impl Document {
             CloseAfterSaving => new_document.persistent.close_state = Some(CloseState::Saving),
             CloseWithoutSaving => new_document.persistent.close_state = Some(CloseState::Allowed),
             CancelClose => new_document.persistent.close_state = None,
+            EndFramesDrag
+            | EndAnimationFrameDurationDrag
+            | EndAnimationFrameDrag
+            | EndAnimationFrameOffsetDrag
+            | EndHitboxScale
+            | EndHitboxDrag
+            | EndScrub => (),
         };
 
         if Transient::should_reset_after(command) {
-            self.transient = Default::default();
+            new_document.transient.reset();
         }
 
         self.record_command(command, new_document);

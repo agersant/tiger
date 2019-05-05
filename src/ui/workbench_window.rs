@@ -107,7 +107,7 @@ fn draw_hitbox_resize_controls<'a>(
             }
             if !*is_dragging && !*is_scaling {
                 if ui.is_item_active() && is_mouse_dragging {
-                    commands.begin_hitbox_scale(hitbox, axis);
+                    commands.begin_hitbox_scale(axis);
                     *is_scaling = true;
                 }
             }
@@ -191,18 +191,13 @@ fn draw_hitbox<'a>(
         };
     }
 
-    if *is_scaling {
-        match &document.transient.workbench_hitbox_being_scaled {
-            Some(n) if n == hitbox.get_name() => {
-                let axis = document.transient.workbench_hitbox_scale_axis;
-                ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
-                if is_mouse_dragging {
-                    // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
-                    commands.update_hitbox_scale(drag_delta, is_shift_down);
-                }
-            }
-            _ => (),
-        };
+    if *is_scaling && is_selected {
+        let axis = document.transient.workbench_hitbox_scale_axis;
+        ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
+        if is_mouse_dragging {
+            // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
+            commands.update_hitbox_scale(drag_delta, is_shift_down);
+        }
     }
 
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
@@ -237,7 +232,7 @@ fn draw_frame<'a>(
             }
 
             let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-            let mut is_scaling_hitbox = document.transient.workbench_hitbox_being_scaled.is_some();
+            let mut is_scaling_hitbox = document.transient.workbench_hitbox_being_scaled;
             let mut is_dragging_hitbox =
                 document.transient.workbench_hitbox_being_dragged.is_some();
 
@@ -265,6 +260,7 @@ fn draw_frame<'a>(
                 let drag_delta: Vector2D<f32> =
                     ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
                 commands.create_hitbox(mouse_position_in_workbench - drag_delta / zoom);
+                commands.begin_hitbox_scale(ResizeAxis::SE);
             }
         }
         Some(TextureCacheResult::Loading) => {
@@ -553,14 +549,17 @@ pub fn draw<'a>(
             .build(|| {
                 draw_grid(ui, app_state);
 
-                ui.set_cursor_pos((0.0, 0.0));
-                if ui.invisible_button(im_str!("workbench_dead_zone"), rect.size.to_tuple()) {
-                    commands.clear_selection();
-                }
-                handle_drag_and_drop(ui, app_state, commands);
-                ui.set_item_allow_overlap();
-
                 if let Some(document) = app_state.get_current_document() {
+                    ui.set_cursor_pos((0.0, 0.0));
+
+                    if document.transient.is_default() {
+                        if ui.invisible_button(im_str!("workbench_dead_zone"), rect.size.to_tuple())
+                        {
+                            commands.clear_selection();
+                        }
+                        ui.set_item_allow_overlap();
+                    }
+
                     match &document.view.workbench_item {
                         Some(WorkbenchItem::Frame(path)) => {
                             if let Some(frame) = document.sheet.get_frame(path) {
@@ -582,6 +581,8 @@ pub fn draw<'a>(
                         }
                         None => (),
                     }
+
+                    handle_drag_and_drop(ui, app_state, commands);
 
                     if ui.is_window_hovered() {
                         if ui.imgui().key_ctrl() {
