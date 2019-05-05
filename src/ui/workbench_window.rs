@@ -364,11 +364,7 @@ fn draw_animation<'a>(
 ) {
     let now = document.view.timeline_clock;
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = document.view.selection
-            == Some(Selection::AnimationFrame(
-                animation.get_name().to_owned(),
-                frame_index,
-            ));
+        let is_selected = document.view.selection == Some(Selection::AnimationFrame(frame_index));
 
         draw_animation_frame(
             ui,

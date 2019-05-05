@@ -61,7 +61,7 @@ pub enum Selection {
     Frame(MultiSelection<PathBuf>),
     Animation(String),
     Hitbox(PathBuf, String),
-    AnimationFrame(String, usize),
+    AnimationFrame(usize),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

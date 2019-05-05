@@ -127,11 +127,8 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = &document.view.selection
-        == &Some(Selection::AnimationFrame(
-            animation.get_name().to_string(),
-            animation_frame_index,
-        ));
+    let is_selected =
+        &document.view.selection == &Some(Selection::AnimationFrame(animation_frame_index));
 
     let draw_list = ui.get_window_draw_list();
     let mut cursor_pos = ui.get_cursor_screen_pos();

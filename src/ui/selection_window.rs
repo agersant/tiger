@@ -167,10 +167,14 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
                                 draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
-                        Some(Selection::AnimationFrame(name, index)) => {
-                            if let Some(animation) = document.sheet.get_animation(name) {
-                                if let Some(animation_frame) = animation.get_frame(*index) {
-                                    draw_animation_frame(ui, texture_cache, animation_frame);
+                        Some(Selection::AnimationFrame(index)) => {
+                            if let Some(WorkbenchItem::Animation(name)) =
+                                &document.view.workbench_item
+                            {
+                                if let Some(animation) = document.sheet.get_animation(name) {
+                                    if let Some(animation_frame) = animation.get_frame(*index) {
+                                        draw_animation_frame(ui, texture_cache, animation_frame);
+                                    }
                                 }
                             }
                         }

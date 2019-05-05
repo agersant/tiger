@@ -311,12 +311,7 @@ impl Document {
     }
 
     pub fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
-        let animation_name = {
-            let animation = self.get_workbench_animation()?;
-            animation.get_name().to_owned()
-        };
-
-        self.view.selection = Some(Selection::AnimationFrame(animation_name, frame_index));
+        self.view.selection = Some(Selection::AnimationFrame(frame_index));
 
         let animation = self.get_workbench_animation()?;
 
@@ -392,7 +387,7 @@ impl Document {
                         Some(Selection::Hitbox(p.to_owned(), h.get_name().to_owned()));
                 }
             }
-            Some(Selection::AnimationFrame(_, _)) | None => (),
+            Some(Selection::AnimationFrame(_)) | None => (),
         };
         Ok(())
     }
@@ -512,16 +507,15 @@ impl Document {
             .reorder_frame(old_index, new_index)?;
 
         match self.view.selection {
-            Some(Selection::AnimationFrame(ref n, i)) if n == &animation_name => {
+            Some(Selection::AnimationFrame(i)) => {
                 if i == old_index {
                     self.view.selection = Some(Selection::AnimationFrame(
-                        n.clone(),
                         new_index - if old_index < new_index { 1 } else { 0 },
                     ));
                 } else if i > old_index && i < new_index {
-                    self.view.selection = Some(Selection::AnimationFrame(n.clone(), i - 1));
+                    self.view.selection = Some(Selection::AnimationFrame(i - 1));
                 } else if i >= new_index && i < old_index {
-                    self.view.selection = Some(Selection::AnimationFrame(n.clone(), i + 1));
+                    self.view.selection = Some(Selection::AnimationFrame(i + 1));
                 }
             }
             _ => (),
@@ -1063,12 +1057,13 @@ impl Document {
                     .ok_or(StateError::InvalidHitboxIndex)?;
                 hitbox.set_position(hitbox.get_position() + offset);
             }
-            Some(Selection::AnimationFrame(a, af)) => {
+            Some(Selection::AnimationFrame(frame_index)) => {
+                let animation_name = self.get_workbench_animation()?.get_name().to_owned();
                 let animation_frame = self
                     .sheet
-                    .get_animation_mut(a)
+                    .get_animation_mut(animation_name)
                     .ok_or(StateError::AnimationNotInDocument)?
-                    .get_frame_mut(*af)
+                    .get_frame_mut(*frame_index)
                     .ok_or(StateError::InvalidAnimationFrameIndex)?;
                 animation_frame.set_offset(animation_frame.get_offset() + offset);
             }
@@ -1077,7 +1072,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn delete_selection(&mut self) {
+    pub fn delete_selection(&mut self) -> Result<(), Error> {
         match &self.view.selection {
             Some(Selection::Animation(a)) => {
                 self.sheet.delete_animation(&a);
@@ -1106,10 +1101,13 @@ impl Document {
                     }
                 }
             }
-            Some(Selection::AnimationFrame(a, af)) => {
-                self.sheet.delete_animation_frame(a, *af);
-                if self.view.workbench_item == Some(WorkbenchItem::Animation(a.clone()))
-                    && self.transient.workbench_animation_frame_being_dragged == Some(*af)
+            Some(Selection::AnimationFrame(frame_index)) => {
+                let animation_name = self.get_workbench_animation()?.get_name().to_owned();
+                self.sheet
+                    .delete_animation_frame(&animation_name, *frame_index);
+                if self.view.workbench_item
+                    == Some(WorkbenchItem::Animation(animation_name.to_owned()))
+                    && self.transient.workbench_animation_frame_being_dragged == Some(*frame_index)
                 {
                     self.transient.workbench_animation_frame_being_dragged = None;
                 }
@@ -1117,6 +1115,7 @@ impl Document {
             None => {}
         };
         self.view.selection = None;
+        Ok(())
     }
 
     pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
@@ -1124,7 +1123,7 @@ impl Document {
             Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
             Some(Selection::Hitbox(f, h)) => self.begin_hitbox_rename(f.clone(), h.clone())?,
             Some(Selection::Frame(_f)) => (),
-            Some(Selection::AnimationFrame(_a, _af)) => (),
+            Some(Selection::AnimationFrame(_af)) => (),
             None => {}
         };
         Ok(())
@@ -1332,7 +1331,7 @@ impl Document {
             UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
             EndScrub => new_document.transient.timeline_scrubbing = false,
             NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
-            DeleteSelection => new_document.delete_selection(),
+            DeleteSelection => new_document.delete_selection()?,
             BeginRenameSelection => new_document.begin_rename_selection()?,
             UpdateRenameSelection(n) => new_document.transient.rename_buffer = Some(n.to_owned()),
             EndRenameSelection => new_document.end_rename_selection()?,
