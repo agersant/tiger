@@ -387,8 +387,8 @@ fn draw_documents_window<'a>(
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-            if document.transient.content_frame_being_dragged.is_some() {
-                commands.end_frame_drag();
+            if document.transient.content_frames_being_dragged.is_some() {
+                commands.end_frames_drag();
             }
             if document.transient.timeline_frame_being_scaled.is_some() {
                 commands.end_animation_frame_duration_drag();
@@ -418,26 +418,26 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
 
 fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &TextureCache) {
     if let Some(document) = app_state.get_current_document() {
-        if let Some(ref path) = document.transient.content_frame_being_dragged {
-            if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
-                ui.tooltip(|| {
-                    let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
-                    match texture_cache.get(path) {
-                        Some(TextureCacheResult::Loaded(texture)) => {
-                            if let Some(fill) = utils::fill(tooltip_size, texture.size) {
-                                ui.image(texture.id, fill.rect.size.to_tuple()).build();
-                            }
-                        }
-                        Some(TextureCacheResult::Loading) => {
-                            // TODO this doesn't work. Prob an issue with broken tooltip draw list
-                            spinner::draw_spinner(ui, &ui.get_window_draw_list(), tooltip_size);
-                        }
-                        _ => {
-                            // TODO
+        if let Some(paths) = &document.transient.content_frames_being_dragged {
+            ui.tooltip(|| {
+                let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
+                let path = &paths[paths.len() - 1];
+                match texture_cache.get(path) {
+                    Some(TextureCacheResult::Loaded(texture)) => {
+                        if let Some(fill) = utils::fill(tooltip_size, texture.size) {
+                            ui.image(texture.id, fill.rect.size.to_tuple()).build();
                         }
                     }
-                });
-            }
+                    Some(TextureCacheResult::Loading) => {
+                        // TODO this doesn't work. Prob need to pad with ui.dummy()
+                        spinner::draw_spinner(ui, &ui.get_window_draw_list(), tooltip_size);
+                    }
+                    _ => {
+                        // TODO
+                    }
+                }
+                // TODO Draw number of items selected
+            });
         }
     }
 }

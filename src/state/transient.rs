@@ -37,7 +37,7 @@ impl ResizeAxis {
 // Reset when focusing different document
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transient {
-    pub content_frame_being_dragged: Option<PathBuf>,
+    pub content_frames_being_dragged: Option<Vec<PathBuf>>,
     pub item_being_renamed: Option<RenameItem>,
     pub rename_buffer: Option<String>,
     pub workbench_hitbox_being_dragged: Option<String>,

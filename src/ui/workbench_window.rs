@@ -186,7 +186,8 @@ fn draw_hitbox<'a>(
         match &document.transient.workbench_hitbox_being_dragged {
             Some(n) if n == hitbox.get_name() => {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-                if is_mouse_dragging { // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
+                if is_mouse_dragging {
+                    // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
                     commands.update_hitbox_drag(drag_delta, !is_shift_down);
                 }
             }
@@ -199,7 +200,8 @@ fn draw_hitbox<'a>(
             Some(n) if n == hitbox.get_name() => {
                 let axis = document.transient.workbench_hitbox_scale_axis;
                 ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
-                if is_mouse_dragging { // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
+                if is_mouse_dragging {
+                    // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
                     commands.update_hitbox_scale(drag_delta, is_shift_down);
                 }
             }
@@ -265,7 +267,8 @@ fn draw_frame<'a>(
                 && ui.is_window_hovered()
                 && is_mouse_dragging
             {
-                let drag_delta: Vector2D<f32> =  ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                let drag_delta: Vector2D<f32> =
+                    ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
                 commands.create_hitbox(mouse_position_in_workbench - drag_delta / zoom);
             }
         }
@@ -523,9 +526,9 @@ fn handle_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
         if let Some(document) = app_state.get_current_document() {
             if let Some(WorkbenchItem::Animation(animation_name)) = &document.view.workbench_item {
                 if let Some(animation) = document.sheet.get_animation(animation_name) {
-                    if let Some(dragged_frame) = &document.transient.content_frame_being_dragged {
+                    if let Some(dragged_frames) = &document.transient.content_frames_being_dragged {
                         let index = animation.get_num_frames();
-                        commands.insert_animation_frame_before(dragged_frame, index);
+                        commands.insert_animation_frames_before(dragged_frames.clone(), index);
                     }
                 }
             }

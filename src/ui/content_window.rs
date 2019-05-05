@@ -43,6 +43,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
 
         let mut flags = ImGuiSelectableFlags::empty();
         flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
+
         if ui.selectable(
             &ImString::new(name.to_string_lossy()),
             is_selected,
@@ -54,13 +55,16 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             } else {
                 commands.select_frame(frame);
             }
-        }
-
-        if document.transient.content_frame_being_dragged.is_none()
+        } else if document.transient.content_frames_being_dragged.is_none()
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
-            commands.begin_frame_drag(frame);
+            if !is_selected {
+                commands.select_frame(frame);
+                commands.begin_frames_drag(vec![frame.get_source().to_owned()]);
+            } else if let Some(Selection::Frame(paths)) = &document.view.selection {
+                commands.begin_frames_drag(paths.clone());
+            }
         }
     }
 }

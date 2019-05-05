@@ -1,5 +1,6 @@
 use euclid::*;
 use failure::Error;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -439,15 +440,15 @@ impl Document {
         self.edit_animation(animation_name)
     }
 
-    pub fn begin_frame_drag<T: AsRef<Path>>(&mut self, frame: T) -> Result<(), Error> {
-        // TODO Validate that frame is in sheet
-        self.transient.content_frame_being_dragged = Some(frame.as_ref().to_owned());
+    pub fn begin_frames_drag(&mut self, frames: Vec<PathBuf>) -> Result<(), Error> {
+        // TODO Validate that frames are in heet
+        self.transient.content_frames_being_dragged = Some(frames);
         Ok(())
     }
 
-    pub fn insert_animation_frame_before<T: AsRef<Path>>(
+    pub fn insert_animation_frames_before<T: AsRef<Path>>(
         &mut self,
-        frame: T,
+        paths: Vec<T>,
         next_frame_index: usize,
     ) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
@@ -455,10 +456,12 @@ impl Document {
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
-        self.sheet
-            .get_animation_mut(animation_name)
-            .ok_or(StateError::AnimationNotInDocument)?
-            .insert_frame(frame, next_frame_index)?;
+        for path in paths.iter().rev() {
+            self.sheet
+                .get_animation_mut(&animation_name)
+                .ok_or(StateError::AnimationNotInDocument)?
+                .insert_frame(path, next_frame_index)?;
+        }
         Ok(())
     }
 
@@ -1060,9 +1063,10 @@ impl Document {
             Some(Selection::Frame(paths)) => {
                 for path in paths {
                     self.sheet.delete_frame(&path);
-                    if self.transient.content_frame_being_dragged == Some(path.clone()) {
-                        self.transient.content_frame_being_dragged = None;
-                    }
+                }
+                let deleted_paths: HashSet<&PathBuf> = paths.iter().collect();
+                if let Some(drag_paths) = &mut self.transient.content_frames_being_dragged {
+                    drag_paths.retain(|p| !deleted_paths.contains(p));
                 }
             }
             Some(Selection::Hitbox(f, h)) => {
@@ -1255,10 +1259,10 @@ impl Document {
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
-            BeginFrameDrag(f) => new_document.begin_frame_drag(f)?,
-            EndFrameDrag => new_document.transient.content_frame_being_dragged = None,
-            InsertAnimationFrameBefore(f, n) => {
-                new_document.insert_animation_frame_before(f, *n)?
+            BeginFramesDrag(paths) => new_document.begin_frames_drag(paths.clone())?,
+            EndFramesDrag => new_document.transient.content_frames_being_dragged = None,
+            InsertAnimationFramesBefore(frames, n) => {
+                new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
             ReorderAnimationFrame(a, b) => new_document.reorder_animation_frame(*a, *b)?,
             BeginAnimationFrameDurationDrag(a) => {

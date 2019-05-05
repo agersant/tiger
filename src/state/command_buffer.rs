@@ -1,5 +1,5 @@
 use euclid::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::*;
@@ -248,23 +248,21 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(CreateAnimation)));
     }
 
-    pub fn begin_frame_drag(&mut self, frame: &Frame) {
-        self.queue.push(Sync(Document(BeginFrameDrag(
-            frame.get_source().to_owned(),
-        ))));
+    pub fn begin_frames_drag(&mut self, frames: Vec<PathBuf>) {
+        self.queue.push(Sync(Document(BeginFramesDrag(frames))));
     }
 
-    pub fn end_frame_drag(&mut self) {
-        self.queue.push(Sync(Document(EndFrameDrag)));
+    pub fn end_frames_drag(&mut self) {
+        self.queue.push(Sync(Document(EndFramesDrag)));
     }
 
-    pub fn insert_animation_frame_before<T: AsRef<Path>>(
+    pub fn insert_animation_frames_before<T: AsRef<Path>>(
         &mut self,
-        frame: T,
+        frames: Vec<T>,
         animation_frame_index: usize,
     ) {
-        self.queue.push(Sync(Document(InsertAnimationFrameBefore(
-            frame.as_ref().to_owned(),
+        self.queue.push(Sync(Document(InsertAnimationFramesBefore(
+            frames.iter().map(|p| p.as_ref().to_owned()).collect(),
             animation_frame_index,
         ))));
     }

@@ -55,9 +55,9 @@ pub enum DocumentCommand {
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
-    BeginFrameDrag(PathBuf),
-    EndFrameDrag,
-    InsertAnimationFrameBefore(PathBuf, usize),
+    BeginFramesDrag(Vec<PathBuf>),
+    EndFramesDrag,
+    InsertAnimationFramesBefore(Vec<PathBuf>, usize),
     ReorderAnimationFrame(usize, usize),
     BeginAnimationFrameDurationDrag(usize),
     UpdateAnimationFrameDurationDrag(u32),
@@ -148,7 +148,7 @@ impl fmt::Display for DocumentCommand {
             // Animation
             CreateAnimation => write!(f, "Create Animation"),
             ToggleLooping => write!(f, "Toggle Looping"),
-            BeginFrameDrag(_) | EndFrameDrag | InsertAnimationFrameBefore(_, _) => {
+            BeginFramesDrag(_) | EndFramesDrag | InsertAnimationFramesBefore(_, _) => {
                 write!(f, "Create Frame")
             }
             BeginAnimationFrameDrag(_) | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {

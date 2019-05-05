@@ -210,10 +210,10 @@ fn draw_animation_frame<'a>(
         };
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let dragging_frame = document.transient.content_frame_being_dragged.is_some();
+        let dragging_frames = document.transient.content_frames_being_dragged.is_some();
         let dragging_animation_frame = document.transient.timeline_frame_being_dragged.is_some();
 
-        if !dragging_frame & !dragging_animation_frame
+        if !dragging_frames & !dragging_animation_frame
             && is_mouse_dragging
             && is_hovering_frame_exact
         {
@@ -322,7 +322,7 @@ fn handle_drag_and_drop<'a>(
         if is_mouse_dragging {
             match (
                 frame_under_mouse,
-                &document.transient.content_frame_being_dragged,
+                &document.transient.content_frames_being_dragged,
                 &document.transient.timeline_frame_being_dragged,
             ) {
                 (Some((_, frame_location)), Some(_), None)
@@ -347,18 +347,18 @@ fn handle_drag_and_drop<'a>(
         } else if !is_mouse_down {
             match (
                 frame_under_mouse,
-                &document.transient.content_frame_being_dragged,
+                &document.transient.content_frames_being_dragged,
                 &document.transient.timeline_frame_being_dragged,
             ) {
-                (None, Some(ref dragged_frame), None) => {
+                (None, Some(dragged_frames), None) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
                         0
                     } else {
                         animation.get_num_frames()
                     };
-                    commands.insert_animation_frame_before(dragged_frame, index);
+                    commands.insert_animation_frames_before(dragged_frames.clone(), index);
                 }
-                (None, None, Some(ref dragged_animation_frame)) => {
+                (None, None, Some(dragged_animation_frame)) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
                         0
                     } else {
@@ -366,10 +366,10 @@ fn handle_drag_and_drop<'a>(
                     };
                     commands.reorder_animation_frame(*dragged_animation_frame, index);
                 }
-                (Some((index, _)), Some(ref dragged_frame), None) => {
-                    commands.insert_animation_frame_before(dragged_frame, index);
+                (Some((index, _)), Some(dragged_frames), None) => {
+                    commands.insert_animation_frames_before(dragged_frames.clone(), index);
                 }
-                (Some((index, _)), None, Some(ref dragged_animation_frame)) => {
+                (Some((index, _)), None, Some(dragged_animation_frame)) => {
                     commands.reorder_animation_frame(*dragged_animation_frame, index);
                 }
                 _ => (),
