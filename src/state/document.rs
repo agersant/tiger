@@ -1,6 +1,5 @@
 use euclid::*;
 use failure::Error;
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -310,7 +309,9 @@ impl Document {
         if !self.sheet.has_animation(&name) {
             return Err(StateError::AnimationNotInDocument.into());
         }
-        self.view.selection = Some(Selection::Animation(name.as_ref().to_owned()));
+        self.view.selection = Some(Selection::Animation(MultiSelection::new(vec![name
+            .as_ref()
+            .to_owned()])));
         Ok(())
     }
 
@@ -362,8 +363,8 @@ impl Document {
         F: Fn(usize) -> usize,
     {
         match &mut self.view.selection {
-            Some(Selection::Frame(range)) => {
-                let path = &range.last_touched;
+            Some(Selection::Frame(paths)) => {
+                let path = &paths.last_touched;
                 let mut frames: Vec<&Frame> = self.sheet.frames_iter().collect();
                 frames.sort_unstable();
                 let current_index = frames
@@ -372,7 +373,7 @@ impl Document {
                     .ok_or(StateError::FrameNotInDocument)?;
                 if let Some(f) = frames.get(advance(current_index)) {
                     if additive {
-                        range.add(&vec![f.get_source().to_owned()]);
+                        paths.add(&vec![f.get_source().to_owned()]);
                     } else {
                         self.view.selection = Some(Selection::Frame(MultiSelection::new(vec![f
                             .get_source()
@@ -380,15 +381,18 @@ impl Document {
                     }
                 }
             }
-            Some(Selection::Animation(n)) => {
+            Some(Selection::Animation(names)) => {
+                let name = &names.last_touched;
                 let mut animations: Vec<&Animation> = self.sheet.animations_iter().collect();
                 animations.sort_unstable();
                 let current_index = animations
                     .iter()
-                    .position(|a| a.get_name() == n)
+                    .position(|a| a.get_name() == name)
                     .ok_or(StateError::AnimationNotInDocument)?;
                 if let Some(n) = animations.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Animation(n.get_name().to_owned()));
+                    self.view.selection = Some(Selection::Animation(MultiSelection::new(vec![n
+                        .get_name()
+                        .to_owned()])));
                 }
             }
             Some(Selection::Hitbox(n)) => {
@@ -1090,49 +1094,37 @@ impl Document {
 
     pub fn delete_selection(&mut self) -> Result<(), Error> {
         match &self.view.selection {
-            Some(Selection::Animation(a)) => {
-                self.sheet.delete_animation(&a);
-                if self.transient.item_being_renamed == Some(RenameItem::Animation(a.clone())) {
-                    self.transient.item_being_renamed = None;
-                    self.transient.rename_buffer = None;
+            Some(Selection::Animation(names)) => {
+                for name in &names.items {
+                    self.sheet.delete_animation(name);
                 }
             }
-            Some(Selection::Frame(range)) => {
-                for path in &range.items {
+            Some(Selection::Frame(paths)) => {
+                for path in &paths.items {
                     self.sheet.delete_frame(&path);
-                }
-                let deleted_paths: HashSet<&PathBuf> = range.items.iter().collect();
-                if let Some(drag_paths) = &mut self.transient.content_frames_being_dragged {
-                    drag_paths.retain(|p| !deleted_paths.contains(p));
                 }
             }
             Some(Selection::Hitbox(h)) => {
                 let frame_path = self.get_workbench_frame()?.get_source().to_owned();
                 self.sheet.delete_hitbox(&frame_path, &h);
-                if self.transient.workbench_hitbox_being_dragged == Some(h.to_owned()) {
-                    self.transient.workbench_hitbox_being_dragged = None;
-                }
-                if self.transient.workbench_hitbox_being_scaled == Some(h.to_owned()) {
-                    self.transient.workbench_hitbox_being_scaled = None;
-                }
             }
             Some(Selection::AnimationFrame(frame_index)) => {
                 let animation_name = self.get_workbench_animation()?.get_name().to_owned();
                 self.sheet
                     .delete_animation_frame(&animation_name, *frame_index);
-                if self.transient.workbench_animation_frame_being_dragged == Some(*frame_index) {
-                    self.transient.workbench_animation_frame_being_dragged = None;
-                }
             }
             None => {}
         };
         self.view.selection = None;
+        self.transient = Default::default();
         Ok(())
     }
 
     pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
         match &self.view.selection {
-            Some(Selection::Animation(a)) => self.begin_animation_rename(a.clone())?,
+            Some(Selection::Animation(names)) => {
+                self.begin_animation_rename(names.last_touched.clone())?
+            }
             Some(Selection::Hitbox(h)) => self.begin_hitbox_rename(h.clone())?,
             Some(Selection::Frame(_f)) => (),
             Some(Selection::AnimationFrame(_af)) => (),
@@ -1155,9 +1147,7 @@ impl Document {
                         return Err(StateError::AnimationAlreadyExists.into());
                     }
                     self.sheet.rename_animation(&old_name, &new_name)?;
-                    if Some(Selection::Animation(old_name.clone())) == self.view.selection {
-                        self.view.selection = Some(Selection::Animation(new_name.clone()));
-                    }
+                    self.select_animation(&new_name)?;
                     if Some(WorkbenchItem::Animation(old_name.clone())) == self.view.workbench_item
                     {
                         self.view.workbench_item = Some(WorkbenchItem::Animation(new_name.clone()));

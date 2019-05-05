@@ -57,7 +57,7 @@ impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> Mult
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
 	Frame(MultiSelection<PathBuf>),
-	Animation(String),
+	Animation(MultiSelection<String>),
 	Hitbox(String),
 	AnimationFrame(usize),
 }

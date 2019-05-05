@@ -115,7 +115,9 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     animations.sort_unstable();
     for animation in animations.iter() {
         let is_selected = match &document.view.selection {
-            Some(Selection::Animation(a)) => a == animation.get_name(),
+            Some(Selection::Animation(names)) => {
+                names.items.iter().any(|n| n == animation.get_name())
+            }
             _ => false,
         };
         let mut flags = ImGuiSelectableFlags::empty();

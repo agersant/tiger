@@ -156,13 +156,14 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
             .build(|| {
                 if let Some(document) = app_state.get_current_document() {
                     match &document.view.selection {
-                        Some(Selection::Frame(range)) => {
-                            let path = &range.last_touched_in_range;
+                        Some(Selection::Frame(paths)) => {
+                            let path = &paths.last_touched_in_range;
                             if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
-                        Some(Selection::Animation(name)) => {
+                        Some(Selection::Animation(names)) => {
+                            let name = &names.last_touched_in_range;
                             if let Some(animation) = document.sheet.get_animation(name) {
                                 draw_animation(ui, app_state, texture_cache, animation);
                             }
