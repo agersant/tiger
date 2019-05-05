@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
-// TODO Upstream version: https://github.com/ocornut/imgui/issues/1861
 pub struct SelectionRange<T>
 where
     T: std::cmp::Eq + std::hash::Hash + std::clone::Clone,

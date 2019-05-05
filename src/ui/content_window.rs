@@ -54,6 +54,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_frame(frame);
             } else {
+                // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
                 if ui.imgui().key_shift() {
                     let from = if let Some(Selection::Frame(range)) = &document.view.selection {
                         let last_touched_index = frames
