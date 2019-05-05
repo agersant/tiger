@@ -53,7 +53,7 @@ pub struct Transient {
     pub timeline_frame_being_scaled: Option<usize>,
     pub timeline_frame_scale_initial_duration: u32,
     pub timeline_frame_scale_initial_clock: Duration,
-    pub timeline_frame_being_dragged: Option<usize>,
+    pub timeline_frame_being_dragged: bool,
     pub timeline_scrubbing: bool,
 }
 

@@ -525,13 +525,13 @@ impl Document {
         match self.view.selection {
             Some(Selection::AnimationFrame(i)) => {
                 if i == old_index {
-                    self.view.selection = Some(Selection::AnimationFrame(
+                    self.select_animation_frame(
                         new_index - if old_index < new_index { 1 } else { 0 },
-                    ));
+                    )?;
                 } else if i > old_index && i < new_index {
-                    self.view.selection = Some(Selection::AnimationFrame(i - 1));
+                    self.select_animation_frame(i - 1)?;
                 } else if i >= new_index && i < old_index {
-                    self.view.selection = Some(Selection::AnimationFrame(i + 1));
+                    self.select_animation_frame(i + 1)?;
                 }
             }
             _ => (),
@@ -630,7 +630,7 @@ impl Document {
         let _animation_frame = animation
             .get_frame(animation_frame_index)
             .ok_or(StateError::InvalidAnimationFrameIndex)?;
-        self.transient.timeline_frame_being_dragged = Some(animation_frame_index);
+        self.transient.timeline_frame_being_dragged = true;
         Ok(())
     }
 
