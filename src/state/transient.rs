@@ -54,3 +54,9 @@ pub struct Transient {
     pub timeline_frame_being_dragged: Option<usize>,
     pub timeline_scrubbing: bool,
 }
+
+impl Transient {
+    pub fn reset(&mut self) {
+        *self = Default::default();
+    }
+}

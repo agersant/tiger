@@ -620,12 +620,6 @@ impl Document {
         Ok(())
     }
 
-    pub fn end_animation_frame_duration_drag(&mut self) {
-        self.transient.timeline_frame_being_scaled = None;
-        self.transient.timeline_frame_scale_initial_duration = 0;
-        self.transient.timeline_frame_scale_initial_clock = Default::default();
-    }
-
     pub fn begin_animation_frame_drag(
         &mut self,
         animation_frame_index: usize,
@@ -706,11 +700,6 @@ impl Document {
         animation_frame.set_offset(new_offset);
 
         Ok(())
-    }
-
-    pub fn end_animation_frame_offset_drag(&mut self) {
-        self.transient.workbench_animation_frame_drag_initial_offset = Vector2D::<i32>::zero();
-        self.transient.workbench_animation_frame_being_dragged = None;
     }
 
     pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
@@ -882,10 +871,7 @@ impl Document {
         if let Some(hitbox_name) = self.transient.workbench_hitbox_being_scaled.clone() {
             self.select_hitbox(hitbox_name)?;
         }
-        self.transient.workbench_hitbox_scale_axis = ResizeAxis::N;
-        self.transient.workbench_hitbox_scale_initial_position = Vector2D::<i32>::zero();
-        self.transient.workbench_hitbox_scale_initial_size = Vector2D::<u32>::zero();
-        self.transient.workbench_hitbox_being_scaled = None;
+        self.transient.reset();
         Ok(())
     }
 
@@ -956,11 +942,6 @@ impl Document {
         hitbox.set_position(new_offset);
 
         Ok(())
-    }
-
-    pub fn end_hitbox_drag(&mut self) {
-        self.transient.workbench_hitbox_drag_initial_offset = Vector2D::<i32>::zero();
-        self.transient.workbench_hitbox_being_dragged = None;
     }
 
     pub fn toggle_playback(&mut self) -> Result<(), Error> {
@@ -1116,7 +1097,7 @@ impl Document {
             None => {}
         };
         self.view.selection = None;
-        self.transient = Default::default();
+        self.transient.reset();
         Ok(())
     }
 
@@ -1176,8 +1157,7 @@ impl Document {
             None => (),
         }
 
-        self.transient.item_being_renamed = None;
-        self.transient.rename_buffer = None;
+        self.transient.reset();
 
         Ok(())
     }
@@ -1286,7 +1266,7 @@ impl Document {
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
             BeginFramesDrag(paths) => new_document.begin_frames_drag(paths.clone())?,
-            EndFramesDrag => new_document.transient.content_frames_being_dragged = None,
+            EndFramesDrag => new_document.transient.reset(),
             InsertAnimationFramesBefore(frames, n) => {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
@@ -1297,16 +1277,16 @@ impl Document {
             UpdateAnimationFrameDurationDrag(d) => {
                 new_document.update_animation_frame_duration_drag(*d)?
             }
-            EndAnimationFrameDurationDrag => new_document.end_animation_frame_duration_drag(),
+            EndAnimationFrameDurationDrag => new_document.transient.reset(),
             BeginAnimationFrameDrag(a) => new_document.begin_animation_frame_drag(*a)?,
-            EndAnimationFrameDrag => new_document.transient.timeline_frame_being_dragged = None,
+            EndAnimationFrameDrag => new_document.transient.reset(),
             BeginAnimationFrameOffsetDrag(a) => {
                 new_document.begin_animation_frame_offset_drag(*a)?
             }
             UpdateAnimationFrameOffsetDrag(o, b) => {
                 new_document.update_animation_frame_offset_drag(*o, *b)?
             }
-            EndAnimationFrameOffsetDrag => new_document.end_animation_frame_offset_drag(),
+            EndAnimationFrameOffsetDrag => new_document.transient.reset(),
             WorkbenchZoomIn => new_document.view.workbench_zoom_in(),
             WorkbenchZoomOut => new_document.view.workbench_zoom_out(),
             WorkbenchResetZoom => new_document.view.workbench_reset_zoom(),
@@ -1318,7 +1298,7 @@ impl Document {
             EndHitboxScale => new_document.end_hitbox_scale()?,
             BeginHitboxDrag(a) => new_document.begin_hitbox_drag(&a)?,
             UpdateHitboxDrag(delta, b) => new_document.update_hitbox_drag(*delta, *b)?,
-            EndHitboxDrag => new_document.end_hitbox_drag(),
+            EndHitboxDrag => new_document.transient.reset(),
             TogglePlayback => new_document.toggle_playback()?,
             SnapToPreviousFrame => new_document.snap_to_previous_frame()?,
             SnapToNextFrame => new_document.snap_to_next_frame()?,
@@ -1328,7 +1308,7 @@ impl Document {
             TimelineResetZoom => new_document.view.timeline_reset_zoom(),
             BeginScrub => new_document.transient.timeline_scrubbing = true,
             UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
-            EndScrub => new_document.transient.timeline_scrubbing = false,
+            EndScrub => new_document.transient.reset(),
             NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
             DeleteSelection => new_document.delete_selection()?,
             BeginRenameSelection => new_document.begin_rename_selection()?,
