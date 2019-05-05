@@ -87,6 +87,7 @@
 - [ ] Onion skin?
 - [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
 - [ ] Duplicate animation / animation frame (within same sheet)
+- [ ] Fix bug where changing selection using up/down on the keyboard does not always match item order on screen when frame sources have digits
 
 ## Tiger 0.4
 - [ ] Review TODO dpi
