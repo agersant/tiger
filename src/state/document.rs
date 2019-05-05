@@ -254,12 +254,32 @@ impl Document {
         self.view.selection = None;
     }
 
-    pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
-        if !self.sheet.has_frame(&path) {
-            return Err(StateError::FrameNotInDocument.into());
+    pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) {
+        assert!(self.sheet.has_frame(&path));
+        self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![path
+            .as_ref()
+            .to_owned()])));
+    }
+
+    pub fn select_more_frames(&mut self, paths: &Vec<PathBuf>) {
+        // TODO assert that paths are in sheet
+        if let Some(Selection::Frame(range)) = &mut self.view.selection {
+            range.add(paths);
+        } else {
+            self.view.selection = Some(Selection::Frame(SelectionRange::new(paths.clone())));
         }
-        self.view.selection = Some(Selection::Frame(vec![path.as_ref().to_owned()]));
-        Ok(())
+    }
+
+    pub fn toggle_select_frames(&mut self, paths: &Vec<PathBuf>) {
+        // TODO assert that paths are in sheet
+        if let Some(Selection::Frame(range)) = &mut self.view.selection {
+            range.toggle(paths);
+            if range.items.len() == 0 {
+                self.view.selection = None;
+            }
+        } else {
+            self.view.selection = Some(Selection::Frame(SelectionRange::new(paths.clone())));
+        }
     }
 
     pub fn select_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
@@ -326,8 +346,8 @@ impl Document {
         F: Fn(usize) -> usize,
     {
         match &self.view.selection {
-            Some(Selection::Frame(paths)) => {
-                let path = &paths[paths.len() - 1];
+            Some(Selection::Frame(range)) => {
+                let path = &range.last_touched;
                 let mut frames: Vec<&Frame> = self.sheet.frames_iter().collect();
                 frames.sort_unstable();
                 let current_index = frames
@@ -335,7 +355,9 @@ impl Document {
                     .position(|f| f.get_source() == path)
                     .ok_or(StateError::FrameNotInDocument)?;
                 if let Some(f) = frames.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Frame(vec![f.get_source().to_owned()]));
+                    self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![f
+                        .get_source()
+                        .to_owned()])));
                 }
             }
             Some(Selection::Animation(n)) => {
@@ -1060,11 +1082,11 @@ impl Document {
                     self.transient.rename_buffer = None;
                 }
             }
-            Some(Selection::Frame(paths)) => {
-                for path in paths {
+            Some(Selection::Frame(range)) => {
+                for path in &range.items {
                     self.sheet.delete_frame(&path);
                 }
-                let deleted_paths: HashSet<&PathBuf> = paths.iter().collect();
+                let deleted_paths: HashSet<&PathBuf> = range.items.iter().collect();
                 if let Some(drag_paths) = &mut self.transient.content_frames_being_dragged {
                     drag_paths.retain(|p| !deleted_paths.contains(p));
                 }
@@ -1250,7 +1272,9 @@ impl Document {
             EndExportAs => new_document.end_export_as()?,
             SwitchToContentTab(t) => new_document.view.content_tab = *t,
             ClearSelection => new_document.clear_selection(),
-            SelectFrame(p) => new_document.select_frame(&p)?,
+            SelectFrame(p) => new_document.select_frame(&p),
+            SelectMoreFrames(v) => new_document.select_more_frames(&v),
+            ToggleSelectFrames(v) => new_document.toggle_select_frames(&v),
             SelectAnimation(a) => new_document.select_animation(&a)?,
             SelectHitbox(h) => new_document.select_hitbox(&h)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,

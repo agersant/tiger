@@ -32,9 +32,10 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
         })
         .collect();
     frames.sort_unstable();
-    for (name, frame) in frames.iter() {
+    for (frame_index, (name, frame)) in frames.iter().enumerate() {
         let is_selected = match &document.view.selection {
-            Some(Selection::Frame(paths)) => paths
+            Some(Selection::Frame(range)) => range
+                .items
                 .iter()
                 .map(|p| p.as_path())
                 .any(|p| p == frame.get_source()),
@@ -53,7 +54,40 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_frame(frame);
             } else {
-                commands.select_frame(frame);
+                if ui.imgui().key_shift() {
+                    let from = if let Some(Selection::Frame(range)) = &document.view.selection {
+                        let last_touched_index = frames
+                            .iter()
+                            .position(|(_, frame)| frame.get_source() == range.last_touched)
+                            .unwrap_or(0);
+                        if last_touched_index < frame_index {
+                            last_touched_index + 1
+                        } else if last_touched_index > frame_index {
+                            last_touched_index - 1
+                        } else {
+                            last_touched_index
+                        }
+                    } else {
+                        0
+                    };
+                    let mut affected_frames = frames[from.min(frame_index)..=from.max(frame_index)]
+                        .iter()
+                        .map(|(_, frame)| frame.get_source().to_owned())
+                        .collect::<Vec<std::path::PathBuf>>();
+                    if from > frame_index {
+                        affected_frames = affected_frames.into_iter().rev().collect();
+                    }
+
+                    if ui.imgui().key_ctrl() {
+                        commands.toggle_select_frames(affected_frames);
+                    } else {
+                        commands.select_more_frames(affected_frames);
+                    }
+                } else if ui.imgui().key_ctrl() {
+                    commands.toggle_select_frames(vec![frame.get_source().to_owned()]);
+                } else {
+                    commands.select_frame(frame);
+                }
             }
         } else if document.transient.content_frames_being_dragged.is_none()
             && ui.is_item_active()
@@ -62,8 +96,11 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             if !is_selected {
                 commands.select_frame(frame);
                 commands.begin_frames_drag(vec![frame.get_source().to_owned()]);
-            } else if let Some(Selection::Frame(paths)) = &document.view.selection {
-                commands.begin_frames_drag(paths.clone());
+            } else if let Some(Selection::Frame(range)) = &document.view.selection {
+                let mut selected_frames: Vec<std::path::PathBuf> =
+                    range.items.clone().into_iter().collect();
+                selected_frames.sort_unstable();
+                commands.begin_frames_drag(selected_frames);
             }
         }
     }
