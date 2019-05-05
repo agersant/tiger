@@ -256,7 +256,7 @@ impl Document {
 
     pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) {
         assert!(self.sheet.has_frame(&path));
-        self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![path
+        self.view.selection = Some(Selection::Frame(MultiSelection::new(vec![path
             .as_ref()
             .to_owned()])));
     }
@@ -266,7 +266,7 @@ impl Document {
         if let Some(Selection::Frame(range)) = &mut self.view.selection {
             range.add(paths);
         } else {
-            self.view.selection = Some(Selection::Frame(SelectionRange::new(paths.clone())));
+            self.view.selection = Some(Selection::Frame(MultiSelection::new(paths.clone())));
         }
     }
 
@@ -278,7 +278,7 @@ impl Document {
                 self.view.selection = None;
             }
         } else {
-            self.view.selection = Some(Selection::Frame(SelectionRange::new(paths.clone())));
+            self.view.selection = Some(Selection::Frame(MultiSelection::new(paths.clone())));
         }
     }
 
@@ -358,7 +358,7 @@ impl Document {
                     if additive {
                         range.add(&vec![f.get_source().to_owned()]);
                     } else {
-                        self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![f
+                        self.view.selection = Some(Selection::Frame(MultiSelection::new(vec![f
                             .get_source()
                             .to_owned()])))
                     }

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SelectionRange<T>
+pub struct MultiSelection<T>
 where
     T: std::cmp::Eq + std::hash::Hash + std::clone::Clone,
 {
@@ -13,10 +13,10 @@ where
     pub items: HashSet<T>,
 }
 
-impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> SelectionRange<T> {
-    pub fn new(items: Vec<T>) -> SelectionRange<T> {
+impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> MultiSelection<T> {
+    pub fn new(items: Vec<T>) -> MultiSelection<T> {
         assert!(items.len() > 0);
-        SelectionRange {
+        MultiSelection {
             last_touched: items[items.len() - 1].clone(),
             last_touched_in_range: items[items.len() - 1].clone(),
             items: items.into_iter().collect(),
@@ -58,7 +58,7 @@ impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> Sele
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
-    Frame(SelectionRange<PathBuf>),
+    Frame(MultiSelection<PathBuf>),
     Animation(String),
     Hitbox(PathBuf, String),
     AnimationFrame(String, usize),
