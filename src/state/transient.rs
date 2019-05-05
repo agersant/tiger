@@ -1,14 +1,7 @@
 use euclid::*;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::state::*;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum RenameItem {
-    Animation(String),
-    Hitbox(PathBuf, String),
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ResizeAxis {
@@ -40,7 +33,7 @@ impl ResizeAxis {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transient {
     pub dragging_content_frames: bool,
-    pub item_being_renamed: Option<RenameItem>,
+    pub item_being_renamed: bool,
     pub rename_buffer: Option<String>,
     pub workbench_hitbox_being_dragged: bool,
     pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,

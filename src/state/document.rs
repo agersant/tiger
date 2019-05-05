@@ -448,38 +448,19 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_animation_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
-        let _animation = self
-            .sheet
-            .get_animation(&old_name)
-            .ok_or(StateError::AnimationNotInDocument)?;
-        self.transient.item_being_renamed =
-            Some(RenameItem::Animation(old_name.as_ref().to_owned()));
+    fn begin_rename<T: AsRef<str>>(&mut self, old_name: T) {
+        self.transient.item_being_renamed = true;
         self.transient.rename_buffer = Some(old_name.as_ref().to_owned());
-        Ok(())
-    }
-
-    fn begin_hitbox_rename<T: AsRef<str>>(&mut self, old_name: T) -> Result<(), Error> {
-        let frame = self.get_workbench_frame()?;
-        let _hitbox = frame
-            .get_hitbox(old_name.as_ref())
-            .ok_or(StateError::HitboxNotInFrame)?;
-        self.transient.item_being_renamed = Some(RenameItem::Hitbox(
-            frame.get_source().to_owned(),
-            old_name.as_ref().to_owned(),
-        ));
-        self.transient.rename_buffer = Some(old_name.as_ref().to_owned());
-        Ok(())
     }
 
     pub fn create_animation(&mut self) -> Result<(), Error> {
         let animation_name = {
             let animation = self.sheet.add_animation();
             let animation_name = animation.get_name().to_owned();
-            self.begin_animation_rename(&animation_name)?;
             animation_name
         };
         self.select_animation(&animation_name)?;
+        self.begin_rename(&animation_name);
         self.edit_animation(animation_name)
     }
 
@@ -1110,17 +1091,16 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_rename_selection(&mut self) -> Result<(), Error> {
+    pub fn begin_rename_selection(&mut self) {
         match &self.view.selection {
             Some(Selection::Animation(names)) => {
-                self.begin_animation_rename(names.last_touched.clone())?
+                self.begin_rename(names.last_touched_in_range.clone())
             }
-            Some(Selection::Hitbox(h)) => self.begin_hitbox_rename(h.clone())?,
-            Some(Selection::Frame(_f)) => (),
-            Some(Selection::AnimationFrame(_af)) => (),
+            Some(Selection::Hitbox(h)) => self.begin_rename(h.clone()),
+            Some(Selection::Frame(_)) => (),
+            Some(Selection::AnimationFrame(_)) => (),
             None => {}
         };
-        Ok(())
     }
 
     pub fn end_rename_selection(&mut self) -> Result<(), Error> {
@@ -1130,8 +1110,9 @@ impl Document {
             .clone()
             .ok_or(StateError::NotRenaming)?;
 
-        match self.transient.item_being_renamed.as_ref().cloned() {
-            Some(RenameItem::Animation(old_name)) => {
+        match self.view.selection.clone() {
+            Some(Selection::Animation(names)) => {
+                let old_name = names.last_touched_in_range;
                 if old_name != new_name {
                     if self.sheet.has_animation(&new_name) {
                         return Err(StateError::AnimationAlreadyExists.into());
@@ -1144,8 +1125,9 @@ impl Document {
                     }
                 }
             }
-            Some(RenameItem::Hitbox(frame_path, old_name)) => {
+            Some(Selection::Hitbox(old_name)) => {
                 if old_name != new_name {
+                    let frame_path = self.get_workbench_frame()?.get_source().to_owned();
                     if self
                         .sheet
                         .get_frame(&frame_path)
@@ -1163,7 +1145,7 @@ impl Document {
                     }
                 }
             }
-            None => (),
+            _ => (),
         }
         Ok(())
     }
@@ -1308,7 +1290,7 @@ impl Document {
             UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
             NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
             DeleteSelection => new_document.delete_selection()?,
-            BeginRenameSelection => new_document.begin_rename_selection()?,
+            BeginRenameSelection => new_document.begin_rename_selection(),
             UpdateRenameSelection(n) => new_document.transient.rename_buffer = Some(n.to_owned()),
             EndRenameSelection => new_document.end_rename_selection()?,
             Close => new_document.begin_close(),
