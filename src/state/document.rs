@@ -298,7 +298,7 @@ impl Document {
         if let Some(Selection::Frame(range)) = &mut self.view.selection {
             range.toggle(paths);
             if range.items.len() == 0 {
-                self.view.selection = None;
+                self.clear_selection();
             }
         } else {
             self.view.selection = Some(Selection::Frame(MultiSelection::new(paths.clone())));
@@ -481,12 +481,6 @@ impl Document {
         };
         self.select_animation(&animation_name)?;
         self.edit_animation(animation_name)
-    }
-
-    pub fn begin_frames_drag(&mut self, frames: Vec<PathBuf>) -> Result<(), Error> {
-        // TODO Validate that frames are in heet
-        self.transient.content_frames_being_dragged = Some(frames);
-        Ok(())
     }
 
     pub fn insert_animation_frames_before<T: AsRef<Path>>(
@@ -1265,7 +1259,7 @@ impl Document {
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
-            BeginFramesDrag(paths) => new_document.begin_frames_drag(paths.clone())?,
+            BeginFramesDrag => new_document.transient.dragging_content_frames = true,
             EndFramesDrag => new_document.transient.reset(),
             InsertAnimationFramesBefore(frames, n) => {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
@@ -1319,6 +1313,10 @@ impl Document {
             CloseWithoutSaving => new_document.persistent.close_state = Some(CloseState::Allowed),
             CancelClose => new_document.persistent.close_state = None,
         };
+
+        if Transient::should_reset_after(command) {
+            self.transient = Default::default();
+        }
 
         self.record_command(command, new_document);
 

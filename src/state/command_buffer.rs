@@ -256,8 +256,8 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(CreateAnimation)));
     }
 
-    pub fn begin_frames_drag(&mut self, frames: Vec<PathBuf>) {
-        self.queue.push(Sync(Document(BeginFramesDrag(frames))));
+    pub fn begin_frames_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginFramesDrag)));
     }
 
     pub fn end_frames_drag(&mut self) {

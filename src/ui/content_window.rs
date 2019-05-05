@@ -90,19 +90,14 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
                     commands.select_frame(frame);
                 }
             }
-        } else if document.transient.content_frames_being_dragged.is_none()
+        } else if !document.transient.dragging_content_frames
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
             if !is_selected {
                 commands.select_frame(frame);
-                commands.begin_frames_drag(vec![frame.get_source().to_owned()]);
-            } else if let Some(Selection::Frame(range)) = &document.view.selection {
-                let mut selected_frames: Vec<std::path::PathBuf> =
-                    range.items.clone().into_iter().collect();
-                selected_frames.sort_unstable();
-                commands.begin_frames_drag(selected_frames);
             }
+            commands.begin_frames_drag();
         }
     }
 }

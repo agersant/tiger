@@ -2,6 +2,8 @@ use euclid::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::state::*;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenameItem {
     Animation(String),
@@ -37,7 +39,7 @@ impl ResizeAxis {
 // Reset when focusing different document
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transient {
-    pub content_frames_being_dragged: Option<Vec<PathBuf>>,
+    pub dragging_content_frames: bool,
     pub item_being_renamed: Option<RenameItem>,
     pub rename_buffer: Option<String>,
     pub workbench_hitbox_being_dragged: Option<String>,
@@ -58,5 +60,25 @@ pub struct Transient {
 impl Transient {
     pub fn reset(&mut self) {
         *self = Default::default();
+    }
+
+    pub fn should_reset_after(command: &DocumentCommand) -> bool {
+        use DocumentCommand::*;
+        match command {
+            BeginAnimationFrameDurationDrag(_)
+            | UpdateAnimationFrameDurationDrag(_)
+            | BeginAnimationFrameDrag(_)
+            | BeginAnimationFrameOffsetDrag(_)
+            | UpdateAnimationFrameOffsetDrag(_, _)
+            | BeginHitboxScale(_, _)
+            | UpdateHitboxScale(_, _)
+            | BeginHitboxDrag(_)
+            | UpdateHitboxDrag(_, _)
+            | BeginScrub
+            | UpdateScrub(_)
+            | BeginRenameSelection
+            | UpdateRenameSelection(_) => false,
+            _ => true,
+        }
     }
 }
