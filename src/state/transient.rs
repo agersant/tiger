@@ -50,7 +50,7 @@ pub struct Transient {
     pub workbench_hitbox_scale_initial_size: Vector2D<u32>,
     pub workbench_animation_frame_being_dragged: bool,
     pub workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
-    pub timeline_frame_being_scaled: Option<usize>,
+    pub timeline_frame_being_scaled: bool,
     pub timeline_frame_scale_initial_duration: u32,
     pub timeline_frame_scale_initial_clock: Duration,
     pub timeline_frame_being_dragged: bool,
@@ -70,14 +70,14 @@ impl Transient {
         use DocumentCommand::*;
         match command {
             BeginFramesDrag
-            | BeginAnimationFrameDurationDrag(_)
+            | BeginAnimationFrameDurationDrag
             | UpdateAnimationFrameDurationDrag(_)
-            | BeginAnimationFrameDrag(_)
-            | BeginAnimationFrameOffsetDrag(_)
+            | BeginAnimationFrameDrag
+            | BeginAnimationFrameOffsetDrag
             | UpdateAnimationFrameOffsetDrag(_, _)
             | BeginHitboxScale(_)
             | UpdateHitboxScale(_, _)
-            | BeginHitboxDrag(_)
+            | BeginHitboxDrag
             | UpdateHitboxDrag(_, _)
             | BeginScrub
             | UpdateScrub(_)

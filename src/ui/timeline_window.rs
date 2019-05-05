@@ -195,7 +195,7 @@ fn draw_animation_frame<'a>(
     }
 
     // Drag and drop interactions
-    let is_dragging_duration = document.transient.timeline_frame_being_scaled.is_some();
+    let is_dragging_duration = document.transient.timeline_frame_being_scaled;
     if !is_dragging_duration {
         let is_hovering_frame_exact = if is_too_small {
             false
@@ -217,7 +217,7 @@ fn draw_animation_frame<'a>(
             if !is_selected {
                 commands.select_animation_frame(animation_frame_index);
             }
-            commands.begin_animation_frame_drag(animation_frame_index);
+            commands.begin_animation_frame_drag();
         }
     }
 
@@ -230,26 +230,25 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        match document.transient.timeline_frame_being_scaled {
-            None => {
-                if ui.is_item_hovered() {
-                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                    if is_mouse_down && !is_mouse_dragging {
-                        commands.begin_animation_frame_duration_drag(animation_frame_index);
-                    }
-                }
+        if document.transient.timeline_frame_being_scaled && is_selected {
+            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
+            if is_mouse_dragging {
+                let mouse_pos = ui.imgui().mouse_pos();
+                let new_width = (mouse_pos.0 - top_left.0).max(min_frame_drag_width);
+                let new_duration = std::cmp::max((new_width / zoom).ceil() as i32, 1) as u32;
+                commands.update_animation_frame_duration_drag(new_duration);
             }
-            Some(i) if i == animation_frame_index => {
+        } else {
+            if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                if is_mouse_dragging {
-                    let mouse_pos = ui.imgui().mouse_pos();
-                    let new_width = (mouse_pos.0 - top_left.0).max(min_frame_drag_width);
-                    let new_duration = std::cmp::max((new_width / zoom).ceil() as i32, 1) as u32;
-                    commands.update_animation_frame_duration_drag(new_duration);
+                if is_mouse_down && !is_mouse_dragging {
+                    if !is_selected {
+                        commands.select_animation_frame(animation_frame_index);
+                    }
+                    commands.begin_animation_frame_duration_drag();
                 }
             }
-            _ => (),
-        };
+        }
     }
 
     ui.set_cursor_screen_pos(bottom_right);

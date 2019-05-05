@@ -540,7 +540,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_animation_frame_duration_drag(&mut self, index: usize) -> Result<(), Error> {
+    pub fn begin_animation_frame_duration_drag(&mut self) -> Result<(), Error> {
         let old_duration = {
             let animation_name = match &self.view.workbench_item {
                 Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
@@ -548,19 +548,23 @@ impl Document {
             }
             .ok_or(StateError::NotEditingAnyAnimation)?;
 
-            let animation = self
+            let frame_index = match &self.view.selection {
+                Some(Selection::AnimationFrame(i)) => Some(*i),
+                _ => None,
+            }
+            .ok_or(StateError::NoAnimationFrameSelected)?;
+
+            let animation_frame = self
                 .sheet
                 .get_animation(animation_name)
-                .ok_or(StateError::AnimationNotInDocument)?;
-
-            let animation_frame = animation
-                .get_frame(index)
+                .ok_or(StateError::AnimationNotInDocument)?
+                .get_frame(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
 
             animation_frame.get_duration()
         };
 
-        self.transient.timeline_frame_being_scaled = Some(index);
+        self.transient.timeline_frame_being_scaled = true;
         self.transient.timeline_frame_scale_initial_duration = old_duration;
         self.transient.timeline_frame_scale_initial_clock = self.view.timeline_clock;
 
@@ -575,10 +579,11 @@ impl Document {
             }
             .ok_or(StateError::NotEditingAnyAnimation)?;
 
-            let index = self
-                .transient
-                .timeline_frame_being_scaled
-                .ok_or(StateError::NotDraggingATimelineFrame)?;
+            let frame_index = match &self.view.selection {
+                Some(Selection::AnimationFrame(i)) => Some(*i),
+                _ => None,
+            }
+            .ok_or(StateError::NoAnimationFrameSelected)?;
 
             let animation = self
                 .sheet
@@ -586,7 +591,7 @@ impl Document {
                 .ok_or(StateError::AnimationNotInDocument)?;
 
             let animation_frame = animation
-                .get_frame_mut(index)
+                .get_frame_mut(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
 
             animation_frame.set_duration(new_duration);
@@ -594,7 +599,7 @@ impl Document {
             let frame_times = animation.get_frame_times();
 
             *frame_times
-                .get(index)
+                .get(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?
         };
 
@@ -614,32 +619,44 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_animation_frame_drag(
-        &mut self,
-        animation_frame_index: usize,
-    ) -> Result<(), Error> {
+    pub fn begin_animation_frame_drag(&mut self) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        let frame_index = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(*i),
+            _ => None,
+        }
+        .ok_or(StateError::NoAnimationFrameSelected)?;
+
         let animation = self
             .sheet
             .get_animation(animation_name)
             .ok_or(StateError::AnimationNotInDocument)?;
+
         let _animation_frame = animation
-            .get_frame(animation_frame_index)
+            .get_frame(frame_index)
             .ok_or(StateError::InvalidAnimationFrameIndex)?;
+
         self.transient.timeline_frame_being_dragged = true;
         Ok(())
     }
 
-    pub fn begin_animation_frame_offset_drag(&mut self, index: usize) -> Result<(), Error> {
+    pub fn begin_animation_frame_offset_drag(&mut self) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
+
+        let frame_index = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(*i),
+            _ => None,
+        }
+        .ok_or(StateError::NoAnimationFrameSelected)?;
 
         {
             let animation = self
@@ -648,14 +665,14 @@ impl Document {
                 .ok_or(StateError::AnimationNotInDocument)?;
 
             let animation_frame = animation
-                .get_frame(index)
+                .get_frame(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
             self.transient.workbench_animation_frame_drag_initial_offset =
                 animation_frame.get_offset();
         }
 
         self.transient.workbench_animation_frame_being_dragged = true;
-        self.select_animation_frame(index)
+        self.select_animation_frame(frame_index)
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -863,12 +880,18 @@ impl Document {
         Ok(())
     }
 
-    pub fn begin_hitbox_drag<T: AsRef<str>>(&mut self, hitbox_name: T) -> Result<(), Error> {
+    pub fn begin_hitbox_drag(&mut self) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyFrame)?;
+
+        let hitbox_name = match &self.view.selection {
+            Some(Selection::Hitbox(n)) => Some(n.to_owned()),
+            _ => None,
+        }
+        .ok_or(StateError::NoHitboxSelected)?;
 
         let hitbox_position;
         {
@@ -1253,16 +1276,14 @@ impl Document {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
             ReorderAnimationFrame(a, b) => new_document.reorder_animation_frame(*a, *b)?,
-            BeginAnimationFrameDurationDrag(a) => {
-                new_document.begin_animation_frame_duration_drag(*a)?
+            BeginAnimationFrameDurationDrag => {
+                new_document.begin_animation_frame_duration_drag()?
             }
             UpdateAnimationFrameDurationDrag(d) => {
                 new_document.update_animation_frame_duration_drag(*d)?
             }
-            BeginAnimationFrameDrag(a) => new_document.begin_animation_frame_drag(*a)?,
-            BeginAnimationFrameOffsetDrag(a) => {
-                new_document.begin_animation_frame_offset_drag(*a)?
-            }
+            BeginAnimationFrameDrag => new_document.begin_animation_frame_drag()?,
+            BeginAnimationFrameOffsetDrag => new_document.begin_animation_frame_offset_drag()?,
             UpdateAnimationFrameOffsetDrag(o, b) => {
                 new_document.update_animation_frame_offset_drag(*o, *b)?
             }
@@ -1274,7 +1295,7 @@ impl Document {
             CreateHitbox(p) => new_document.create_hitbox(*p)?,
             BeginHitboxScale(axis) => new_document.begin_hitbox_scale(*axis)?,
             UpdateHitboxScale(delta, ar) => new_document.update_hitbox_scale(*delta, *ar)?,
-            BeginHitboxDrag(a) => new_document.begin_hitbox_drag(&a)?,
+            BeginHitboxDrag => new_document.begin_hitbox_drag()?,
             UpdateHitboxDrag(delta, b) => new_document.update_hitbox_drag(*delta, *b)?,
             TogglePlayback => new_document.toggle_playback()?,
             SnapToPreviousFrame => new_document.snap_to_previous_frame()?,

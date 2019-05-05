@@ -30,8 +30,6 @@ pub enum StateError {
     NoAnimationFrameSelected,
     #[fail(display = "Animation does not have a frame at the requested index")]
     InvalidAnimationFrameIndex,
-    #[fail(display = "Currently not adjusting the duration of an animation frame")]
-    NotDraggingATimelineFrame,
     #[fail(display = "No animation frame found for requested time")]
     NoAnimationFrameForThisTime,
     #[fail(display = "Not currently adjusting export settings")]

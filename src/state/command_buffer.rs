@@ -280,11 +280,9 @@ impl CommandBuffer {
             .push(Sync(Document(ReorderAnimationFrame(old_index, new_index))));
     }
 
-    pub fn begin_animation_frame_duration_drag(&mut self, animation_frame_index: usize) {
+    pub fn begin_animation_frame_duration_drag(&mut self) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameDurationDrag(
-                animation_frame_index,
-            ))));
+            .push(Sync(Document(BeginAnimationFrameDurationDrag)));
     }
 
     pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) {
@@ -299,19 +297,17 @@ impl CommandBuffer {
             .push(Sync(Document(EndAnimationFrameDurationDrag)));
     }
 
-    pub fn begin_animation_frame_drag(&mut self, animation_frame_index: usize) {
-        self.queue.push(Sync(Document(BeginAnimationFrameDrag(
-            animation_frame_index,
-        ))));
+    pub fn begin_animation_frame_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginAnimationFrameDrag)));
     }
 
     pub fn end_animation_frame_drag(&mut self) {
         self.queue.push(Sync(Document(EndAnimationFrameDrag)));
     }
 
-    pub fn begin_animation_frame_offset_drag(&mut self, frame_index: usize) {
+    pub fn begin_animation_frame_offset_drag(&mut self) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameOffsetDrag(frame_index))));
+            .push(Sync(Document(BeginAnimationFrameOffsetDrag)));
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -370,10 +366,8 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(EndHitboxScale)));
     }
 
-    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox) {
-        self.queue.push(Sync(Document(BeginHitboxDrag(
-            hitbox.get_name().to_owned(),
-        ))));
+    pub fn begin_hitbox_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginHitboxDrag)));
     }
 
     pub fn update_hitbox_drag(&mut self, mouse_delta: Vector2D<f32>, both_axis: bool) {

@@ -61,12 +61,12 @@ pub enum DocumentCommand {
     EndFramesDrag,
     InsertAnimationFramesBefore(Vec<PathBuf>, usize),
     ReorderAnimationFrame(usize, usize),
-    BeginAnimationFrameDurationDrag(usize),
+    BeginAnimationFrameDurationDrag,
     UpdateAnimationFrameDurationDrag(u32),
     EndAnimationFrameDurationDrag,
-    BeginAnimationFrameDrag(usize),
+    BeginAnimationFrameDrag,
     EndAnimationFrameDrag,
-    BeginAnimationFrameOffsetDrag(usize),
+    BeginAnimationFrameOffsetDrag,
     UpdateAnimationFrameOffsetDrag(Vector2D<f32>, bool),
     EndAnimationFrameOffsetDrag,
     WorkbenchZoomIn,
@@ -78,7 +78,7 @@ pub enum DocumentCommand {
     BeginHitboxScale(ResizeAxis),
     UpdateHitboxScale(Vector2D<f32>, bool),
     EndHitboxScale,
-    BeginHitboxDrag(String),
+    BeginHitboxDrag,
     UpdateHitboxDrag(Vector2D<f32>, bool),
     EndHitboxDrag,
     TogglePlayback,
@@ -155,13 +155,13 @@ impl fmt::Display for DocumentCommand {
             BeginFramesDrag | EndFramesDrag | InsertAnimationFramesBefore(_, _) => {
                 write!(f, "Create Frame")
             }
-            BeginAnimationFrameDrag(_) | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {
+            BeginAnimationFrameDrag | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {
                 write!(f, "Re-order Frames")
             }
-            BeginAnimationFrameDurationDrag(_)
+            BeginAnimationFrameDurationDrag
             | UpdateAnimationFrameDurationDrag(_)
             | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
-            BeginAnimationFrameOffsetDrag(_)
+            BeginAnimationFrameOffsetDrag
             | UpdateAnimationFrameOffsetDrag(_, _)
             | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
 
@@ -170,7 +170,7 @@ impl fmt::Display for DocumentCommand {
             BeginHitboxScale(_) | UpdateHitboxScale(_, _) | EndHitboxScale => {
                 write!(f, "Resize Hitbox")
             }
-            BeginHitboxDrag(_) | UpdateHitboxDrag(_, _) | EndHitboxDrag => write!(f, "Move Hitbox"),
+            BeginHitboxDrag | UpdateHitboxDrag(_, _) | EndHitboxDrag => write!(f, "Move Hitbox"),
 
             NudgeSelection(_, _) => write!(f, "Nudge"),
             DeleteSelection => write!(f, "Delete"),

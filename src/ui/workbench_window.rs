@@ -197,7 +197,10 @@ fn draw_hitbox<'a>(
 
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if !*is_dragging && !*is_scaling && is_active && is_mouse_dragging {
-        commands.begin_hitbox_drag(hitbox);
+        if !is_selected {
+            commands.select_hitbox(hitbox);
+        }
+        commands.begin_hitbox_drag();
         *is_dragging = true;
     }
 
@@ -391,7 +394,10 @@ fn draw_animation<'a>(
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
             }
             if ui.is_item_active() && is_mouse_dragging {
-                commands.begin_animation_frame_offset_drag(frame_index);
+                if !is_selected {
+                    commands.select_animation_frame(frame_index);
+                }
+                commands.begin_animation_frame_offset_drag();
             }
         }
     }
