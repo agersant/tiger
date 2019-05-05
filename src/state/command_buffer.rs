@@ -233,12 +233,12 @@ impl CommandBuffer {
             .push(Sync(Document(SelectAnimationFrame(animation_frame_index))));
     }
 
-    pub fn select_previous(&mut self) {
-        self.queue.push(Sync(Document(SelectPrevious)));
+    pub fn select_previous(&mut self, additive: bool) {
+        self.queue.push(Sync(Document(SelectPrevious(additive))));
     }
 
-    pub fn select_next(&mut self) {
-        self.queue.push(Sync(Document(SelectNext)));
+    pub fn select_next(&mut self, additive: bool) {
+        self.queue.push(Sync(Document(SelectNext(additive))));
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {

@@ -341,11 +341,11 @@ impl Document {
         Ok(())
     }
 
-    fn advance_selection<F>(&mut self, advance: F) -> Result<(), Error>
+    fn advance_selection<F>(&mut self, advance: F, additive: bool) -> Result<(), Error>
     where
         F: Fn(usize) -> usize,
     {
-        match &self.view.selection {
+        match &mut self.view.selection {
             Some(Selection::Frame(range)) => {
                 let path = &range.last_touched;
                 let mut frames: Vec<&Frame> = self.sheet.frames_iter().collect();
@@ -355,9 +355,13 @@ impl Document {
                     .position(|f| f.get_source() == path)
                     .ok_or(StateError::FrameNotInDocument)?;
                 if let Some(f) = frames.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![f
-                        .get_source()
-                        .to_owned()])));
+                    if additive {
+                        range.add(&vec![f.get_source().to_owned()]);
+                    } else {
+                        self.view.selection = Some(Selection::Frame(SelectionRange::new(vec![f
+                            .get_source()
+                            .to_owned()])))
+                    }
                 }
             }
             Some(Selection::Animation(n)) => {
@@ -393,12 +397,12 @@ impl Document {
         Ok(())
     }
 
-    pub fn select_previous(&mut self) -> Result<(), Error> {
-        self.advance_selection(|n| n.checked_sub(1).unwrap_or(n))
+    pub fn select_previous(&mut self, additive: bool) -> Result<(), Error> {
+        self.advance_selection(|n| n.checked_sub(1).unwrap_or(n), additive)
     }
 
-    pub fn select_next(&mut self) -> Result<(), Error> {
-        self.advance_selection(|n| n.checked_add(1).unwrap_or(n))
+    pub fn select_next(&mut self, additive: bool) -> Result<(), Error> {
+        self.advance_selection(|n| n.checked_add(1).unwrap_or(n), additive)
     }
 
     pub fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
@@ -1278,8 +1282,8 @@ impl Document {
             SelectAnimation(a) => new_document.select_animation(&a)?,
             SelectHitbox(h) => new_document.select_hitbox(&h)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,
-            SelectPrevious => new_document.select_previous()?,
-            SelectNext => new_document.select_next()?,
+            SelectPrevious(additive) => new_document.select_previous(*additive)?,
+            SelectNext(additive) => new_document.select_next(*additive)?,
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
