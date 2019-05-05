@@ -257,7 +257,7 @@ impl Document {
         if !self.sheet.has_frame(&path) {
             return Err(StateError::FrameNotInDocument.into());
         }
-        self.view.selection = Some(Selection::Frame(path.as_ref().to_owned()));
+        self.view.selection = Some(Selection::Frame(vec![path.as_ref().to_owned()]));
         Ok(())
     }
 
@@ -325,15 +325,16 @@ impl Document {
         F: Fn(usize) -> usize,
     {
         match &self.view.selection {
-            Some(Selection::Frame(p)) => {
+            Some(Selection::Frame(paths)) => {
+                let path = &paths[paths.len() - 1];
                 let mut frames: Vec<&Frame> = self.sheet.frames_iter().collect();
                 frames.sort_unstable();
                 let current_index = frames
                     .iter()
-                    .position(|f| f.get_source() == p)
+                    .position(|f| f.get_source() == path)
                     .ok_or(StateError::FrameNotInDocument)?;
                 if let Some(f) = frames.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Frame(f.get_source().to_owned()));
+                    self.view.selection = Some(Selection::Frame(vec![f.get_source().to_owned()]));
                 }
             }
             Some(Selection::Animation(n)) => {
@@ -1056,10 +1057,12 @@ impl Document {
                     self.transient.rename_buffer = None;
                 }
             }
-            Some(Selection::Frame(f)) => {
-                self.sheet.delete_frame(&f);
-                if self.transient.content_frame_being_dragged == Some(f.clone()) {
-                    self.transient.content_frame_being_dragged = None;
+            Some(Selection::Frame(paths)) => {
+                for path in paths {
+                    self.sheet.delete_frame(&path);
+                    if self.transient.content_frame_being_dragged == Some(path.clone()) {
+                        self.transient.content_frame_being_dragged = None;
+                    }
                 }
             }
             Some(Selection::Hitbox(f, h)) => {

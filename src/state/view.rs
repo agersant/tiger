@@ -4,7 +4,7 @@ use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
-    Frame(PathBuf),
+    Frame(Vec<PathBuf>),
     Animation(String),
     Hitbox(PathBuf, String),
     AnimationFrame(String, usize),
