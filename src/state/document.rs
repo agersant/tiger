@@ -554,12 +554,7 @@ impl Document {
 
     pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
         let frame_start_time = {
-            let animation_name = match &self.view.workbench_item {
-                Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-                _ => None,
-            }
-            .ok_or(StateError::NotEditingAnyAnimation)?;
-
+            let animation_name = self.get_workbench_animation()?.get_name().to_owned();
             let frame_index = match &self.view.selection {
                 Some(Selection::AnimationFrame(i)) => Some(*i),
                 _ => None,
@@ -601,12 +596,7 @@ impl Document {
     }
 
     pub fn begin_animation_frame_drag(&mut self) -> Result<(), Error> {
-        let animation_name = match &self.view.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyAnimation)?;
-
+        let animation_name = self.get_workbench_animation()?.get_name().to_owned();
         let frame_index = match &self.view.selection {
             Some(Selection::AnimationFrame(i)) => Some(*i),
             _ => None,
@@ -627,12 +617,7 @@ impl Document {
     }
 
     pub fn begin_animation_frame_offset_drag(&mut self) -> Result<(), Error> {
-        let animation_name = match &self.view.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyAnimation)?;
-
+        let animation_name = self.get_workbench_animation()?.get_name().to_owned();
         let frame_index = match &self.view.selection {
             Some(Selection::AnimationFrame(i)) => Some(*i),
             _ => None,
@@ -662,12 +647,7 @@ impl Document {
         both_axis: bool,
     ) -> Result<(), Error> {
         let zoom = self.view.get_workbench_zoom_factor();
-        let animation_name = match &self.view.workbench_item {
-            Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyAnimation)?;
-
+        let animation_name = self.get_workbench_animation()?.get_name().to_owned();
         let frame_index = match &self.view.selection {
             Some(Selection::AnimationFrame(i)) => Some(*i),
             _ => None,
@@ -697,12 +677,7 @@ impl Document {
 
     pub fn create_hitbox(&mut self, mouse_position: Vector2D<f32>) -> Result<(), Error> {
         let hitbox_name = {
-            let frame_path = match &self.view.workbench_item {
-                Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
-                _ => None,
-            }
-            .ok_or(StateError::NotEditingAnyFrame)?;
-
+            let frame_path = self.get_workbench_frame()?.get_source().to_owned();
             let frame = self
                 .sheet
                 .get_frame_mut(frame_path)
@@ -716,11 +691,7 @@ impl Document {
     }
 
     pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) -> Result<(), Error> {
-        let frame_path = match &self.view.workbench_item {
-            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyFrame)?;
+        let frame_path = self.get_workbench_frame()?.get_source().to_owned();
 
         let hitbox_name = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
@@ -758,12 +729,7 @@ impl Document {
     ) -> Result<(), Error> {
         use ResizeAxis::*;
 
-        let frame_path = match &self.view.workbench_item {
-            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyFrame)?;
-
+        let frame_path = self.get_workbench_frame()?.get_source().to_owned();
         let hitbox_name = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
@@ -862,12 +828,7 @@ impl Document {
     }
 
     pub fn begin_hitbox_drag(&mut self) -> Result<(), Error> {
-        let frame_path = match &self.view.workbench_item {
-            Some(WorkbenchItem::Frame(s)) => Some(s.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyFrame)?;
-
+        let frame_path = self.get_workbench_frame()?.get_source().to_owned();
         let hitbox_name = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
@@ -900,12 +861,7 @@ impl Document {
     ) -> Result<(), Error> {
         let zoom = self.view.get_workbench_zoom_factor();
 
-        let frame_path = match &self.view.workbench_item {
-            Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
-            _ => None,
-        }
-        .ok_or(StateError::NotEditingAnyFrame)?;
-
+        let frame_path = self.get_workbench_frame()?.get_source().to_owned();
         let hitbox_name = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
