@@ -49,8 +49,7 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: 
     {
         commands.begin_scrub();
     }
-    let is_scrubbing = document.transient.timeline_scrubbing;
-    if clicked || is_scrubbing {
+    if clicked || document.is_scrubbing_timeline() {
         let mouse_pos = ui.imgui().mouse_pos();
         let delta = mouse_pos.0 - cursor_start.0;
         let new_t = delta / zoom;
@@ -195,7 +194,7 @@ fn draw_animation_frame<'a>(
     }
 
     // Drag and drop interactions
-    let is_dragging_duration = document.transient.timeline_frame_being_scaled;
+    let is_dragging_duration = document.is_adjusting_frame_duration();
     if !is_dragging_duration {
         let is_hovering_frame_exact = if is_too_small {
             false
@@ -207,13 +206,7 @@ fn draw_animation_frame<'a>(
         };
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let dragging_frames = document.transient.dragging_content_frames;
-        let dragging_animation_frame = document.transient.timeline_frame_being_dragged;
-
-        if !dragging_frames & !dragging_animation_frame
-            && is_mouse_dragging
-            && is_hovering_frame_exact
-        {
+        if document.transient.is_none() && is_mouse_dragging && is_hovering_frame_exact {
             if !is_selected {
                 commands.select_animation_frame(animation_frame_index);
             }
@@ -230,7 +223,7 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        if document.transient.timeline_frame_being_scaled && is_selected {
+        if is_dragging_duration && is_selected {
             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
             if is_mouse_dragging {
                 let mouse_pos = ui.imgui().mouse_pos();
@@ -315,14 +308,16 @@ fn handle_drag_and_drop<'a>(
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if is_window_hovered {
+        let dragging_content_frames = document.is_dragging_content_frames();
+        let dragging_animation_frame = document.is_dragging_timeline_frames();
         let frame_under_mouse = get_frame_under_mouse(ui, document, animation, cursor_start);
         let h = cursor_end.1 - cursor_start.1;
 
         if is_mouse_dragging {
             match (
                 frame_under_mouse,
-                document.transient.dragging_content_frames,
-                document.transient.timeline_frame_being_dragged,
+                dragging_content_frames,
+                dragging_animation_frame,
             ) {
                 (Some((_, frame_location)), true, false)
                 | (Some((_, frame_location)), false, true) => {
@@ -346,8 +341,8 @@ fn handle_drag_and_drop<'a>(
         } else if !is_mouse_down {
             match (
                 frame_under_mouse,
-                document.transient.dragging_content_frames,
-                document.transient.timeline_frame_being_dragged,
+                dragging_content_frames,
+                dragging_animation_frame,
             ) {
                 (None, true, false) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {

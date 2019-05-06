@@ -34,4 +34,12 @@ pub enum StateError {
     NotExporting,
     #[fail(display = "Not currently renaming an item")]
     NotRenaming,
+    #[fail(display = "Not currently adjusting animation frame duration")]
+    NotAdjustingAnimationFrameDuration,
+    #[fail(display = "Not currently adjusting animation frame position")]
+    NotAdjustingAnimationFramePosition,
+    #[fail(display = "Not currently adjusting hitbox size")]
+    NotAdjustingHitboxSize,
+    #[fail(display = "Not currently adjusting hitbox position")]
+    NotAdjustingHitboxPosition,
 }

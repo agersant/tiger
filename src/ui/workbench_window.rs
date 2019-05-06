@@ -187,11 +187,12 @@ fn draw_hitbox<'a>(
     }
 
     if *is_scaling && is_selected {
-        let axis = document.transient.workbench_hitbox_scale_axis;
-        ui.imgui().set_mouse_cursor(axis_to_cursor(axis));
-        if is_mouse_dragging {
-            // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
-            commands.update_hitbox_scale(drag_delta, is_shift_down);
+        if let Some(Transient::HitboxSize(s)) = &document.transient {
+            ui.imgui().set_mouse_cursor(axis_to_cursor(s.axis));
+            if is_mouse_dragging {
+                // TODO this check is a workaround https://github.com/ocornut/imgui/issues/2419
+                commands.update_hitbox_scale(drag_delta, is_shift_down);
+            }
         }
     }
 
@@ -230,8 +231,8 @@ fn draw_frame<'a>(
             }
 
             let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-            let mut is_scaling_hitbox = document.transient.workbench_hitbox_being_scaled;
-            let mut is_dragging_hitbox = document.transient.workbench_hitbox_being_dragged;
+            let mut is_scaling_hitbox = document.is_sizing_hitbox();
+            let mut is_dragging_hitbox = document.is_positioning_hitbox();
 
             let mouse_pos = ui.imgui().mouse_pos().into();
             let mouse_position_in_workbench = screen_to_workbench(ui, mouse_pos, document);
@@ -366,7 +367,7 @@ fn draw_animation<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_shift_down = ui.imgui().key_shift();
 
-        if document.transient.workbench_animation_frame_being_dragged {
+        if document.is_moving_animation_frame() {
             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
             if is_mouse_dragging {
                 let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
@@ -510,7 +511,7 @@ fn handle_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
     if is_window_hovered && !is_mouse_down {
         if let Some(document) = app_state.get_current_document() {
             if let Some(WorkbenchItem::Animation(animation_name)) = &document.view.workbench_item {
-                if document.transient.dragging_content_frames {
+                if document.is_dragging_content_frames() {
                     if let Some(animation) = document.sheet.get_animation(animation_name) {
                         if let Some(Selection::Frame(paths)) = &document.view.selection {
                             let index = animation.get_num_frames();
@@ -551,7 +552,7 @@ pub fn draw<'a>(
                 if let Some(document) = app_state.get_current_document() {
                     ui.set_cursor_pos((0.0, 0.0));
 
-                    if document.transient.is_default() {
+                    if document.transient.is_none() {
                         if ui.invisible_button(im_str!("workbench_dead_zone"), rect.size.to_tuple())
                         {
                             commands.clear_selection();

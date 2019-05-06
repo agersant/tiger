@@ -90,7 +90,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
                     commands.select_frame(frame);
                 }
             }
-        } else if !document.transient.dragging_content_frames
+        } else if document.transient.is_none()
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {

@@ -32,10 +32,10 @@ pub struct Persistent {
 #[derive(Clone, Debug)]
 pub struct Document {
     pub source: PathBuf,
-    pub sheet: Sheet,           // Sheet being edited, fully recorded in history
-    pub view: View,             // View state, collapsed and recorded in history
-    pub transient: Transient, // State preventing undo actions when not default, not recorded in history
-    pub persistent: Persistent, // Other state, not recorded in history
+    pub sheet: Sheet, // Sheet being edited, fully recorded in history
+    pub view: View,   // View state, collapsed and recorded in history
+    pub transient: Option<Transient>, // State preventing undo actions when not default, not recorded in history
+    pub persistent: Persistent,       // Other state, not recorded in history
     next_version: i32,
     history: Vec<HistoryEntry>,
     history_index: usize,
@@ -49,7 +49,7 @@ impl Document {
             history: vec![history_entry.clone()],
             sheet: history_entry.sheet.clone(),
             view: history_entry.view.clone(),
-            transient: Default::default(),
+            transient: None,
             persistent: Default::default(),
             next_version: history_entry.version,
             history_index: 0,
@@ -149,7 +149,7 @@ impl Document {
     }
 
     fn can_use_undo_system(&self) -> bool {
-        self.transient == Default::default()
+        self.transient.is_none()
     }
 
     fn record_command(&mut self, command: &DocumentCommand, new_document: Document) {
@@ -271,6 +271,46 @@ impl Document {
             _ => None,
         }
         .ok_or_else(|| StateError::NotEditingAnyAnimation.into())
+    }
+
+    pub fn is_dragging_content_frames(&self) -> bool {
+        self.transient == Some(Transient::ContentFramesDrag)
+    }
+
+    pub fn is_dragging_timeline_frames(&self) -> bool {
+        self.transient == Some(Transient::TimelineFrameDrag)
+    }
+
+    pub fn is_positioning_hitbox(&self) -> bool {
+        match &self.transient {
+            Some(Transient::HitboxPosition(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_sizing_hitbox(&self) -> bool {
+        match &self.transient {
+            Some(Transient::HitboxSize(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_scrubbing_timeline(&self) -> bool {
+        self.transient == Some(Transient::TimelineScrub)
+    }
+
+    pub fn is_adjusting_frame_duration(&self) -> bool {
+        match &self.transient {
+            Some(Transient::AnimationFrameDuration(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_moving_animation_frame(&self) -> bool {
+        match &self.transient {
+            Some(Transient::AnimationFramePosition(_)) => true,
+            _ => false,
+        }
     }
 
     pub fn clear_selection(&mut self) {
@@ -449,8 +489,9 @@ impl Document {
     }
 
     fn begin_rename<T: AsRef<str>>(&mut self, old_name: T) {
-        self.transient.item_being_renamed = true;
-        self.transient.rename_buffer = Some(old_name.as_ref().to_owned());
+        self.transient = Some(Transient::Rename(Rename {
+            new_name: old_name.as_ref().to_owned(),
+        }));
     }
 
     pub fn create_animation(&mut self) -> Result<(), Error> {
@@ -545,14 +586,21 @@ impl Document {
             animation_frame.get_duration()
         };
 
-        self.transient.timeline_frame_being_scaled = true;
-        self.transient.timeline_frame_scale_initial_duration = old_duration;
-        self.transient.timeline_frame_scale_initial_clock = self.view.timeline_clock;
+        self.transient = Some(Transient::AnimationFrameDuration(AnimationFrameDuration {
+            initial_duration: old_duration,
+            initial_clock: self.view.timeline_clock,
+        }));
 
         Ok(())
     }
 
     pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
+        let animation_frame_duration = match &self.transient {
+            Some(Transient::AnimationFrameDuration(x)) => Some(x),
+            _ => None,
+        }
+        .ok_or(StateError::NotAdjustingAnimationFrameDuration)?;
+
         let frame_start_time = {
             let animation_name = self.get_workbench_animation()?.get_name().to_owned();
             let frame_index = match &self.view.selection {
@@ -580,11 +628,8 @@ impl Document {
         };
 
         if !self.persistent.timeline_is_playing {
-            let initial_clock = self
-                .transient
-                .timeline_frame_scale_initial_clock
-                .as_millis();
-            let initial_duration = self.transient.timeline_frame_scale_initial_duration as u128;
+            let initial_clock = animation_frame_duration.initial_clock.as_millis();
+            let initial_duration = animation_frame_duration.initial_duration as u128;
             if initial_clock >= frame_start_time as u128 + initial_duration {
                 self.view.timeline_clock = Duration::from_millis(
                     initial_clock as u64 + new_duration as u64 - initial_duration as u64,
@@ -612,7 +657,7 @@ impl Document {
             .get_frame(frame_index)
             .ok_or(StateError::InvalidAnimationFrameIndex)?;
 
-        self.transient.timeline_frame_being_dragged = true;
+        self.transient = Some(Transient::TimelineFrameDrag);
         Ok(())
     }
 
@@ -633,11 +678,11 @@ impl Document {
             let animation_frame = animation
                 .get_frame(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
-            self.transient.workbench_animation_frame_drag_initial_offset =
-                animation_frame.get_offset();
+            self.transient = Some(Transient::AnimationFramePosition(AnimationFramePosition {
+                initial_offset: animation_frame.get_offset(),
+            }));
         }
 
-        self.transient.workbench_animation_frame_being_dragged = true;
         self.select_animation_frame(frame_index)
     }
 
@@ -654,7 +699,13 @@ impl Document {
         }
         .ok_or(StateError::NoAnimationFrameSelected)?;
 
-        let old_offset = self.transient.workbench_animation_frame_drag_initial_offset;
+        let animation_frame_position = match &self.transient {
+            Some(Transient::AnimationFramePosition(x)) => Some(x),
+            _ => None,
+        }
+        .ok_or(StateError::NotAdjustingAnimationFramePosition)?;
+
+        let old_offset = animation_frame_position.initial_offset;
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
                 mouse_delta.y = 0.0;
@@ -714,10 +765,11 @@ impl Document {
             size = hitbox.get_size();
         }
 
-        self.transient.workbench_hitbox_being_scaled = true;
-        self.transient.workbench_hitbox_scale_axis = axis;
-        self.transient.workbench_hitbox_scale_initial_position = position;
-        self.transient.workbench_hitbox_scale_initial_size = size;
+        self.transient = Some(Transient::HitboxSize(HitboxSize {
+            axis: axis,
+            initial_position: position,
+            initial_size: size,
+        }));
 
         Ok(())
     }
@@ -736,17 +788,18 @@ impl Document {
         }
         .ok_or(StateError::NoHitboxSelected)?;
 
+        let hitbox_size = match &self.transient {
+            Some(Transient::HitboxSize(x)) => Some(x),
+            _ => None,
+        }
+        .ok_or(StateError::NotAdjustingHitboxSize)?;
+
         let initial_hitbox = Rect::new(
-            self.transient
-                .workbench_hitbox_scale_initial_position
-                .to_point(),
-            self.transient
-                .workbench_hitbox_scale_initial_size
-                .to_i32()
-                .to_size(),
+            hitbox_size.initial_position.to_point(),
+            hitbox_size.initial_size.to_i32().to_size(),
         );
 
-        let axis = self.transient.workbench_hitbox_scale_axis;
+        let axis = hitbox_size.axis;
         if preserve_aspect_ratio && axis.is_diagonal() {
             let aspect_ratio =
                 initial_hitbox.size.width.max(1) as f32 / initial_hitbox.size.height.max(1) as f32;
@@ -847,9 +900,9 @@ impl Document {
             hitbox_position = hitbox.get_position();
         }
 
-        self.transient.workbench_hitbox_being_dragged = true;
-        self.transient.workbench_hitbox_drag_initial_offset = hitbox_position;
-        self.select_hitbox(hitbox_name)?;
+        self.transient = Some(Transient::HitboxPosition(HitboxPosition {
+            initial_offset: hitbox_position,
+        }));
 
         Ok(())
     }
@@ -868,7 +921,13 @@ impl Document {
         }
         .ok_or(StateError::NoHitboxSelected)?;
 
-        let old_offset = self.transient.workbench_hitbox_drag_initial_offset;
+        let hitbox_position = match &self.transient {
+            Some(Transient::HitboxPosition(x)) => Some(x),
+            _ => None,
+        }
+        .ok_or(StateError::NotAdjustingHitboxPosition)?;
+
+        let old_offset = hitbox_position.initial_offset;
 
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
@@ -1060,11 +1119,11 @@ impl Document {
     }
 
     pub fn end_rename_selection(&mut self) -> Result<(), Error> {
-        let new_name = self
-            .transient
-            .rename_buffer
-            .clone()
-            .ok_or(StateError::NotRenaming)?;
+        let new_name = match &self.transient {
+            Some(Transient::Rename(x)) => Some(x.new_name.clone()),
+            _ => None,
+        }
+        .ok_or(StateError::NotRenaming)?;
 
         match self.view.selection.clone() {
             Some(Selection::Animation(names)) => {
@@ -1209,7 +1268,7 @@ impl Document {
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
-            BeginFramesDrag => new_document.transient.dragging_content_frames = true,
+            BeginFramesDrag => new_document.transient = Some(Transient::ContentFramesDrag),
             InsertAnimationFramesBefore(frames, n) => {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
@@ -1242,12 +1301,16 @@ impl Document {
             TimelineZoomIn => new_document.view.timeline_zoom_in(),
             TimelineZoomOut => new_document.view.timeline_zoom_out(),
             TimelineResetZoom => new_document.view.timeline_reset_zoom(),
-            BeginScrub => new_document.transient.timeline_scrubbing = true,
+            BeginScrub => new_document.transient = Some(Transient::TimelineScrub),
             UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
             NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
             DeleteSelection => new_document.delete_selection()?,
             BeginRenameSelection => new_document.begin_rename_selection(),
-            UpdateRenameSelection(n) => new_document.transient.rename_buffer = Some(n.to_owned()),
+            UpdateRenameSelection(n) => {
+                new_document.transient = Some(Transient::Rename(Rename {
+                    new_name: n.to_owned(),
+                }))
+            }
             EndRenameSelection => new_document.end_rename_selection()?,
             Close => new_document.begin_close(),
             CloseAfterSaving => new_document.persistent.close_state = Some(CloseState::Saving),
@@ -1262,8 +1325,8 @@ impl Document {
             | EndScrub => (),
         };
 
-        if Transient::should_reset_after(command) {
-            new_document.transient.reset();
+        if !Transient::is_transient_command(command) {
+            new_document.transient = None;
         }
 
         self.record_command(command, new_document);
