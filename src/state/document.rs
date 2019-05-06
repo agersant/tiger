@@ -367,7 +367,7 @@ impl Document {
             .ok_or(StateError::FrameNotInDocument)?;
         let _hitbox = frame
             .get_hitbox(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxIndex)?;
+            .ok_or(StateError::InvalidHitboxName)?;
         self.view.selection = Some(Selection::Hitbox(hitbox_name.as_ref().to_owned()));
         Ok(())
     }
@@ -450,7 +450,7 @@ impl Document {
                 let current_index = hitboxes
                     .iter()
                     .position(|h| h.get_name() == n)
-                    .ok_or(StateError::InvalidHitboxIndex)?;
+                    .ok_or(StateError::InvalidHitboxName)?;
                 if let Some(h) = hitboxes.get(advance(current_index)) {
                     self.view.selection = Some(Selection::Hitbox(h.get_name().to_owned()));
                 }
@@ -760,7 +760,7 @@ impl Document {
                 .ok_or(StateError::FrameNotInDocument)?;
             hitbox = frame
                 .get_hitbox(&hitbox_name)
-                .ok_or(StateError::InvalidHitboxIndex)?;
+                .ok_or(StateError::InvalidHitboxName)?;
             position = hitbox.get_position();
             size = hitbox.get_size();
         }
@@ -872,7 +872,7 @@ impl Document {
             .get_frame_mut(frame_path)
             .ok_or(StateError::FrameNotInDocument)?
             .get_hitbox_mut(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxIndex)?;
+            .ok_or(StateError::InvalidHitboxName)?;
 
         hitbox.set_position(new_hitbox.origin.to_vector());
         hitbox.set_size(new_hitbox.size.to_u32().to_vector());
@@ -896,7 +896,7 @@ impl Document {
                 .ok_or(StateError::FrameNotInDocument)?;
             let hitbox = frame
                 .get_hitbox(&hitbox_name)
-                .ok_or(StateError::InvalidHitboxIndex)?;
+                .ok_or(StateError::InvalidHitboxName)?;
             hitbox_position = hitbox.get_position();
         }
 
@@ -944,7 +944,7 @@ impl Document {
             .get_frame_mut(frame_path)
             .ok_or(StateError::FrameNotInDocument)?
             .get_hitbox_mut(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxIndex)?;
+            .ok_or(StateError::InvalidHitboxName)?;
         hitbox.set_position(new_offset);
 
         Ok(())
@@ -1061,7 +1061,7 @@ impl Document {
                 let hitbox = self
                     .get_workbench_frame_mut()?
                     .get_hitbox_mut(&h)
-                    .ok_or(StateError::InvalidHitboxIndex)?;
+                    .ok_or(StateError::InvalidHitboxName)?;
                 hitbox.set_position(hitbox.get_position() + offset);
             }
             Some(Selection::AnimationFrame(frame_index)) => {

@@ -22,8 +22,8 @@ pub enum StateError {
     NotEditingAnyFrame,
     #[fail(display = "Not currently editing any animation")]
     NotEditingAnyAnimation,
-    #[fail(display = "Frame does not have a hitbox at the requested index")]
-    InvalidHitboxIndex,
+    #[fail(display = "Frame does not have a hitbox with the requested name")]
+    InvalidHitboxName,
     #[fail(display = "Expected an animation frame to be selected")]
     NoAnimationFrameSelected,
     #[fail(display = "Animation does not have a frame at the requested index")]
