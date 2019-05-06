@@ -13,7 +13,7 @@ fn draw_hitboxes<'a>(
 ) {
     let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
     hitboxes.sort_unstable();
-    for hitbox in hitboxes.iter() {
+    for (hitbox_index, hitbox) in hitboxes.iter().enumerate() {
         let is_selected = match &document.view.selection {
             Some(Selection::Hitbox(names)) => names.items.iter().any(|n| n == hitbox.get_name()),
             _ => false,
@@ -26,7 +26,57 @@ fn draw_hitboxes<'a>(
             flags,
             ImVec2::new(0.0, 0.0),
         ) {
-            commands.select_hitboxes(&MultiSelection::new(vec![hitbox.get_name().to_owned()]));
+            let (mut selection, was_blank) = match &document.view.selection {
+                Some(Selection::Hitbox(s)) => (s.clone(), false),
+                _ => (
+                    MultiSelection::new(vec![hitbox.get_name().to_owned()]),
+                    true,
+                ),
+            };
+
+            // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
+            if ui.imgui().key_shift() {
+                let from = if let Some(Selection::Hitbox(names)) = &document.view.selection {
+                    let last_touched_index = hitboxes
+                        .iter()
+                        .position(|hitbox| hitbox.get_name() == names.last_touched)
+                        .unwrap_or(0);
+                    if last_touched_index < hitbox_index {
+                        last_touched_index + 1
+                    } else if last_touched_index > hitbox_index {
+                        last_touched_index - 1
+                    } else {
+                        last_touched_index
+                    }
+                } else {
+                    0
+                };
+                let mut affected_hitboxes = hitboxes
+                    [from.min(hitbox_index)..=from.max(hitbox_index)]
+                    .iter()
+                    .map(|hitbox| hitbox.get_name().to_owned())
+                    .collect::<Vec<String>>();
+                if from > hitbox_index {
+                    affected_hitboxes = affected_hitboxes.into_iter().rev().collect();
+                }
+
+                if ui.imgui().key_ctrl() {
+                    selection.toggle(&affected_hitboxes);
+                    if was_blank {
+                        selection.toggle(&vec![hitbox.get_name().to_owned()]);
+                    }
+                } else {
+                    selection.add(&affected_hitboxes);
+                }
+            } else if ui.imgui().key_ctrl() {
+                if !was_blank {
+                    selection.toggle(&vec![hitbox.get_name().to_owned()]);
+                }
+            } else {
+                selection = MultiSelection::new(vec![hitbox.get_name().to_owned()]);
+            }
+
+            commands.select_hitboxes(&selection);
         }
     }
 }
