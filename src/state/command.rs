@@ -50,6 +50,8 @@ pub enum DocumentCommand {
     SelectMoreFrames(Vec<PathBuf>),
     ToggleSelectFrames(Vec<PathBuf>),
     SelectAnimation(String),
+    ToggleSelectAnimations(Vec<String>),
+    SelectMoreAnimations(Vec<String>),
     SelectHitbox(String),
     SelectAnimationFrame(usize),
     SelectPrevious(bool),
@@ -124,6 +126,8 @@ impl fmt::Display for DocumentCommand {
             | SelectMoreFrames(_)
             | ToggleSelectFrames(_)
             | SelectAnimation(_)
+            | SelectMoreAnimations(_)
+            | ToggleSelectAnimations(_)
             | SelectHitbox(_)
             | SelectAnimationFrame(_)
             | SelectPrevious(_)

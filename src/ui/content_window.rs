@@ -108,7 +108,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     }
     let mut animations: Vec<&Animation> = document.sheet.animations_iter().collect();
     animations.sort_unstable();
-    for animation in animations.iter() {
+    for (animation_index, animation) in animations.iter().enumerate() {
         let is_selected = match &document.view.selection {
             Some(Selection::Animation(names)) => {
                 names.items.iter().any(|n| n == animation.get_name())
@@ -126,7 +126,42 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_animation(animation);
             } else {
-                commands.select_animation(animation);
+                // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
+                if ui.imgui().key_shift() {
+                    let from = if let Some(Selection::Animation(names)) = &document.view.selection {
+                        let last_touched_index = animations
+                            .iter()
+                            .position(|animation| animation.get_name() == names.last_touched)
+                            .unwrap_or(0);
+                        if last_touched_index < animation_index {
+                            last_touched_index + 1
+                        } else if last_touched_index > animation_index {
+                            last_touched_index - 1
+                        } else {
+                            last_touched_index
+                        }
+                    } else {
+                        0
+                    };
+                    let mut affected_animations = animations
+                        [from.min(animation_index)..=from.max(animation_index)]
+                        .iter()
+                        .map(|animation| animation.get_name().to_owned())
+                        .collect::<Vec<String>>();
+                    if from > animation_index {
+                        affected_animations = affected_animations.into_iter().rev().collect();
+                    }
+
+                    if ui.imgui().key_ctrl() {
+                        commands.toggle_select_animations(affected_animations);
+                    } else {
+                        commands.select_more_animations(affected_animations);
+                    }
+                } else if ui.imgui().key_ctrl() {
+                    commands.toggle_select_animations(vec![animation.get_name().to_owned()]);
+                } else {
+                    commands.select_animation(animation);
+                }
             }
         }
     }

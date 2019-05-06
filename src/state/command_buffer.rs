@@ -223,6 +223,16 @@ impl CommandBuffer {
         ))));
     }
 
+    pub fn toggle_select_animations(&mut self, animations: Vec<String>) {
+        self.queue
+            .push(Sync(Document(ToggleSelectAnimations(animations))));
+    }
+
+    pub fn select_more_animations(&mut self, animations: Vec<String>) {
+        self.queue
+            .push(Sync(Document(SelectMoreAnimations(animations))));
+    }
+
     pub fn select_hitbox(&mut self, hitbox: &Hitbox) {
         self.queue
             .push(Sync(Document(SelectHitbox(hitbox.get_name().to_owned()))));
