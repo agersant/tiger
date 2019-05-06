@@ -58,6 +58,6 @@ impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> Mult
 pub enum Selection {
 	Frame(MultiSelection<PathBuf>),
 	Animation(MultiSelection<String>),
-	Hitbox(String),
+	Hitbox(MultiSelection<String>),
 	AnimationFrame(usize),
 }

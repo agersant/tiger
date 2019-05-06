@@ -48,7 +48,7 @@ pub enum DocumentCommand {
     ClearSelection,
     SelectFrames(MultiSelection<PathBuf>),
     SelectAnimations(MultiSelection<String>),
-    SelectHitbox(String),
+    SelectHitboxes(MultiSelection<String>),
     SelectAnimationFrame(usize),
     EditFrame(PathBuf),
     EditAnimation(String),
@@ -118,7 +118,7 @@ impl fmt::Display for DocumentCommand {
             | ClearSelection
             | SelectFrames(_)
             | SelectAnimations(_)
-            | SelectHitbox(_)
+            | SelectHitboxes(_)
             | SelectAnimationFrame(_)
             | EditFrame(_)
             | EditAnimation(_)

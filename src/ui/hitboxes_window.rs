@@ -15,7 +15,7 @@ fn draw_hitboxes<'a>(
     hitboxes.sort_unstable();
     for hitbox in hitboxes.iter() {
         let is_selected = match &document.view.selection {
-            Some(Selection::Hitbox(n)) => n == hitbox.get_name(),
+            Some(Selection::Hitbox(names)) => names.items.iter().any(|n| n == hitbox.get_name()),
             _ => false,
         };
 
@@ -26,7 +26,7 @@ fn draw_hitboxes<'a>(
             flags,
             ImVec2::new(0.0, 0.0),
         ) {
-            commands.select_hitbox(hitbox);
+            commands.select_hitboxes(&MultiSelection::new(vec![hitbox.get_name().to_owned()]));
         }
     }
 }

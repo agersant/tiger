@@ -179,7 +179,8 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
                                 }
                             }
                         }
-                        Some(Selection::Hitbox(name)) => {
+                        Some(Selection::Hitbox(names)) => {
+                            let name = &names.last_touched_in_range;
                             if let Some(WorkbenchItem::Frame(path)) = &document.view.workbench_item
                             {
                                 if let Some(frame) = document.sheet.get_frame(path) {

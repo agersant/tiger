@@ -141,16 +141,35 @@ fn draw_hitbox<'a>(
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
-    let is_selected =
-        document.view.selection == Some(Selection::Hitbox(hitbox.get_name().to_owned()));
+    let is_selected = match &document.view.selection {
+        Some(Selection::Hitbox(names)) => names.items.iter().any(|n| n == hitbox.get_name()),
+        _ => false,
+    };
 
-    let (is_hovered, is_active) = if is_selectable && !rectangle.size.is_empty_or_negative() {
+    let (is_hovered, is_active) = if is_selectable
+        && !rectangle.size.is_empty_or_negative()
+        && document.transient.is_none()
+    {
         let hitbox_id = ImString::new(format!("hitbox_button_{}", hitbox.get_name()));
         if ui.invisible_button(
             &hitbox_id,
             (rectangle.size.to_f32().to_vector() * zoom).to_tuple(),
         ) {
-            commands.select_hitbox(hitbox);
+            let (mut selection, was_blank) = match &document.view.selection {
+                Some(Selection::Hitbox(s)) => (s.clone(), false),
+                _ => (
+                    MultiSelection::new(vec![hitbox.get_name().to_owned()]),
+                    true,
+                ),
+            };
+            if ui.imgui().key_ctrl() {
+                if !was_blank {
+                    selection.toggle(&vec![hitbox.get_name().to_owned()]);
+                }
+            } else {
+                selection = MultiSelection::new(vec![hitbox.get_name().to_owned()]);
+            }
+            commands.select_hitboxes(&selection);
         }
         ui.set_item_allow_overlap();
         (ui.is_item_hovered(), ui.is_item_active())
@@ -199,7 +218,7 @@ fn draw_hitbox<'a>(
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if !*is_dragging && !*is_scaling && is_active && is_mouse_dragging {
         if !is_selected {
-            commands.select_hitbox(hitbox);
+            commands.select_hitboxes(&MultiSelection::new(vec![hitbox.get_name().to_owned()]));
         }
         commands.begin_hitbox_drag();
         *is_dragging = true;

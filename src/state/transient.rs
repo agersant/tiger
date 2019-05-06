@@ -1,4 +1,5 @@
 use euclid::*;
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::state::*;
@@ -34,15 +35,20 @@ pub struct Rename {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
+pub struct HitboxInitialState {
+    pub position: Vector2D<i32>,
+    pub size: Vector2D<u32>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct HitboxSize {
     pub axis: ResizeAxis,
-    pub initial_position: Vector2D<i32>,
-    pub initial_size: Vector2D<u32>,
+    pub initial_state: HashMap<String, HitboxInitialState>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HitboxPosition {
-    pub initial_offset: Vector2D<i32>,
+    pub initial_offset: HashMap<String, Vector2D<i32>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

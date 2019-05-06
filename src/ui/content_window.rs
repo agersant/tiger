@@ -35,11 +35,10 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
     frames.sort_unstable();
     for (frame_index, (name, frame)) in frames.iter().enumerate() {
         let is_selected = match &document.view.selection {
-            Some(Selection::Frame(range)) => range
+            Some(Selection::Frame(paths)) => paths
                 .items
                 .iter()
-                .map(|p| p.as_path())
-                .any(|p| p == frame.get_source()),
+                .any(|p| p.as_path() == frame.get_source()),
             _ => false,
         };
 

@@ -1,5 +1,6 @@
 use euclid::*;
 use failure::Error;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -345,7 +346,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn select_hitbox<T: AsRef<str>>(&mut self, hitbox_name: T) -> Result<(), Error> {
+    pub fn select_hitboxes(&mut self, names: &MultiSelection<String>) -> Result<(), Error> {
         let frame_path = match &self.view.workbench_item {
             Some(WorkbenchItem::Frame(p)) => Some(p.to_owned()),
             _ => None,
@@ -355,10 +356,12 @@ impl Document {
             .sheet
             .get_frame(&frame_path)
             .ok_or(StateError::FrameNotInDocument)?;
-        let _hitbox = frame
-            .get_hitbox(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxName)?;
-        self.view.selection = Some(Selection::Hitbox(hitbox_name.as_ref().to_owned()));
+        for name in names.items.iter() {
+            let _hitbox = frame
+                .get_hitbox(name)
+                .ok_or(StateError::InvalidHitboxName)?;
+        }
+        self.view.selection = Some(Selection::Hitbox(names.clone()));
         Ok(())
     }
 
@@ -658,37 +661,38 @@ impl Document {
             hitbox.set_position(mouse_position.floor().to_i32());
             hitbox.get_name().to_owned()
         };
-        self.select_hitbox(&hitbox_name)
+        self.select_hitboxes(&MultiSelection::new(vec![hitbox_name]))
     }
 
     pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) -> Result<(), Error> {
         let frame_path = self.get_workbench_frame()?.get_source().to_owned();
 
-        let hitbox_name = match &self.view.selection {
-            Some(Selection::Hitbox(n)) => Some(n.to_owned()),
+        let hitbox_names = match &self.view.selection {
+            Some(Selection::Hitbox(names)) => Some(names.items.clone()),
             _ => None,
         }
         .ok_or(StateError::NoHitboxSelected)?;
 
-        let hitbox;
-        let position;
-        let size;
-        {
-            let frame = self
+        let mut initial_state = HashMap::new();
+        for name in &hitbox_names {
+            let hitbox = self
                 .sheet
                 .get_frame(&frame_path)
-                .ok_or(StateError::FrameNotInDocument)?;
-            hitbox = frame
-                .get_hitbox(&hitbox_name)
+                .ok_or(StateError::FrameNotInDocument)?
+                .get_hitbox(name)
                 .ok_or(StateError::InvalidHitboxName)?;
-            position = hitbox.get_position();
-            size = hitbox.get_size();
+            initial_state.insert(
+                name.to_owned(),
+                HitboxInitialState {
+                    position: hitbox.get_position(),
+                    size: hitbox.get_size(),
+                },
+            );
         }
 
         self.transient = Some(Transient::HitboxSize(HitboxSize {
             axis: axis,
-            initial_position: position,
-            initial_size: size,
+            initial_state: initial_state,
         }));
 
         Ok(())
@@ -702,7 +706,7 @@ impl Document {
         use ResizeAxis::*;
 
         let frame_path = self.get_workbench_frame()?.get_source().to_owned();
-        let hitbox_name = match &self.view.selection {
+        let hitbox_names = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
         }
@@ -714,114 +718,120 @@ impl Document {
         }
         .ok_or(StateError::NotAdjustingHitboxSize)?;
 
-        let initial_hitbox = Rect::new(
-            hitbox_size.initial_position.to_point(),
-            hitbox_size.initial_size.to_i32().to_size(),
-        );
+        for hitbox_name in hitbox_names.items.iter() {
+            let initial_state = hitbox_size
+                .initial_state
+                .get(hitbox_name)
+                .ok_or(StateError::MissingHitboxSizeData)?;
 
-        let axis = hitbox_size.axis;
-        if preserve_aspect_ratio && axis.is_diagonal() {
-            let aspect_ratio =
-                initial_hitbox.size.width.max(1) as f32 / initial_hitbox.size.height.max(1) as f32;
-            let odd_axis_factor = if axis == NE || axis == SW { -1.0 } else { 1.0 };
-            mouse_delta = if mouse_delta.x.abs() > mouse_delta.y.abs() {
-                vec2(
-                    mouse_delta.x,
-                    odd_axis_factor * (mouse_delta.x / aspect_ratio).round(),
-                )
-            } else {
-                vec2(
-                    odd_axis_factor * (mouse_delta.y * aspect_ratio).round(),
-                    mouse_delta.y,
-                )
-            };
+            let initial_hitbox = Rect::new(
+                initial_state.position.to_point(),
+                initial_state.size.to_i32().to_size(),
+            );
+
+            let axis = hitbox_size.axis;
+            if preserve_aspect_ratio && axis.is_diagonal() {
+                let aspect_ratio = initial_hitbox.size.width.max(1) as f32
+                    / initial_hitbox.size.height.max(1) as f32;
+                let odd_axis_factor = if axis == NE || axis == SW { -1.0 } else { 1.0 };
+                mouse_delta = if mouse_delta.x.abs() > mouse_delta.y.abs() {
+                    vec2(
+                        mouse_delta.x,
+                        odd_axis_factor * (mouse_delta.x / aspect_ratio).round(),
+                    )
+                } else {
+                    vec2(
+                        odd_axis_factor * (mouse_delta.y * aspect_ratio).round(),
+                        mouse_delta.y,
+                    )
+                };
+            }
+
+            let zoom = self.view.get_workbench_zoom_factor();
+            let mouse_delta = (mouse_delta / zoom).round().to_i32();
+
+            let new_hitbox = Rect::from_points(match axis {
+                NW => vec![
+                    initial_hitbox.bottom_right(),
+                    initial_hitbox.origin + mouse_delta,
+                ],
+                NE => vec![
+                    initial_hitbox.bottom_left(),
+                    initial_hitbox.top_right() + mouse_delta,
+                ],
+                SW => vec![
+                    initial_hitbox.top_right(),
+                    initial_hitbox.bottom_left() + mouse_delta,
+                ],
+                SE => vec![
+                    initial_hitbox.origin,
+                    initial_hitbox.bottom_right() + mouse_delta,
+                ],
+                N => vec![
+                    initial_hitbox.bottom_left(),
+                    point2(
+                        initial_hitbox.max_x(),
+                        initial_hitbox.min_y() + mouse_delta.y,
+                    ),
+                ],
+                W => vec![
+                    initial_hitbox.top_right(),
+                    point2(
+                        initial_hitbox.min_x() + mouse_delta.x,
+                        initial_hitbox.max_y(),
+                    ),
+                ],
+                S => vec![
+                    initial_hitbox.origin,
+                    point2(
+                        initial_hitbox.max_x(),
+                        initial_hitbox.max_y() + mouse_delta.y,
+                    ),
+                ],
+                E => vec![
+                    initial_hitbox.origin,
+                    point2(
+                        initial_hitbox.max_x() + mouse_delta.x,
+                        initial_hitbox.max_y(),
+                    ),
+                ],
+            });
+
+            let hitbox = self
+                .sheet
+                .get_frame_mut(&frame_path)
+                .ok_or(StateError::FrameNotInDocument)?
+                .get_hitbox_mut(&hitbox_name)
+                .ok_or(StateError::InvalidHitboxName)?;
+
+            hitbox.set_position(new_hitbox.origin.to_vector());
+            hitbox.set_size(new_hitbox.size.to_u32().to_vector());
         }
-
-        let zoom = self.view.get_workbench_zoom_factor();
-        let mouse_delta = (mouse_delta / zoom).round().to_i32();
-
-        let new_hitbox = Rect::from_points(match axis {
-            NW => vec![
-                initial_hitbox.bottom_right(),
-                initial_hitbox.origin + mouse_delta,
-            ],
-            NE => vec![
-                initial_hitbox.bottom_left(),
-                initial_hitbox.top_right() + mouse_delta,
-            ],
-            SW => vec![
-                initial_hitbox.top_right(),
-                initial_hitbox.bottom_left() + mouse_delta,
-            ],
-            SE => vec![
-                initial_hitbox.origin,
-                initial_hitbox.bottom_right() + mouse_delta,
-            ],
-            N => vec![
-                initial_hitbox.bottom_left(),
-                point2(
-                    initial_hitbox.max_x(),
-                    initial_hitbox.min_y() + mouse_delta.y,
-                ),
-            ],
-            W => vec![
-                initial_hitbox.top_right(),
-                point2(
-                    initial_hitbox.min_x() + mouse_delta.x,
-                    initial_hitbox.max_y(),
-                ),
-            ],
-            S => vec![
-                initial_hitbox.origin,
-                point2(
-                    initial_hitbox.max_x(),
-                    initial_hitbox.max_y() + mouse_delta.y,
-                ),
-            ],
-            E => vec![
-                initial_hitbox.origin,
-                point2(
-                    initial_hitbox.max_x() + mouse_delta.x,
-                    initial_hitbox.max_y(),
-                ),
-            ],
-        });
-
-        let hitbox = self
-            .sheet
-            .get_frame_mut(frame_path)
-            .ok_or(StateError::FrameNotInDocument)?
-            .get_hitbox_mut(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxName)?;
-
-        hitbox.set_position(new_hitbox.origin.to_vector());
-        hitbox.set_size(new_hitbox.size.to_u32().to_vector());
 
         Ok(())
     }
 
     pub fn begin_hitbox_drag(&mut self) -> Result<(), Error> {
         let frame_path = self.get_workbench_frame()?.get_source().to_owned();
-        let hitbox_name = match &self.view.selection {
+        let hitbox_names = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NoHitboxSelected)?;
 
-        let hitbox_position;
-        {
-            let frame = self
+        let mut initial_offset = HashMap::new();
+        for hitbox_name in hitbox_names.items.iter() {
+            let hitbox = self
                 .sheet
                 .get_frame(&frame_path)
-                .ok_or(StateError::FrameNotInDocument)?;
-            let hitbox = frame
-                .get_hitbox(&hitbox_name)
+                .ok_or(StateError::FrameNotInDocument)?
+                .get_hitbox(hitbox_name)
                 .ok_or(StateError::InvalidHitboxName)?;
-            hitbox_position = hitbox.get_position();
+            initial_offset.insert(hitbox_name.to_owned(), hitbox.get_position());
         }
 
         self.transient = Some(Transient::HitboxPosition(HitboxPosition {
-            initial_offset: hitbox_position,
+            initial_offset: initial_offset,
         }));
 
         Ok(())
@@ -835,7 +845,7 @@ impl Document {
         let zoom = self.view.get_workbench_zoom_factor();
 
         let frame_path = self.get_workbench_frame()?.get_source().to_owned();
-        let hitbox_name = match &self.view.selection {
+        let hitbox_names = match &self.view.selection {
             Some(Selection::Hitbox(n)) => Some(n.to_owned()),
             _ => None,
         }
@@ -847,25 +857,30 @@ impl Document {
         }
         .ok_or(StateError::NotAdjustingHitboxPosition)?;
 
-        let old_offset = hitbox_position.initial_offset;
+        for hitbox_name in hitbox_names.items.iter() {
+            let old_offset = hitbox_position
+                .initial_offset
+                .get(hitbox_name)
+                .ok_or(StateError::MissingHitboxPositionData)?;
 
-        if !both_axis {
-            if mouse_delta.x.abs() > mouse_delta.y.abs() {
-                mouse_delta.y = 0.0;
-            } else {
-                mouse_delta.x = 0.0;
+            if !both_axis {
+                if mouse_delta.x.abs() > mouse_delta.y.abs() {
+                    mouse_delta.y = 0.0;
+                } else {
+                    mouse_delta.x = 0.0;
+                }
             }
+
+            let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
+
+            let hitbox = self
+                .sheet
+                .get_frame_mut(&frame_path)
+                .ok_or(StateError::FrameNotInDocument)?
+                .get_hitbox_mut(&hitbox_name)
+                .ok_or(StateError::InvalidHitboxName)?;
+            hitbox.set_position(new_offset);
         }
-
-        let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
-
-        let hitbox = self
-            .sheet
-            .get_frame_mut(frame_path)
-            .ok_or(StateError::FrameNotInDocument)?
-            .get_hitbox_mut(&hitbox_name)
-            .ok_or(StateError::InvalidHitboxName)?;
-        hitbox.set_position(new_offset);
 
         Ok(())
     }
@@ -977,12 +992,14 @@ impl Document {
         match self.view.selection.clone() {
             Some(Selection::Animation(_)) => {}
             Some(Selection::Frame(_)) => {}
-            Some(Selection::Hitbox(h)) => {
-                let hitbox = self
-                    .get_workbench_frame_mut()?
-                    .get_hitbox_mut(&h)
-                    .ok_or(StateError::InvalidHitboxName)?;
-                hitbox.set_position(hitbox.get_position() + offset);
+            Some(Selection::Hitbox(names)) => {
+                for name in names.items {
+                    let hitbox = self
+                        .get_workbench_frame_mut()?
+                        .get_hitbox_mut(name)
+                        .ok_or(StateError::InvalidHitboxName)?;
+                    hitbox.set_position(hitbox.get_position() + offset);
+                }
             }
             Some(Selection::AnimationFrame(frame_index)) => {
                 let animation_name = self.get_workbench_animation()?.get_name().to_owned();
@@ -1011,9 +1028,11 @@ impl Document {
                     self.sheet.delete_frame(&path);
                 }
             }
-            Some(Selection::Hitbox(h)) => {
+            Some(Selection::Hitbox(names)) => {
                 let frame_path = self.get_workbench_frame()?.get_source().to_owned();
-                self.sheet.delete_hitbox(&frame_path, &h);
+                for name in &names.items {
+                    self.sheet.delete_hitbox(&frame_path, name);
+                }
             }
             Some(Selection::AnimationFrame(frame_index)) => {
                 let animation_name = self.get_workbench_animation()?.get_name().to_owned();
@@ -1028,10 +1047,9 @@ impl Document {
 
     pub fn begin_rename_selection(&mut self) {
         match &self.view.selection {
-            Some(Selection::Animation(names)) => {
+            Some(Selection::Animation(names)) | Some(Selection::Hitbox(names)) => {
                 self.begin_rename(names.last_touched_in_range.clone())
             }
-            Some(Selection::Hitbox(h)) => self.begin_rename(h.clone()),
             Some(Selection::Frame(_)) => (),
             Some(Selection::AnimationFrame(_)) => (),
             None => {}
@@ -1060,7 +1078,8 @@ impl Document {
                     }
                 }
             }
-            Some(Selection::Hitbox(old_name)) => {
+            Some(Selection::Hitbox(names)) => {
+                let old_name = names.last_touched_in_range;
                 if old_name != new_name {
                     let frame_path = self.get_workbench_frame()?.get_source().to_owned();
                     if self
@@ -1075,9 +1094,7 @@ impl Document {
                         .get_frame_mut(&frame_path)
                         .ok_or(StateError::FrameNotInDocument)?
                         .rename_hitbox(&old_name, &new_name)?;
-                    if Some(Selection::Hitbox(old_name.clone())) == self.view.selection {
-                        self.view.selection = Some(Selection::Hitbox(new_name.clone()));
-                    }
+                    self.select_hitboxes(&MultiSelection::new(vec![new_name.clone()]))?;
                 }
             }
             _ => (),
@@ -1179,7 +1196,7 @@ impl Document {
             ClearSelection => new_document.clear_selection(),
             SelectFrames(v) => new_document.select_frames(&v)?,
             SelectAnimations(v) => new_document.select_animations(&v)?,
-            SelectHitbox(h) => new_document.select_hitbox(&h)?,
+            SelectHitboxes(v) => new_document.select_hitboxes(&v)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,

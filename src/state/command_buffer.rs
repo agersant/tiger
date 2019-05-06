@@ -213,9 +213,9 @@ impl CommandBuffer {
             .push(Sync(Document(SelectAnimations(names.clone()))));
     }
 
-    pub fn select_hitbox(&mut self, hitbox: &Hitbox) {
+    pub fn select_hitboxes(&mut self, names: &MultiSelection<String>) {
         self.queue
-            .push(Sync(Document(SelectHitbox(hitbox.get_name().to_owned()))));
+            .push(Sync(Document(SelectHitboxes(names.clone()))));
     }
 
     pub fn select_animation_frame(&mut self, animation_frame_index: usize) {

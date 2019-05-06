@@ -40,6 +40,10 @@ pub enum StateError {
     NotAdjustingAnimationFramePosition,
     #[fail(display = "Not currently adjusting hitbox size")]
     NotAdjustingHitboxSize,
+    #[fail(display = "Missing data while adjusting hitbox size")]
+    MissingHitboxSizeData,
     #[fail(display = "Not currently adjusting hitbox position")]
     NotAdjustingHitboxPosition,
+    #[fail(display = "Missing data while adjusting hitbox position")]
+    MissingHitboxPositionData,
 }
