@@ -50,8 +50,6 @@ pub enum DocumentCommand {
     SelectAnimations(MultiSelection<String>),
     SelectHitbox(String),
     SelectAnimationFrame(usize),
-    SelectPrevious(bool),
-    SelectNext(bool),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
@@ -122,8 +120,6 @@ impl fmt::Display for DocumentCommand {
             | SelectAnimations(_)
             | SelectHitbox(_)
             | SelectAnimationFrame(_)
-            | SelectPrevious(_)
-            | SelectNext(_)
             | EditFrame(_)
             | EditAnimation(_)
             | WorkbenchZoomIn

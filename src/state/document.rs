@@ -388,81 +388,6 @@ impl Document {
         Ok(())
     }
 
-    fn advance_selection<F>(&mut self, advance: F, additive: bool) -> Result<(), Error>
-    where
-        F: Fn(usize) -> usize,
-    {
-        match &mut self.view.selection {
-            Some(Selection::Frame(paths)) => {
-                let path = &paths.last_touched;
-                let mut frames: Vec<&Frame> = self.sheet.frames_iter().collect();
-                frames.sort_unstable();
-                let current_index = frames
-                    .iter()
-                    .position(|f| f.get_source() == path)
-                    .ok_or(StateError::FrameNotInDocument)?;
-                if let Some(f) = frames.get(advance(current_index)) {
-                    if additive {
-                        paths.add(&vec![f.get_source().to_owned()]);
-                    } else {
-                        self.view.selection = Some(Selection::Frame(MultiSelection::new(vec![f
-                            .get_source()
-                            .to_owned()])))
-                    }
-                }
-            }
-            Some(Selection::Animation(names)) => {
-                let name = &names.last_touched;
-                let mut animations: Vec<&Animation> = self.sheet.animations_iter().collect();
-                animations.sort_unstable();
-                let current_index = animations
-                    .iter()
-                    .position(|a| a.get_name() == name)
-                    .ok_or(StateError::AnimationNotInDocument)?;
-                if let Some(animation) = animations.get(advance(current_index)) {
-                    if additive {
-                        names.add(&vec![animation.get_name().to_owned()]);
-                    } else {
-                        self.view.selection =
-                            Some(Selection::Animation(MultiSelection::new(vec![animation
-                                .get_name()
-                                .to_owned()])));
-                    }
-                }
-            }
-            Some(Selection::Hitbox(n)) => {
-                let frame_path = match &self.view.workbench_item {
-                    Some(WorkbenchItem::Frame(p)) => p.clone(),
-                    _ => return Err(StateError::NotEditingAnyFrame.into()),
-                };
-                let frame = self
-                    .sheet
-                    .frames_iter()
-                    .find(|f| f.get_source() == frame_path)
-                    .ok_or(StateError::FrameNotInDocument)?;
-                let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
-                hitboxes.sort_unstable();
-                let current_index = hitboxes
-                    .iter()
-                    .position(|h| h.get_name() == n)
-                    .ok_or(StateError::InvalidHitboxName)?;
-                if let Some(h) = hitboxes.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Hitbox(h.get_name().to_owned()));
-                }
-            }
-            Some(Selection::AnimationFrame(_)) | None => (),
-        };
-        Ok(())
-    }
-
-    pub fn select_previous(&mut self, additive: bool) -> Result<(), Error> {
-        self.advance_selection(|n| n.checked_sub(1).unwrap_or(n), additive)
-    }
-
-    pub fn select_next(&mut self, additive: bool) -> Result<(), Error> {
-        self.advance_selection(|n| n.checked_add(1).unwrap_or(n), additive)
-    }
-
     pub fn edit_frame<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         if !self.sheet.has_frame(&path) {
             return Err(StateError::FrameNotInDocument.into());
@@ -1256,8 +1181,6 @@ impl Document {
             SelectAnimations(v) => new_document.select_animations(&v)?,
             SelectHitbox(h) => new_document.select_hitbox(&h)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,
-            SelectPrevious(additive) => new_document.select_previous(*additive)?,
-            SelectNext(additive) => new_document.select_next(*additive)?,
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,

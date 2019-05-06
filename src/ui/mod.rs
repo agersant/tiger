@@ -662,12 +662,6 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
         if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
             commands.snap_to_next_frame();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
-            commands.select_previous(ui.imgui().key_shift()); // TODO autoscroll somehow?
-        }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
-            commands.select_next(ui.imgui().key_shift()); // TODO autoscroll somehow?
-        }
     }
 
     // Menu commands
