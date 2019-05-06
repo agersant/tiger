@@ -464,10 +464,15 @@ impl Document {
                     .iter()
                     .position(|a| a.get_name() == name)
                     .ok_or(StateError::AnimationNotInDocument)?;
-                if let Some(n) = animations.get(advance(current_index)) {
-                    self.view.selection = Some(Selection::Animation(MultiSelection::new(vec![n
-                        .get_name()
-                        .to_owned()])));
+                if let Some(animation) = animations.get(advance(current_index)) {
+                    if additive {
+                        names.add(&vec![animation.get_name().to_owned()]);
+                    } else {
+                        self.view.selection =
+                            Some(Selection::Animation(MultiSelection::new(vec![animation
+                                .get_name()
+                                .to_owned()])));
+                    }
                 }
             }
             Some(Selection::Hitbox(n)) => {
