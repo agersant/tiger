@@ -217,9 +217,23 @@ fn draw_hitbox<'a>(
 
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if !*is_dragging && !*is_scaling && is_active && is_mouse_dragging {
+        let (mut selection, was_blank) = match &document.view.selection {
+            Some(Selection::Hitbox(s)) => (s.clone(), false),
+            _ => (
+                MultiSelection::new(vec![hitbox.get_name().to_owned()]),
+                true,
+            ),
+        };
         if !is_selected {
-            commands.select_hitboxes(&MultiSelection::new(vec![hitbox.get_name().to_owned()]));
+            if ui.imgui().key_ctrl() {
+                if !was_blank {
+                    selection.toggle(&vec![hitbox.get_name().to_owned()]);
+                }
+            } else {
+                selection = MultiSelection::new(vec![hitbox.get_name().to_owned()]);
+            }
         }
+        commands.select_hitboxes(&selection);
         commands.begin_hitbox_drag();
         *is_dragging = true;
     }
