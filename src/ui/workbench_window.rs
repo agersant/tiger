@@ -279,7 +279,7 @@ fn draw_animation_frame<'a>(
     animation_frame: &AnimationFrame,
     frame_index: usize,
     is_selected: bool,
-) {
+) -> bool {
     let zoom = document.view.get_workbench_zoom_factor();
     let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
@@ -332,13 +332,16 @@ fn draw_animation_frame<'a>(
                     .thickness(1.0) // TODO dpi
                     .build();
             };
+            true
         }
         Some(TextureCacheResult::Loading) => {
             ui.set_cursor_pos(offset.to_tuple());
             draw_spinner(ui, &ui.get_window_draw_list(), space);
+            false
         }
         _ => {
             // TODO
+            false
         }
     }
 }
@@ -354,7 +357,7 @@ fn draw_animation<'a>(
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
         let is_selected = document.view.selection == Some(Selection::AnimationFrame(frame_index));
 
-        draw_animation_frame(
+        let drew = draw_animation_frame(
             ui,
             commands,
             texture_cache,
@@ -390,7 +393,7 @@ fn draw_animation<'a>(
                     }
                 }
             }
-        } else {
+        } else if drew {
             if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
             }
