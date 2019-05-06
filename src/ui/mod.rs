@@ -523,6 +523,10 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 
 fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
+        if !document.transient.item_being_renamed {
+            return;
+        }
+
         let max_length = match &document.view.selection {
             Some(Selection::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
             Some(Selection::Hitbox(_)) => MAX_HITBOX_NAME_LENGTH,
