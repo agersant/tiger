@@ -345,48 +345,13 @@ impl Document {
         }
     }
 
-    pub fn select_animation<T: AsRef<str>>(&mut self, name: T) -> Result<(), Error> {
-        if !self.sheet.has_animation(&name) {
-            return Err(StateError::AnimationNotInDocument.into());
-        }
-        self.view.selection = Some(Selection::Animation(MultiSelection::new(vec![name
-            .as_ref()
-            .to_owned()])));
-        Ok(())
-    }
-
-    pub fn select_more_animations(&mut self, more_names: &Vec<String>) -> Result<(), Error> {
-        for name in more_names {
+    pub fn select_animations(&mut self, names: &MultiSelection<String>) -> Result<(), Error> {
+        for name in names.items.iter() {
             if !self.sheet.has_animation(name) {
                 return Err(StateError::AnimationNotInDocument.into());
             }
         }
-        if let Some(Selection::Animation(names)) = &mut self.view.selection {
-            names.add(more_names);
-        } else {
-            self.view.selection = Some(Selection::Animation(MultiSelection::new(
-                more_names.clone(),
-            )));
-        };
-        Ok(())
-    }
-
-    pub fn toggle_select_animations(&mut self, toggle_names: &Vec<String>) -> Result<(), Error> {
-        for name in toggle_names {
-            if !self.sheet.has_animation(name) {
-                return Err(StateError::AnimationNotInDocument.into());
-            }
-        }
-        if let Some(Selection::Animation(names)) = &mut self.view.selection {
-            names.toggle(toggle_names);
-            if names.items.len() == 0 {
-                self.clear_selection();
-            }
-        } else {
-            self.view.selection = Some(Selection::Animation(MultiSelection::new(
-                toggle_names.clone(),
-            )));
-        }
+        self.view.selection = Some(Selection::Animation(names.clone()));
         Ok(())
     }
 
@@ -540,7 +505,7 @@ impl Document {
             let animation_name = animation.get_name().to_owned();
             animation_name
         };
-        self.select_animation(&animation_name)?;
+        self.select_animations(&MultiSelection::new(vec![animation_name.clone()]))?;
         self.begin_rename(&animation_name);
         self.edit_animation(animation_name)
     }
@@ -1173,7 +1138,7 @@ impl Document {
                         return Err(StateError::AnimationAlreadyExists.into());
                     }
                     self.sheet.rename_animation(&old_name, &new_name)?;
-                    self.select_animation(&new_name)?;
+                    self.select_animations(&MultiSelection::new(vec![new_name.clone()]))?;
                     if Some(WorkbenchItem::Animation(old_name.clone())) == self.view.workbench_item
                     {
                         self.view.workbench_item = Some(WorkbenchItem::Animation(new_name.clone()));
@@ -1300,9 +1265,7 @@ impl Document {
             SelectFrame(p) => new_document.select_frame(&p),
             SelectMoreFrames(v) => new_document.select_more_frames(&v),
             ToggleSelectFrames(v) => new_document.toggle_select_frames(&v),
-            SelectAnimation(a) => new_document.select_animation(&a)?,
-            SelectMoreAnimations(v) => new_document.select_more_animations(&v)?,
-            ToggleSelectAnimations(v) => new_document.toggle_select_animations(&v)?,
+            SelectAnimations(v) => new_document.select_animations(&v)?,
             SelectHitbox(h) => new_document.select_hitbox(&h)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,
             SelectPrevious(additive) => new_document.select_previous(*additive)?,

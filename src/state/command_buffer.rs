@@ -217,20 +217,9 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(SelectMoreFrames(frames))));
     }
 
-    pub fn select_animation(&mut self, animation: &Animation) {
-        self.queue.push(Sync(Document(SelectAnimation(
-            animation.get_name().to_owned(),
-        ))));
-    }
-
-    pub fn toggle_select_animations(&mut self, animations: Vec<String>) {
+    pub fn select_animations(&mut self, names: &MultiSelection<String>) {
         self.queue
-            .push(Sync(Document(ToggleSelectAnimations(animations))));
-    }
-
-    pub fn select_more_animations(&mut self, animations: Vec<String>) {
-        self.queue
-            .push(Sync(Document(SelectMoreAnimations(animations))));
+            .push(Sync(Document(SelectAnimations(names.clone()))));
     }
 
     pub fn select_hitbox(&mut self, hitbox: &Hitbox) {

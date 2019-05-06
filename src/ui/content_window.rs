@@ -126,6 +126,11 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_animation(animation);
             } else {
+                let mut selection = match &document.view.selection {
+                    Some(Selection::Animation(s)) => s.clone(),
+                    _ => MultiSelection::new(vec![]),
+                };
+
                 // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
                 if ui.imgui().key_shift() {
                     let from = if let Some(Selection::Animation(names)) = &document.view.selection {
@@ -153,15 +158,17 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
                     }
 
                     if ui.imgui().key_ctrl() {
-                        commands.toggle_select_animations(affected_animations);
+                        selection.toggle(&affected_animations);
                     } else {
-                        commands.select_more_animations(affected_animations);
+                        selection.add(&affected_animations);
                     }
                 } else if ui.imgui().key_ctrl() {
-                    commands.toggle_select_animations(vec![animation.get_name().to_owned()]);
+                    selection.toggle(&vec![animation.get_name().to_owned()]);
                 } else {
-                    commands.select_animation(animation);
+                    selection = MultiSelection::new(vec![animation.get_name().to_owned()]);
                 }
+
+                commands.select_animations(&selection);
             }
         }
     }
