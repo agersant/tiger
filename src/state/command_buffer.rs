@@ -204,17 +204,8 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(ClearSelection)));
     }
 
-    pub fn select_frame(&mut self, frame: &Frame) {
-        self.queue
-            .push(Sync(Document(SelectFrame(frame.get_source().to_owned()))));
-    }
-
-    pub fn toggle_select_frames(&mut self, frames: Vec<PathBuf>) {
-        self.queue.push(Sync(Document(ToggleSelectFrames(frames))));
-    }
-
-    pub fn select_more_frames(&mut self, frames: Vec<PathBuf>) {
-        self.queue.push(Sync(Document(SelectMoreFrames(frames))));
+    pub fn select_frames(&mut self, paths: &MultiSelection<PathBuf>) {
+        self.queue.push(Sync(Document(SelectFrames(paths.clone()))));
     }
 
     pub fn select_animations(&mut self, names: &MultiSelection<String>) {

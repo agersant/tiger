@@ -317,32 +317,18 @@ impl Document {
         self.view.selection = None;
     }
 
-    pub fn select_frame<T: AsRef<Path>>(&mut self, path: T) {
-        assert!(self.sheet.has_frame(&path));
-        self.view.selection = Some(Selection::Frame(MultiSelection::new(vec![path
-            .as_ref()
-            .to_owned()])));
-    }
-
-    pub fn select_more_frames(&mut self, paths: &Vec<PathBuf>) {
-        // TODO assert that paths are in sheet
-        if let Some(Selection::Frame(range)) = &mut self.view.selection {
-            range.add(paths);
-        } else {
-            self.view.selection = Some(Selection::Frame(MultiSelection::new(paths.clone())));
-        }
-    }
-
-    pub fn toggle_select_frames(&mut self, paths: &Vec<PathBuf>) {
-        // TODO assert that paths are in sheet
-        if let Some(Selection::Frame(range)) = &mut self.view.selection {
-            range.toggle(paths);
-            if range.items.len() == 0 {
-                self.clear_selection();
+    pub fn select_frames(&mut self, paths: &MultiSelection<PathBuf>) -> Result<(), Error> {
+        for path in paths.items.iter() {
+            if !self.sheet.has_frame(path) {
+                return Err(StateError::FrameNotInDocument.into());
             }
-        } else {
-            self.view.selection = Some(Selection::Frame(MultiSelection::new(paths.clone())));
         }
+        if paths.items.is_empty() {
+            self.clear_selection();
+        } else {
+            self.view.selection = Some(Selection::Frame(paths.clone()));
+        }
+        Ok(())
     }
 
     pub fn select_animations(&mut self, names: &MultiSelection<String>) -> Result<(), Error> {
@@ -351,7 +337,11 @@ impl Document {
                 return Err(StateError::AnimationNotInDocument.into());
             }
         }
-        self.view.selection = Some(Selection::Animation(names.clone()));
+        if names.items.is_empty() {
+            self.clear_selection();
+        } else {
+            self.view.selection = Some(Selection::Animation(names.clone()));
+        }
         Ok(())
     }
 
@@ -1262,9 +1252,7 @@ impl Document {
             EndExportAs => new_document.end_export_as()?,
             SwitchToContentTab(t) => new_document.view.content_tab = *t,
             ClearSelection => new_document.clear_selection(),
-            SelectFrame(p) => new_document.select_frame(&p),
-            SelectMoreFrames(v) => new_document.select_more_frames(&v),
-            ToggleSelectFrames(v) => new_document.toggle_select_frames(&v),
+            SelectFrames(v) => new_document.select_frames(&v)?,
             SelectAnimations(v) => new_document.select_animations(&v)?,
             SelectHitbox(h) => new_document.select_hitbox(&h)?,
             SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,

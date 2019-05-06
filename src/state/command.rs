@@ -46,9 +46,7 @@ pub enum DocumentCommand {
     EndImport(PathBuf, PathBuf),
     SwitchToContentTab(ContentTab),
     ClearSelection,
-    SelectFrame(PathBuf),
-    SelectMoreFrames(Vec<PathBuf>),
-    ToggleSelectFrames(Vec<PathBuf>),
+    SelectFrames(MultiSelection<PathBuf>),
     SelectAnimations(MultiSelection<String>),
     SelectHitbox(String),
     SelectAnimationFrame(usize),
@@ -120,9 +118,7 @@ impl fmt::Display for DocumentCommand {
             // Navigation
             SwitchToContentTab(_)
             | ClearSelection
-            | SelectFrame(_)
-            | SelectMoreFrames(_)
-            | ToggleSelectFrames(_)
+            | SelectFrames(_)
             | SelectAnimations(_)
             | SelectHitbox(_)
             | SelectAnimationFrame(_)

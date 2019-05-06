@@ -1,6 +1,7 @@
 use imgui::StyleVar::*;
 use imgui::*;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use crate::sheet::{Animation, Frame};
 use crate::state::*;
@@ -54,12 +55,20 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_frame(frame);
             } else {
+                let (mut selection, was_blank) = match &document.view.selection {
+                    Some(Selection::Frame(s)) => (s.clone(), false),
+                    _ => (
+                        MultiSelection::new(vec![frame.get_source().to_owned()]),
+                        true,
+                    ),
+                };
+
                 // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
                 if ui.imgui().key_shift() {
-                    let from = if let Some(Selection::Frame(range)) = &document.view.selection {
+                    let from = if let Some(Selection::Frame(paths)) = &document.view.selection {
                         let last_touched_index = frames
                             .iter()
-                            .position(|(_, frame)| frame.get_source() == range.last_touched)
+                            .position(|(_, frame)| frame.get_source() == paths.last_touched)
                             .unwrap_or(0);
                         if last_touched_index < frame_index {
                             last_touched_index + 1
@@ -74,28 +83,35 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
                     let mut affected_frames = frames[from.min(frame_index)..=from.max(frame_index)]
                         .iter()
                         .map(|(_, frame)| frame.get_source().to_owned())
-                        .collect::<Vec<std::path::PathBuf>>();
+                        .collect::<Vec<PathBuf>>();
                     if from > frame_index {
                         affected_frames = affected_frames.into_iter().rev().collect();
                     }
 
                     if ui.imgui().key_ctrl() {
-                        commands.toggle_select_frames(affected_frames);
+                        selection.toggle(&affected_frames);
+                        if was_blank {
+                            selection.toggle(&vec![frame.get_source().to_owned()]);
+                        }
                     } else {
-                        commands.select_more_frames(affected_frames);
+                        selection.add(&affected_frames);
                     }
                 } else if ui.imgui().key_ctrl() {
-                    commands.toggle_select_frames(vec![frame.get_source().to_owned()]);
+                    if !was_blank {
+                        selection.toggle(&vec![frame.get_source().to_owned()]);
+                    }
                 } else {
-                    commands.select_frame(frame);
+                    selection = MultiSelection::new(vec![frame.get_source().to_owned()]);
                 }
+
+                commands.select_frames(&selection);
             }
         } else if document.transient.is_none()
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
             if !is_selected {
-                commands.select_frame(frame);
+                commands.select_frames(&MultiSelection::new(vec![frame.get_source().to_owned()]));
             }
             commands.begin_frames_drag();
         }
@@ -126,9 +142,12 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_animation(animation);
             } else {
-                let mut selection = match &document.view.selection {
-                    Some(Selection::Animation(s)) => s.clone(),
-                    _ => MultiSelection::new(vec![]),
+                let (mut selection, was_blank) = match &document.view.selection {
+                    Some(Selection::Animation(s)) => (s.clone(), false),
+                    _ => (
+                        MultiSelection::new(vec![animation.get_name().to_owned()]),
+                        true,
+                    ),
                 };
 
                 // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
@@ -159,11 +178,16 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
 
                     if ui.imgui().key_ctrl() {
                         selection.toggle(&affected_animations);
+                        if was_blank {
+                            selection.toggle(&vec![animation.get_name().to_owned()]);
+                        }
                     } else {
                         selection.add(&affected_animations);
                     }
                 } else if ui.imgui().key_ctrl() {
-                    selection.toggle(&vec![animation.get_name().to_owned()]);
+                    if !was_blank {
+                        selection.toggle(&vec![animation.get_name().to_owned()]);
+                    }
                 } else {
                     selection = MultiSelection::new(vec![animation.get_name().to_owned()]);
                 }
