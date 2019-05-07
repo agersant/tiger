@@ -518,47 +518,23 @@ impl Document {
     }
 
     pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
-        let animation_frame_duration = match &self.transient {
-            Some(Transient::AnimationFrameDuration(x)) => Some(x),
+        let animation_name = self.get_workbench_animation()?.get_name().to_owned();
+        let frame_index = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(*i),
             _ => None,
         }
-        .ok_or(StateError::NotAdjustingAnimationFrameDuration)?;
+        .ok_or(StateError::NoAnimationFrameSelected)?;
 
-        let frame_start_time = {
-            let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-            let frame_index = match &self.view.selection {
-                Some(Selection::AnimationFrame(i)) => Some(*i),
-                _ => None,
-            }
-            .ok_or(StateError::NoAnimationFrameSelected)?;
+        let animation = self
+            .sheet
+            .get_animation_mut(&animation_name)
+            .ok_or(StateError::AnimationNotInDocument)?;
 
-            let animation = self
-                .sheet
-                .get_animation_mut(&animation_name)
-                .ok_or(StateError::AnimationNotInDocument)?;
+        let animation_frame = animation
+            .get_frame_mut(frame_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
 
-            let animation_frame = animation
-                .get_frame_mut(frame_index)
-                .ok_or(StateError::InvalidAnimationFrameIndex)?;
-
-            animation_frame.set_duration(new_duration);
-
-            let frame_times = animation.get_frame_times();
-
-            *frame_times
-                .get(frame_index)
-                .ok_or(StateError::InvalidAnimationFrameIndex)?
-        };
-
-        if !self.persistent.timeline_is_playing {
-            let initial_clock = animation_frame_duration.initial_clock.as_millis();
-            let initial_duration = animation_frame_duration.initial_duration as u128;
-            if initial_clock >= frame_start_time as u128 + initial_duration {
-                self.view.timeline_clock = Duration::from_millis(
-                    initial_clock as u64 + new_duration as u64 - initial_duration as u64,
-                );
-            }
-        }
+        animation_frame.set_duration(new_duration);
 
         Ok(())
     }
