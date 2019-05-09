@@ -329,7 +329,9 @@ fn draw_animation_frame<'a>(
 
             ui.set_cursor_pos(cursor_pos.to_tuple());
             if ui.invisible_button(im_str!("current_animation_frame"), draw_size.to_tuple()) {
-                commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
+                if document.transient.is_none() {
+                    commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
+                }
             }
 
             let is_hovered = ui.is_item_hovered();
