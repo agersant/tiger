@@ -218,9 +218,9 @@ impl CommandBuffer {
             .push(Sync(Document(SelectHitboxes(names.clone()))));
     }
 
-    pub fn select_animation_frame(&mut self, animation_frame_index: usize) {
+    pub fn select_animation_frames(&mut self, indexes: &MultiSelection<usize>) {
         self.queue
-            .push(Sync(Document(SelectAnimationFrame(animation_frame_index))));
+            .push(Sync(Document(SelectAnimationFrames(indexes.clone()))));
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {
@@ -251,26 +251,41 @@ impl CommandBuffer {
         frames: Vec<T>,
         animation_frame_index: usize,
     ) {
+        let mut sorted_frames: Vec<PathBuf> =
+            frames.iter().map(|p| p.as_ref().to_owned()).collect();
+        sorted_frames.sort();
         self.queue.push(Sync(Document(InsertAnimationFramesBefore(
-            frames.iter().map(|p| p.as_ref().to_owned()).collect(),
+            sorted_frames,
             animation_frame_index,
         ))));
     }
 
-    pub fn reorder_animation_frame(&mut self, old_index: usize, new_index: usize) {
+    pub fn reorder_animation_frames(&mut self, new_index: usize) {
         self.queue
-            .push(Sync(Document(ReorderAnimationFrame(old_index, new_index))));
+            .push(Sync(Document(ReorderAnimationFrames(new_index))));
     }
 
-    pub fn begin_animation_frame_duration_drag(&mut self) {
+    pub fn begin_animation_frame_duration_drag(
+        &mut self,
+        clock_at_cursor: u32,
+        frame_being_dragged: usize,
+    ) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameDurationDrag)));
+            .push(Sync(Document(BeginAnimationFrameDurationDrag(
+                clock_at_cursor,
+                frame_being_dragged,
+            ))));
     }
 
-    pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) {
+    pub fn update_animation_frame_duration_drag(
+        &mut self,
+        clock_at_cursor: u32,
+        minimum_duration: u32,
+    ) {
         self.queue
             .push(Sync(Document(UpdateAnimationFrameDurationDrag(
-                new_duration,
+                clock_at_cursor,
+                minimum_duration,
             ))));
     }
 

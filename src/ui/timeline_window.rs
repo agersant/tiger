@@ -15,7 +15,7 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: 
     let cursor_start = ui.get_cursor_screen_pos();
     let max_draw_x = cursor_start.0 + ui.get_content_region_avail().0
         - ui.get_window_content_region_min().0
-        + 2.0 * ui.get_cursor_pos().0;
+        + 2.0 * ui.get_cursor_pos().0; // TODO DPI on 2x factor?
 
     let mut x = cursor_start.0;
     let mut delta_t = 0;
@@ -102,6 +102,7 @@ fn draw_animation_frame<'a>(
     animation: &Animation,
     animation_frame_index: usize,
     animation_frame: &AnimationFrame,
+    frames_cursor_position_start: (f32, f32),
     frame_starts_at: Duration,
 ) {
     let animation_frame_location = get_frame_location(document, frame_starts_at, animation_frame);
@@ -126,8 +127,13 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected =
-        &document.view.selection == &Some(Selection::AnimationFrame(animation_frame_index));
+    let is_selected = match &document.view.selection {
+        Some(Selection::AnimationFrame(frame_indexes)) => frame_indexes
+            .items
+            .iter()
+            .any(|i| *i == animation_frame_index),
+        _ => false,
+    };
 
     let draw_list = ui.get_window_draw_list();
     let mut cursor_pos = ui.get_cursor_screen_pos();
@@ -188,7 +194,53 @@ fn draw_animation_frame<'a>(
                     bottom_right.1 - top_left.1,
                 ),
             ) {
-                commands.select_animation_frame(animation_frame_index);
+                commands.select_animation_frames(&MultiSelection::new(vec![animation_frame_index]));
+
+                let (mut selection, was_blank) = match &document.view.selection {
+                    Some(Selection::AnimationFrame(s)) => (s.clone(), false),
+                    _ => (MultiSelection::new(vec![animation_frame_index]), true),
+                };
+
+                // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
+                if ui.imgui().key_shift() {
+                    let from = if let Some(Selection::AnimationFrame(indexes)) =
+                        &document.view.selection
+                    {
+                        let last_touched_index = indexes.last_touched;
+                        if last_touched_index < animation_frame_index {
+                            last_touched_index + 1
+                        } else if last_touched_index > animation_frame_index {
+                            last_touched_index - 1
+                        } else {
+                            last_touched_index
+                        }
+                    } else {
+                        0
+                    };
+                    let mut affected_indexes: Vec<usize> = (from.min(animation_frame_index)
+                        ..=from.max(animation_frame_index))
+                        .collect();
+                    if from > animation_frame_index {
+                        affected_indexes = affected_indexes.into_iter().rev().collect();
+                    }
+
+                    if ui.imgui().key_ctrl() {
+                        selection.toggle(&affected_indexes);
+                        if was_blank {
+                            selection.toggle(&vec![animation_frame_index]);
+                        }
+                    } else {
+                        selection.add(&affected_indexes);
+                    }
+                } else if ui.imgui().key_ctrl() {
+                    if !was_blank {
+                        selection.toggle(&vec![animation_frame_index]);
+                    }
+                } else {
+                    selection = MultiSelection::new(vec![animation_frame_index]);
+                }
+
+                commands.select_animation_frames(&selection);
             }
         }
     }
@@ -208,7 +260,7 @@ fn draw_animation_frame<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         if document.transient.is_none() && is_mouse_dragging && is_hovering_frame_exact {
             if !is_selected {
-                commands.select_animation_frame(animation_frame_index);
+                commands.select_animation_frames(&MultiSelection::new(vec![animation_frame_index]));
             }
             commands.begin_animation_frame_drag();
         }
@@ -224,21 +276,31 @@ fn draw_animation_frame<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
         if is_dragging_duration && is_selected {
+            // TODO important dont emit once per selected animation frame
             ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
             if is_mouse_dragging {
                 let mouse_pos = ui.imgui().mouse_pos();
-                let new_width = (mouse_pos.0 - top_left.0).max(min_frame_drag_width);
-                let new_duration = std::cmp::max((new_width / zoom).ceil() as i32, 1) as u32;
-                commands.update_animation_frame_duration_drag(new_duration);
+                let clock_under_mouse =
+                    ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
+                let minimum_duration = (min_frame_drag_width / zoom).max(1.0).ceil() as u32;
+                commands.update_animation_frame_duration_drag(clock_under_mouse, minimum_duration);
             }
         } else {
             if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                 if is_mouse_down && !is_mouse_dragging {
                     if !is_selected {
-                        commands.select_animation_frame(animation_frame_index);
+                        commands.select_animation_frames(&MultiSelection::new(vec![
+                            animation_frame_index,
+                        ]));
                     }
-                    commands.begin_animation_frame_duration_drag();
+                    let mouse_pos = ui.imgui().mouse_pos();
+                    let clock_under_mouse =
+                        ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
+                    commands.begin_animation_frame_duration_drag(
+                        clock_under_mouse,
+                        animation_frame_index,
+                    );
                 }
             }
         }
@@ -363,9 +425,7 @@ fn handle_drag_and_drop<'a>(
                     } else {
                         animation.get_num_frames()
                     };
-                    if let Some(Selection::AnimationFrame(frame_index)) = &document.view.selection {
-                        commands.reorder_animation_frame(*frame_index, index);
-                    }
+                    commands.reorder_animation_frames(index);
                 }
                 (Some((index, _)), true, false) => {
                     if let Some(Selection::Frame(paths)) = &document.view.selection {
@@ -376,9 +436,7 @@ fn handle_drag_and_drop<'a>(
                     }
                 }
                 (Some((index, _)), false, true) => {
-                    if let Some(Selection::AnimationFrame(frame_index)) = &document.view.selection {
-                        commands.reorder_animation_frame(*frame_index, index);
-                    }
+                    commands.reorder_animation_frames(index);
                 }
                 _ => (),
             }
@@ -429,6 +487,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                                     animation,
                                     frame_index,
                                     animation_frame,
+                                    frames_cursor_position_start,
                                     cursor,
                                 );
                                 frames_cursor_position_end = ui.get_cursor_screen_pos();

@@ -329,7 +329,7 @@ fn draw_animation_frame<'a>(
 
             ui.set_cursor_pos(cursor_pos.to_tuple());
             if ui.invisible_button(im_str!("current_animation_frame"), draw_size.to_tuple()) {
-                commands.select_animation_frame(frame_index);
+                commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
             }
 
             let is_hovered = ui.is_item_hovered();
@@ -388,7 +388,12 @@ fn draw_animation<'a>(
 ) {
     let now = document.view.timeline_clock;
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = document.view.selection == Some(Selection::AnimationFrame(frame_index));
+        let is_selected = match &document.view.selection {
+            Some(Selection::AnimationFrame(frame_indexes)) => {
+                frame_indexes.items.iter().any(|i| *i == frame_index)
+            }
+            _ => false,
+        };
 
         let drew = draw_animation_frame(
             ui,
@@ -409,20 +414,24 @@ fn draw_animation<'a>(
                 let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
                 commands.update_animation_frame_offset_drag(delta, !is_shift_down);
             }
-            if let Some(Selection::AnimationFrame(selected_frame_index)) = document.view.selection {
-                if selected_frame_index != frame_index {
-                    if let Some(animation_frame) = animation.get_frame(selected_frame_index) {
-                        ui.with_style_var(StyleVar::Alpha(0.2), || {
-                            draw_animation_frame(
-                                ui,
-                                commands,
-                                texture_cache,
-                                document,
-                                animation_frame,
-                                selected_frame_index,
-                                true,
-                            );
-                        });
+            if let Some(Selection::AnimationFrame(selected_frame_indexes)) =
+                &document.view.selection
+            {
+                for selected_frame_index in &selected_frame_indexes.items {
+                    if *selected_frame_index != frame_index {
+                        if let Some(animation_frame) = animation.get_frame(*selected_frame_index) {
+                            ui.with_style_var(StyleVar::Alpha(0.2), || {
+                                draw_animation_frame(
+                                    ui,
+                                    commands,
+                                    texture_cache,
+                                    document,
+                                    animation_frame,
+                                    *selected_frame_index,
+                                    true,
+                                );
+                            });
+                        }
                     }
                 }
             }
@@ -432,7 +441,7 @@ fn draw_animation<'a>(
             }
             if ui.is_item_active() && is_mouse_dragging {
                 if !is_selected {
-                    commands.select_animation_frame(frame_index);
+                    commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
                 }
                 commands.begin_animation_frame_offset_drag();
             }

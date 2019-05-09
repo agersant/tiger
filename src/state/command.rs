@@ -49,16 +49,16 @@ pub enum DocumentCommand {
     SelectFrames(MultiSelection<PathBuf>),
     SelectAnimations(MultiSelection<String>),
     SelectHitboxes(MultiSelection<String>),
-    SelectAnimationFrame(usize),
+    SelectAnimationFrames(MultiSelection<usize>),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
     BeginFramesDrag,
     EndFramesDrag,
     InsertAnimationFramesBefore(Vec<PathBuf>, usize),
-    ReorderAnimationFrame(usize, usize),
-    BeginAnimationFrameDurationDrag,
-    UpdateAnimationFrameDurationDrag(u32),
+    ReorderAnimationFrames(usize),
+    BeginAnimationFrameDurationDrag(u32, usize),
+    UpdateAnimationFrameDurationDrag(u32, u32),
     EndAnimationFrameDurationDrag,
     BeginAnimationFrameDrag,
     EndAnimationFrameDrag,
@@ -119,7 +119,7 @@ impl fmt::Display for DocumentCommand {
             | SelectFrames(_)
             | SelectAnimations(_)
             | SelectHitboxes(_)
-            | SelectAnimationFrame(_)
+            | SelectAnimationFrames(_)
             | EditFrame(_)
             | EditAnimation(_)
             | WorkbenchZoomIn
@@ -147,11 +147,11 @@ impl fmt::Display for DocumentCommand {
             BeginFramesDrag | EndFramesDrag | InsertAnimationFramesBefore(_, _) => {
                 write!(f, "Create Frame")
             }
-            BeginAnimationFrameDrag | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {
+            BeginAnimationFrameDrag | EndAnimationFrameDrag | ReorderAnimationFrames(_) => {
                 write!(f, "Re-order Frames")
             }
-            BeginAnimationFrameDurationDrag
-            | UpdateAnimationFrameDurationDrag(_)
+            BeginAnimationFrameDurationDrag(_, _)
+            | UpdateAnimationFrameDurationDrag(_, _)
             | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
             BeginAnimationFrameOffsetDrag
             | UpdateAnimationFrameOffsetDrag(_, _)

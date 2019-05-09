@@ -361,33 +361,45 @@ impl Document {
                 .get_hitbox(name)
                 .ok_or(StateError::InvalidHitboxName)?;
         }
-        self.view.selection = Some(Selection::Hitbox(names.clone()));
+        if names.items.is_empty() {
+            self.clear_selection();
+        } else {
+            self.view.selection = Some(Selection::Hitbox(names.clone()));
+        }
         Ok(())
     }
 
-    pub fn select_animation_frame(&mut self, frame_index: usize) -> Result<(), Error> {
-        self.view.selection = Some(Selection::AnimationFrame(frame_index));
+    pub fn select_animation_frames(
+        &mut self,
+        frame_indexes: &MultiSelection<usize>,
+    ) -> Result<(), Error> {
+        if frame_indexes.items.is_empty() {
+            self.clear_selection();
+        } else {
+            self.view.selection = Some(Selection::AnimationFrame(frame_indexes.clone()));
 
-        let animation = self.get_workbench_animation()?;
+            let animation = self.get_workbench_animation()?;
 
-        let frame_times = animation.get_frame_times();
-        let frame_start_time = *frame_times
-            .get(frame_index)
-            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+            let frame_index = frame_indexes.last_touched_in_range;
 
-        let animation_frame = animation
-            .get_frame(frame_index)
-            .ok_or(StateError::InvalidAnimationFrameIndex)?;
-        let duration = animation_frame.get_duration() as u64;
+            let frame_times = animation.get_frame_times();
+            let frame_start_time = *frame_times
+                .get(frame_index)
+                .ok_or(StateError::InvalidAnimationFrameIndex)?;
 
-        let clock = self.view.timeline_clock.as_millis() as u64;
-        let is_playhead_in_frame = clock >= frame_start_time
-            && (clock < (frame_start_time + duration)
-                || frame_index == animation.get_num_frames() - 1);
-        if !self.persistent.timeline_is_playing && !is_playhead_in_frame {
-            self.view.timeline_clock = Duration::from_millis(frame_start_time);
+            let animation_frame = animation
+                .get_frame(frame_index)
+                .ok_or(StateError::InvalidAnimationFrameIndex)?;
+            let duration = animation_frame.get_duration() as u64;
+
+            let clock = self.view.timeline_clock.as_millis() as u64;
+            let is_playhead_in_frame = clock >= frame_start_time
+                && (clock < (frame_start_time + duration)
+                    || frame_index == animation.get_num_frames() - 1);
+            if !self.persistent.timeline_is_playing && !is_playhead_in_frame {
+                self.view.timeline_clock = Duration::from_millis(frame_start_time);
+            }
         }
-
         Ok(())
     }
 
@@ -442,147 +454,177 @@ impl Document {
             self.sheet
                 .get_animation_mut(&animation_name)
                 .ok_or(StateError::AnimationNotInDocument)?
-                .insert_frame(path, next_frame_index)?;
+                .create_frame(path, next_frame_index)?;
         }
         Ok(())
     }
 
-    pub fn reorder_animation_frame(
-        &mut self,
-        old_index: usize,
-        new_index: usize,
-    ) -> Result<(), Error> {
-        if old_index == new_index {
-            return Ok(());
+    pub fn reorder_animation_frames(&mut self, new_index: usize) -> Result<(), Error> {
+        let selection = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(i.clone()),
+            _ => None,
+        }
+        .ok_or(StateError::NoAnimationFrameSelected)?;
+
+        let mut frame_indexes: Vec<usize> = selection.items.clone().into_iter().collect();
+        frame_indexes.sort();
+
+        let animation = self.get_workbench_animation_mut()?;
+
+        let mut affected_frames = Vec::with_capacity(frame_indexes.len());
+        for index in frame_indexes.iter().rev() {
+            affected_frames.push(animation.take_frame(*index)?);
         }
 
+        let num_affected_frames_before_insert_point =
+            frame_indexes.iter().filter(|i| **i < new_index).count();
+        let insert_index = new_index - num_affected_frames_before_insert_point;
+
+        for animation_frame in affected_frames {
+            animation.insert_frame(animation_frame, insert_index)?;
+        }
+
+        let frame_times = animation.get_frame_times().clone();
+
+        let new_selected_indexes = (insert_index..(insert_index + frame_indexes.len())).collect();
+        self.view.selection = Some(Selection::AnimationFrame(MultiSelection::new(
+            new_selected_indexes,
+        )));
+
+        let timeline_pos = *frame_times
+            .get(insert_index)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        self.view.timeline_clock = Duration::from_millis(u64::from(timeline_pos));
+
+        Ok(())
+    }
+
+    pub fn begin_animation_frame_duration_drag(
+        &mut self,
+        frame_being_dragged: usize,
+        reference_clock: u32,
+    ) -> Result<(), Error> {
         let animation_name = match &self.view.workbench_item {
             Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
             _ => None,
         }
         .ok_or(StateError::NotEditingAnyAnimation)?;
 
-        self.sheet
-            .get_animation_mut(&animation_name)
-            .ok_or(StateError::AnimationNotInDocument)?
-            .reorder_frame(old_index, new_index)?;
-
-        match self.view.selection {
-            Some(Selection::AnimationFrame(i)) => {
-                if i == old_index {
-                    self.select_animation_frame(
-                        new_index - if old_index < new_index { 1 } else { 0 },
-                    )?;
-                } else if i > old_index && i < new_index {
-                    self.select_animation_frame(i - 1)?;
-                } else if i >= new_index && i < old_index {
-                    self.select_animation_frame(i + 1)?;
-                }
-            }
-            _ => (),
+        let frame_indexes = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(i.clone()),
+            _ => None,
         }
+        .ok_or(StateError::NoAnimationFrameSelected)?;
 
-        Ok(())
-    }
-
-    pub fn begin_animation_frame_duration_drag(&mut self) -> Result<(), Error> {
-        let old_duration = {
-            let animation_name = match &self.view.workbench_item {
-                Some(WorkbenchItem::Animation(animation_name)) => Some(animation_name.to_owned()),
-                _ => None,
-            }
-            .ok_or(StateError::NotEditingAnyAnimation)?;
-
-            let frame_index = match &self.view.selection {
-                Some(Selection::AnimationFrame(i)) => Some(*i),
-                _ => None,
-            }
-            .ok_or(StateError::NoAnimationFrameSelected)?;
-
+        let mut initial_duration = HashMap::new();
+        for index in frame_indexes.items {
             let animation_frame = self
                 .sheet
-                .get_animation(animation_name)
+                .get_animation(&animation_name)
                 .ok_or(StateError::AnimationNotInDocument)?
-                .get_frame(frame_index)
+                .get_frame(index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
-
-            animation_frame.get_duration()
-        };
+            let duration = animation_frame.get_duration();
+            initial_duration.insert(index, duration);
+        }
 
         self.transient = Some(Transient::AnimationFrameDuration(AnimationFrameDuration {
-            initial_duration: old_duration,
-            initial_clock: self.view.timeline_clock,
+            initial_duration: initial_duration,
+            frame_being_dragged: frame_being_dragged,
+            reference_clock: reference_clock,
         }));
 
         Ok(())
     }
 
-    pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) -> Result<(), Error> {
+    pub fn update_animation_frame_duration_drag(
+        &mut self,
+        clock_at_cursor: u32,
+        minimum_duration: u32,
+    ) -> Result<(), Error> {
         let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-        let frame_index = match &self.view.selection {
-            Some(Selection::AnimationFrame(i)) => Some(*i),
+
+        let frame_indexes = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(i.clone()),
             _ => None,
         }
         .ok_or(StateError::NoAnimationFrameSelected)?;
+
+        let animation_frame_duration = match &self.transient {
+            Some(Transient::AnimationFrameDuration(x)) => Some(x.clone()),
+            _ => None,
+        }
+        .ok_or(StateError::NotAdjustingAnimationFrameDuration)?;
 
         let animation = self
             .sheet
             .get_animation_mut(&animation_name)
             .ok_or(StateError::AnimationNotInDocument)?;
 
-        let animation_frame = animation
-            .get_frame_mut(frame_index)
-            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        let reference_clock = animation_frame_duration.reference_clock as i32;
+        let clock_at_cursor = clock_at_cursor as i32;
+        let duration_delta_up_to_dragged_frame = clock_at_cursor - reference_clock;
 
-        animation_frame.set_duration(new_duration);
+        let duration_delta_per_frame = duration_delta_up_to_dragged_frame
+            / frame_indexes
+                .items
+                .iter()
+                .filter(|i| **i <= animation_frame_duration.frame_being_dragged)
+                .count()
+                .max(1) as i32;
+
+        for index in frame_indexes.items {
+            let animation_frame = animation
+                .get_frame_mut(index)
+                .ok_or(StateError::InvalidAnimationFrameIndex)?;
+            let old_duration = *animation_frame_duration
+                .initial_duration
+                .get(&index)
+                .ok_or(StateError::MissingAnimationFrameDurationData)?;
+            let new_duration = (old_duration as i32 + duration_delta_per_frame)
+                .max(minimum_duration as i32) as u32;
+            animation_frame.set_duration(new_duration);
+        }
+
+        let frame_times = animation.get_frame_times();
+        let timeline_pos = *frame_times
+            .get(frame_indexes.last_touched_in_range)
+            .ok_or(StateError::InvalidAnimationFrameIndex)?;
+        self.view.timeline_clock = Duration::from_millis(u64::from(timeline_pos));
 
         Ok(())
     }
 
-    pub fn begin_animation_frame_drag(&mut self) -> Result<(), Error> {
+    pub fn begin_animation_frame_drag(&mut self) {
+        self.transient = Some(Transient::TimelineFrameDrag);
+    }
+
+    pub fn begin_animation_frame_offset_drag(&mut self) -> Result<(), Error> {
         let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-        let frame_index = match &self.view.selection {
-            Some(Selection::AnimationFrame(i)) => Some(*i),
+        let frame_indexes = match &self.view.selection {
+            Some(Selection::AnimationFrame(i)) => Some(i.clone()),
             _ => None,
         }
         .ok_or(StateError::NoAnimationFrameSelected)?;
 
         let animation = self
             .sheet
-            .get_animation(animation_name)
+            .get_animation_mut(animation_name)
             .ok_or(StateError::AnimationNotInDocument)?;
 
-        let _animation_frame = animation
-            .get_frame(frame_index)
-            .ok_or(StateError::InvalidAnimationFrameIndex)?;
-
-        self.transient = Some(Transient::TimelineFrameDrag);
-        Ok(())
-    }
-
-    pub fn begin_animation_frame_offset_drag(&mut self) -> Result<(), Error> {
-        let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-        let frame_index = match &self.view.selection {
-            Some(Selection::AnimationFrame(i)) => Some(*i),
-            _ => None,
-        }
-        .ok_or(StateError::NoAnimationFrameSelected)?;
-
-        {
-            let animation = self
-                .sheet
-                .get_animation_mut(animation_name)
-                .ok_or(StateError::AnimationNotInDocument)?;
-
+        let mut initial_offset = HashMap::new();
+        for frame_index in frame_indexes.items {
             let animation_frame = animation
                 .get_frame(frame_index)
                 .ok_or(StateError::InvalidAnimationFrameIndex)?;
-            self.transient = Some(Transient::AnimationFramePosition(AnimationFramePosition {
-                initial_offset: animation_frame.get_offset(),
-            }));
+            initial_offset.insert(frame_index, animation_frame.get_offset());
         }
 
-        self.select_animation_frame(frame_index)
+        self.transient = Some(Transient::AnimationFramePosition(AnimationFramePosition {
+            initial_offset: initial_offset,
+        }));
+
+        Ok(())
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -592,8 +634,8 @@ impl Document {
     ) -> Result<(), Error> {
         let zoom = self.view.get_workbench_zoom_factor();
         let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-        let frame_index = match &self.view.selection {
-            Some(Selection::AnimationFrame(i)) => Some(*i),
+        let frame_indexes = match &self.view.selection {
+            Some(Selection::AnimationFrame(indexes)) => Some(indexes.clone()),
             _ => None,
         }
         .ok_or(StateError::NoAnimationFrameSelected)?;
@@ -604,7 +646,6 @@ impl Document {
         }
         .ok_or(StateError::NotAdjustingAnimationFramePosition)?;
 
-        let old_offset = animation_frame_position.initial_offset;
         if !both_axis {
             if mouse_delta.x.abs() > mouse_delta.y.abs() {
                 mouse_delta.y = 0.0;
@@ -612,15 +653,23 @@ impl Document {
                 mouse_delta.x = 0.0;
             }
         }
-        let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
 
-        let animation_frame = self
-            .sheet
-            .get_animation_mut(animation_name)
-            .ok_or(StateError::AnimationNotInDocument)?
-            .get_frame_mut(frame_index)
-            .ok_or(StateError::InvalidAnimationFrameIndex)?;
-        animation_frame.set_offset(new_offset);
+        for index in frame_indexes.items {
+            let old_offset = animation_frame_position
+                .initial_offset
+                .get(&index)
+                .ok_or(StateError::MissingAnimationFramePositionData)?;
+
+            let new_offset = (old_offset.to_f32() + mouse_delta / zoom).floor().to_i32();
+
+            let animation_frame = self
+                .sheet
+                .get_animation_mut(&animation_name)
+                .ok_or(StateError::AnimationNotInDocument)?
+                .get_frame_mut(index)
+                .ok_or(StateError::InvalidAnimationFrameIndex)?;
+            animation_frame.set_offset(new_offset);
+        }
 
         Ok(())
     }
@@ -957,7 +1006,7 @@ impl Document {
         let (index, _) = animation
             .get_frame_at(new_time)
             .ok_or(StateError::NoAnimationFrameForThisTime)?;
-        self.select_animation_frame(index)?;
+        self.select_animation_frames(&MultiSelection::new(vec![index]))?;
         self.view.timeline_clock = new_time;
         Ok(())
     }
@@ -977,15 +1026,17 @@ impl Document {
                     hitbox.set_position(hitbox.get_position() + offset);
                 }
             }
-            Some(Selection::AnimationFrame(frame_index)) => {
-                let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-                let animation_frame = self
-                    .sheet
-                    .get_animation_mut(animation_name)
-                    .ok_or(StateError::AnimationNotInDocument)?
-                    .get_frame_mut(frame_index)
-                    .ok_or(StateError::InvalidAnimationFrameIndex)?;
-                animation_frame.set_offset(animation_frame.get_offset() + offset);
+            Some(Selection::AnimationFrame(indexes)) => {
+                for index in indexes.items {
+                    let animation_name = self.get_workbench_animation()?.get_name().to_owned();
+                    let animation_frame = self
+                        .sheet
+                        .get_animation_mut(animation_name)
+                        .ok_or(StateError::AnimationNotInDocument)?
+                        .get_frame_mut(index)
+                        .ok_or(StateError::InvalidAnimationFrameIndex)?;
+                    animation_frame.set_offset(animation_frame.get_offset() + offset);
+                }
             }
             None => {}
         };
@@ -1010,10 +1061,11 @@ impl Document {
                     self.sheet.delete_hitbox(&frame_path, name);
                 }
             }
-            Some(Selection::AnimationFrame(frame_index)) => {
+            Some(Selection::AnimationFrame(indexes)) => {
                 let animation_name = self.get_workbench_animation()?.get_name().to_owned();
-                self.sheet
-                    .delete_animation_frame(&animation_name, *frame_index);
+                for index in &indexes.items {
+                    self.sheet.delete_animation_frame(&animation_name, *index);
+                }
             }
             None => {}
         };
@@ -1170,10 +1222,10 @@ impl Document {
             EndExportAs => new_document.end_export_as()?,
             SwitchToContentTab(t) => new_document.view.content_tab = *t,
             ClearSelection => new_document.clear_selection(),
-            SelectFrames(v) => new_document.select_frames(&v)?,
-            SelectAnimations(v) => new_document.select_animations(&v)?,
-            SelectHitboxes(v) => new_document.select_hitboxes(&v)?,
-            SelectAnimationFrame(af) => new_document.select_animation_frame(*af)?,
+            SelectFrames(s) => new_document.select_frames(&s)?,
+            SelectAnimations(s) => new_document.select_animations(&s)?,
+            SelectHitboxes(s) => new_document.select_hitboxes(&s)?,
+            SelectAnimationFrames(s) => new_document.select_animation_frames(&s)?,
             EditFrame(p) => new_document.edit_frame(&p)?,
             EditAnimation(a) => new_document.edit_animation(&a)?,
             CreateAnimation => new_document.create_animation()?,
@@ -1181,14 +1233,14 @@ impl Document {
             InsertAnimationFramesBefore(frames, n) => {
                 new_document.insert_animation_frames_before(frames.clone(), *n)?
             }
-            ReorderAnimationFrame(a, b) => new_document.reorder_animation_frame(*a, *b)?,
-            BeginAnimationFrameDurationDrag => {
-                new_document.begin_animation_frame_duration_drag()?
+            ReorderAnimationFrames(i) => new_document.reorder_animation_frames(*i)?,
+            BeginAnimationFrameDurationDrag(c, i) => {
+                new_document.begin_animation_frame_duration_drag(*i, *c)?
             }
-            UpdateAnimationFrameDurationDrag(d) => {
-                new_document.update_animation_frame_duration_drag(*d)?
+            UpdateAnimationFrameDurationDrag(d, m) => {
+                new_document.update_animation_frame_duration_drag(*d, *m)?
             }
-            BeginAnimationFrameDrag => new_document.begin_animation_frame_drag()?,
+            BeginAnimationFrameDrag => new_document.begin_animation_frame_drag(),
             BeginAnimationFrameOffsetDrag => new_document.begin_animation_frame_offset_drag()?,
             UpdateAnimationFrameOffsetDrag(o, b) => {
                 new_document.update_animation_frame_offset_drag(*o, *b)?

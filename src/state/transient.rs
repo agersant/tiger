@@ -1,6 +1,5 @@
 use euclid::*;
 use std::collections::HashMap;
-use std::time::Duration;
 
 use crate::state::*;
 
@@ -53,13 +52,14 @@ pub struct HitboxPosition {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnimationFramePosition {
-    pub initial_offset: Vector2D<i32>,
+    pub initial_offset: HashMap<usize, Vector2D<i32>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnimationFrameDuration {
-    pub initial_duration: u32,
-    pub initial_clock: Duration,
+    pub reference_clock: u32,
+    pub frame_being_dragged: usize,
+    pub initial_duration: HashMap<usize, u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -79,8 +79,8 @@ impl Transient {
         use DocumentCommand::*;
         match command {
             BeginFramesDrag
-            | BeginAnimationFrameDurationDrag
-            | UpdateAnimationFrameDurationDrag(_)
+            | BeginAnimationFrameDurationDrag(_, _)
+            | UpdateAnimationFrameDurationDrag(_, _)
             | BeginAnimationFrameDrag
             | BeginAnimationFrameOffsetDrag
             | UpdateAnimationFrameOffsetDrag(_, _)

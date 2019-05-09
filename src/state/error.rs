@@ -36,6 +36,8 @@ pub enum StateError {
     NotRenaming,
     #[fail(display = "Not currently adjusting animation frame position")]
     NotAdjustingAnimationFramePosition,
+    #[fail(display = "Not currently adjusting animation frame duration")]
+    NotAdjustingAnimationFrameDuration,
     #[fail(display = "Not currently adjusting hitbox size")]
     NotAdjustingHitboxSize,
     #[fail(display = "Missing data while adjusting hitbox size")]
@@ -44,4 +46,8 @@ pub enum StateError {
     NotAdjustingHitboxPosition,
     #[fail(display = "Missing data while adjusting hitbox position")]
     MissingHitboxPositionData,
+    #[fail(display = "Missing data while adjusting animation frame position")]
+    MissingAnimationFramePositionData,
+    #[fail(display = "Missing data while adjusting animation frame duration")]
+    MissingAnimationFrameDurationData,
 }

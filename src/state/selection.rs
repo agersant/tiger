@@ -59,5 +59,5 @@ pub enum Selection {
 	Frame(MultiSelection<PathBuf>),
 	Animation(MultiSelection<String>),
 	Hitbox(MultiSelection<String>),
-	AnimationFrame(usize),
+	AnimationFrame(MultiSelection<usize>),
 }
