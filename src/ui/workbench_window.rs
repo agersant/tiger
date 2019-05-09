@@ -410,34 +410,32 @@ fn draw_animation<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_shift_down = ui.imgui().key_shift();
 
-        if document.is_moving_animation_frame() {
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
-            if is_mouse_dragging {
-                let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
-                commands.update_animation_frame_offset_drag(delta, !is_shift_down);
-            }
-            if let Some(Selection::AnimationFrame(selected_frame_indexes)) =
-                &document.view.selection
-            {
-                for selected_frame_index in &selected_frame_indexes.items {
-                    if *selected_frame_index != frame_index {
-                        if let Some(animation_frame) = animation.get_frame(*selected_frame_index) {
-                            ui.with_style_var(StyleVar::Alpha(0.2), || {
-                                draw_animation_frame(
-                                    ui,
-                                    commands,
-                                    texture_cache,
-                                    document,
-                                    animation_frame,
-                                    *selected_frame_index,
-                                    true,
-                                );
-                            });
-                        }
+        if let Some(Selection::AnimationFrame(selected_frame_indexes)) = &document.view.selection {
+            for selected_frame_index in &selected_frame_indexes.items {
+                if *selected_frame_index != frame_index {
+                    if let Some(animation_frame) = animation.get_frame(*selected_frame_index) {
+                        ui.with_style_var(StyleVar::Alpha(0.05), || {
+                            draw_animation_frame(
+                                ui,
+                                commands,
+                                texture_cache,
+                                document,
+                                animation_frame,
+                                *selected_frame_index,
+                                true,
+                            );
+                        });
                     }
                 }
             }
-        } else if drew {
+            if document.is_moving_animation_frame() && is_mouse_dragging {
+                ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
+                let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
+                commands.update_animation_frame_offset_drag(delta, !is_shift_down);
+            }
+        }
+
+        if drew && document.transient.is_none() {
             if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
             }
