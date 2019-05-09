@@ -72,7 +72,7 @@
 - [ ] Error dialogs
 - [ ] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
-- [ ] Multiple selections
+- [x] Multiple selections
 - [x] Jump to next/previous frame
 - [ ] Export perf fixes
 - [ ] Handle missing frame files (warning + offer to relocate)
