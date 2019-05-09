@@ -68,6 +68,7 @@
 ## Tiger 0.3
 - [x] Cap undo history at 100 entries
 - [x] Offer to save when closing individual documents
+- [ ] Visible handles for adjusting frame durations (instead of invisible buttons)
 - [ ] Error dialogs
 - [ ] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
@@ -105,7 +106,7 @@
 ## Tiger 1.0
 - [ ] Review all TODO
 - [ ] Provide export templates for some common formats (TBD)
-- [ ] Compile on Rust Stable
+- [x] Compile on Rust Stable
 - [x] Remove commands threads (keep long commands thread)
 - [ ] Get rid of failure crate
 - [ ] Document template format
