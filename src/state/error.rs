@@ -15,13 +15,13 @@ pub enum StateError {
     #[fail(display = "Frame does not have a hitbox with the requested name")]
     InvalidHitboxName,
     #[fail(display = "Animation does not have a frame at the requested index")]
-    InvalidAnimationFrameIndex,
-    #[fail(display = "No animation frame found for requested time")]
-    NoAnimationFrameForThisTime,
+    InvalidKeyframeIndex,
+    #[fail(display = "No keyframe found for requested time")]
+    NoKeyframeForThisTime,
     #[fail(display = "Expected a hitbox to be selected")]
     NoHitboxSelected,
-    #[fail(display = "Expected an animation frame to be selected")]
-    NoAnimationFrameSelected,
+    #[fail(display = "Expected an keyframe to be selected")]
+    NoKeyframeSelected,
     #[fail(display = "A hitbox with this name already exists")]
     HitboxAlreadyExists,
     #[fail(display = "An animation with this name already exists")]
@@ -34,20 +34,20 @@ pub enum StateError {
     NotExporting,
     #[fail(display = "Not currently renaming an item")]
     NotRenaming,
-    #[fail(display = "Not currently adjusting animation frame position")]
-    NotAdjustingAnimationFramePosition,
+    #[fail(display = "Not currently adjusting keyframe position")]
+    NotAdjustingKeyframePosition,
     #[fail(display = "Not currently adjusting hitbox size")]
     NotAdjustingHitboxSize,
     #[fail(display = "Not currently adjusting hitbox position")]
     NotAdjustingHitboxPosition,
-    #[fail(display = "Not currently adjusting animation frame duration")]
-    NotAdjustingAnimationFrameDuration,
+    #[fail(display = "Not currently adjusting keyframe duration")]
+    NotAdjustingKeyframeDuration,
     #[fail(display = "Missing data while adjusting hitbox size")]
     MissingHitboxSizeData,
     #[fail(display = "Missing data while adjusting hitbox position")]
     MissingHitboxPositionData,
-    #[fail(display = "Missing data while adjusting animation frame position")]
-    MissingAnimationFramePositionData,
-    #[fail(display = "Missing data while adjusting animation frame duration")]
-    MissingAnimationFrameDurationData,
+    #[fail(display = "Missing data while adjusting keyframe position")]
+    MissingKeyframePositionData,
+    #[fail(display = "Missing data while adjusting keyframe duration")]
+    MissingKeyframeDurationData,
 }

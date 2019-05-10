@@ -2,7 +2,7 @@ use euclid::*;
 use imgui::StyleVar::*;
 use imgui::*;
 
-use crate::sheet::{Animation, AnimationFrame, Frame, Hitbox};
+use crate::sheet::{Animation, Frame, Hitbox, Keyframe};
 use crate::state::*;
 use crate::streamer::{TextureCache, TextureCacheResult};
 use crate::ui::spinner::*;
@@ -301,21 +301,21 @@ fn draw_frame<'a>(
     }
 }
 
-fn draw_animation_frame<'a>(
+fn draw_keyframe<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
     texture_cache: &TextureCache,
     document: &Document,
-    animation_frame: &AnimationFrame,
-    frame_index: usize,
+    keyframe: &Keyframe,
+    keyframe_index: usize,
     is_selected: bool,
 ) -> bool {
     let zoom = document.view.get_workbench_zoom_factor();
     let offset = document.view.workbench_offset;
     let space: Vector2D<f32> = ui.get_window_size().into();
-    match texture_cache.get(&animation_frame.get_frame()) {
+    match texture_cache.get(&keyframe.get_frame()) {
         Some(TextureCacheResult::Loaded(texture)) => {
-            let frame_offset = animation_frame.get_offset().to_f32();
+            let frame_offset = keyframe.get_offset().to_f32();
             let draw_size = texture.size * zoom;
             let cursor_pos = offset + frame_offset * zoom + (space / 2.0).floor()
                 - ((draw_size / zoom / 2.0).floor() * zoom);
@@ -325,15 +325,15 @@ fn draw_animation_frame<'a>(
             ui.image(texture.id, draw_size.to_tuple()).build();
 
             ui.set_cursor_pos(cursor_pos.to_tuple());
-            if ui.invisible_button(im_str!("current_animation_frame"), draw_size.to_tuple()) {
+            if ui.invisible_button(im_str!("current_keyframe"), draw_size.to_tuple()) {
                 if document.transient.is_none() {
-                    commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
+                    commands.select_keyframes(&MultiSelection::new(vec![keyframe_index]));
                 }
             }
 
             let is_hovered = ui.is_item_hovered();
 
-            if let Some(frame) = document.sheet.get_frame(animation_frame.get_frame()) {
+            if let Some(frame) = document.sheet.get_frame(keyframe.get_frame()) {
                 for hitbox in frame.hitboxes_iter() {
                     draw_hitbox(
                         ui,
@@ -386,33 +386,33 @@ fn draw_animation<'a>(
     animation: &Animation,
 ) {
     let now = document.view.timeline_clock;
-    if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = document.is_animation_frame_selected(frame_index);
+    if let Some((keyframe_index, keyframe)) = animation.get_frame_at(now) {
+        let is_selected = document.is_keyframe_selected(keyframe_index);
 
-        let drew = draw_animation_frame(
+        let drew = draw_keyframe(
             ui,
             commands,
             texture_cache,
             document,
-            animation_frame,
-            frame_index,
+            keyframe,
+            keyframe_index,
             is_selected,
         );
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_shift_down = ui.imgui().key_shift();
 
-        if let Some(Selection::AnimationFrame(selected_frame_indexes)) = &document.view.selection {
+        if let Some(Selection::Keyframe(selected_frame_indexes)) = &document.view.selection {
             for selected_frame_index in &selected_frame_indexes.items {
-                if *selected_frame_index != frame_index {
-                    if let Some(animation_frame) = animation.get_frame(*selected_frame_index) {
+                if *selected_frame_index != keyframe_index {
+                    if let Some(keyframe) = animation.get_frame(*selected_frame_index) {
                         ui.with_style_var(StyleVar::Alpha(0.05), || {
-                            draw_animation_frame(
+                            draw_keyframe(
                                 ui,
                                 commands,
                                 texture_cache,
                                 document,
-                                animation_frame,
+                                keyframe,
                                 *selected_frame_index,
                                 true,
                             );
@@ -420,10 +420,10 @@ fn draw_animation<'a>(
                     }
                 }
             }
-            if document.is_moving_animation_frame() && is_mouse_dragging {
+            if document.is_moving_keyframe() && is_mouse_dragging {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeAll);
                 let delta = ui.imgui().mouse_drag_delta(ImMouseButton::Left).into();
-                commands.update_animation_frame_offset_drag(delta, !is_shift_down);
+                commands.update_keyframe_offset_drag(delta, !is_shift_down);
             }
         }
 
@@ -433,9 +433,9 @@ fn draw_animation<'a>(
             }
             if ui.is_item_active() && is_mouse_dragging {
                 if !is_selected {
-                    commands.select_animation_frames(&MultiSelection::new(vec![frame_index]));
+                    commands.select_keyframes(&MultiSelection::new(vec![keyframe_index]));
                 }
-                commands.begin_animation_frame_offset_drag();
+                commands.begin_keyframe_offset_drag();
             }
         }
     }
@@ -552,7 +552,7 @@ fn handle_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
                     if let Some(animation) = document.sheet.get_animation(animation_name) {
                         if let Some(Selection::Frame(paths)) = &document.view.selection {
                             let index = animation.get_num_frames();
-                            commands.insert_animation_frames_before(
+                            commands.insert_keyframes_before(
                                 paths.items.clone().iter().collect(),
                                 index,
                             );

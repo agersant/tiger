@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::sheet::{Animation, AnimationFrame, ExportFormat, ExportSettings, Frame, Hitbox, Sheet};
+use crate::sheet::{Animation, ExportFormat, ExportSettings, Frame, Hitbox, Keyframe, Sheet};
 
 mod pack;
 pub use pack::*;
@@ -131,22 +131,22 @@ fn liquid_data_from_frame(
     Ok(frame_data)
 }
 
-fn liquid_data_from_animation_frame(
+fn liquid_data_from_keyframe(
     sheet: &Sheet,
-    animation_frame: &AnimationFrame,
+    keyframe: &Keyframe,
     texture_layout: &TextureLayout,
 ) -> Result<LiquidData, Error> {
     let packed_frame = texture_layout
-        .get(animation_frame.get_frame())
+        .get(keyframe.get_frame())
         .ok_or(ExportError::FrameWasNotPacked)?;
 
     let mut map = LiquidData::new();
     map.insert(
         "duration".into(),
-        Value::Scalar(Scalar::new(animation_frame.get_duration() as i32)),
+        Value::Scalar(Scalar::new(keyframe.get_duration() as i32)),
     );
 
-    let center_offset = animation_frame.get_offset();
+    let center_offset = keyframe.get_offset();
     map.insert(
         "center_offset_x".into(),
         Value::Scalar(Scalar::new(center_offset.x)),
@@ -169,7 +169,7 @@ fn liquid_data_from_animation_frame(
     );
 
     let frame = sheet
-        .get_frame(animation_frame.get_frame())
+        .get_frame(keyframe.get_frame())
         .ok_or(ExportError::InvalidFrameReference)?;
 
     let frame_data = liquid_data_from_frame(sheet, frame, texture_layout)?;
@@ -196,8 +196,8 @@ fn liquid_data_from_animation(
     );
 
     let mut frames = Vec::new();
-    for animation_frame in animation.frames_iter() {
-        let frame = liquid_data_from_animation_frame(sheet, animation_frame, texture_layout)?;
+    for keyframe in animation.frames_iter() {
+        let frame = liquid_data_from_keyframe(sheet, keyframe, texture_layout)?;
         frames.push(Value::Object(frame));
     }
     map.insert("keyframes".into(), Value::Array(frames));

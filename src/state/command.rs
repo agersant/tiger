@@ -49,22 +49,22 @@ pub enum DocumentCommand {
     SelectFrames(MultiSelection<PathBuf>),
     SelectAnimations(MultiSelection<String>),
     SelectHitboxes(MultiSelection<String>),
-    SelectAnimationFrames(MultiSelection<usize>),
+    SelectKeyframes(MultiSelection<usize>),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
     BeginFramesDrag,
     EndFramesDrag,
-    InsertAnimationFramesBefore(Vec<PathBuf>, usize),
-    ReorderAnimationFrames(usize),
-    BeginAnimationFrameDurationDrag(u32, usize),
-    UpdateAnimationFrameDurationDrag(u32, u32),
-    EndAnimationFrameDurationDrag,
-    BeginAnimationFrameDrag,
-    EndAnimationFrameDrag,
-    BeginAnimationFrameOffsetDrag,
-    UpdateAnimationFrameOffsetDrag(Vector2D<f32>, bool),
-    EndAnimationFrameOffsetDrag,
+    InsertKeyframesBefore(Vec<PathBuf>, usize),
+    ReorderKeyframes(usize),
+    BeginKeyframeDurationDrag(u32, usize),
+    UpdateKeyframeDurationDrag(u32, u32),
+    EndKeyframeDurationDrag,
+    BeginKeyframeDrag,
+    EndKeyframeDrag,
+    BeginKeyframeOffsetDrag,
+    UpdateKeyframeOffsetDrag(Vector2D<f32>, bool),
+    EndKeyframeOffsetDrag,
     WorkbenchZoomIn,
     WorkbenchZoomOut,
     WorkbenchResetZoom,
@@ -119,7 +119,7 @@ impl fmt::Display for DocumentCommand {
             | SelectFrames(_)
             | SelectAnimations(_)
             | SelectHitboxes(_)
-            | SelectAnimationFrames(_)
+            | SelectKeyframes(_)
             | EditFrame(_)
             | EditAnimation(_)
             | WorkbenchZoomIn
@@ -144,18 +144,18 @@ impl fmt::Display for DocumentCommand {
             // Animation
             CreateAnimation => write!(f, "Create Animation"),
             ToggleLooping => write!(f, "Toggle Looping"),
-            BeginFramesDrag | EndFramesDrag | InsertAnimationFramesBefore(_, _) => {
+            BeginFramesDrag | EndFramesDrag | InsertKeyframesBefore(_, _) => {
                 write!(f, "Create Frame")
             }
-            BeginAnimationFrameDrag | EndAnimationFrameDrag | ReorderAnimationFrames(_) => {
+            BeginKeyframeDrag | EndKeyframeDrag | ReorderKeyframes(_) => {
                 write!(f, "Re-order Frames")
             }
-            BeginAnimationFrameDurationDrag(_, _)
-            | UpdateAnimationFrameDurationDrag(_, _)
-            | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
-            BeginAnimationFrameOffsetDrag
-            | UpdateAnimationFrameOffsetDrag(_, _)
-            | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
+            BeginKeyframeDurationDrag(_, _)
+            | UpdateKeyframeDurationDrag(_, _)
+            | EndKeyframeDurationDrag => write!(f, "Adjust Frame Duration"),
+            BeginKeyframeOffsetDrag | UpdateKeyframeOffsetDrag(_, _) | EndKeyframeOffsetDrag => {
+                write!(f, "Move Frame")
+            }
 
             // Hitbox
             CreateHitbox(_) => write!(f, "Create Hitbox"),

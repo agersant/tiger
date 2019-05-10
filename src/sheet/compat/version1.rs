@@ -34,7 +34,7 @@ pub struct Sheet {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Animation {
     pub name: String,
-    pub timeline: Vec<AnimationFrame>,
+    pub timeline: Vec<Keyframe>,
     pub is_looping: bool,
 }
 
@@ -45,7 +45,7 @@ pub struct Frame {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AnimationFrame {
+pub struct Keyframe {
     pub frame: PathBuf,
     pub duration: u32, // in ms
     pub offset: (i32, i32),

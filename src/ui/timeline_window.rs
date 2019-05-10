@@ -2,7 +2,7 @@ use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
 
-use crate::sheet::{Animation, AnimationFrame};
+use crate::sheet::{Animation, Keyframe};
 use crate::state::*;
 use crate::ui::Rect;
 
@@ -83,10 +83,10 @@ struct FrameLocation {
 fn get_frame_location(
     document: &Document,
     frame_starts_at: Duration,
-    animation_frame: &AnimationFrame,
+    keyframe: &Keyframe,
 ) -> FrameLocation {
     let zoom = document.view.get_timeline_zoom_factor();
-    let w = (animation_frame.get_duration() as f32 * zoom).ceil();
+    let w = (keyframe.get_duration() as f32 * zoom).ceil();
     let h = 20.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
     FrameLocation {
@@ -95,27 +95,27 @@ fn get_frame_location(
     }
 }
 
-fn draw_animation_frame<'a>(
+fn draw_keyframe<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
     document: &Document,
     animation: &Animation,
-    animation_frame_index: usize,
-    animation_frame: &AnimationFrame,
+    keyframe_index: usize,
+    keyframe: &Keyframe,
     frames_cursor_position_start: (f32, f32),
     frame_starts_at: Duration,
 ) {
-    let animation_frame_location = get_frame_location(document, frame_starts_at, animation_frame);
+    let keyframe_location = get_frame_location(document, frame_starts_at, keyframe);
     let zoom = document.view.get_timeline_zoom_factor();
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
-    let w = animation_frame_location.size.0;
-    let h = animation_frame_location.size.1;
+    let w = keyframe_location.size.0;
+    let h = keyframe_location.size.1;
     let is_too_small = w < 2.0 * outline_size + 1.0;
 
     let resize_handle_size_left = (w / 3.0).floor().min(max_resize_handle_size);
-    let resize_handle_size_right = match animation.get_frame(animation_frame_index + 1) {
+    let resize_handle_size_right = match animation.get_frame(keyframe_index + 1) {
         None => resize_handle_size_left,
         Some(n) => {
             let nw = (n.get_duration() as f32 * zoom).ceil();
@@ -126,10 +126,10 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = document.is_animation_frame_selected(animation_frame_index);
+    let is_selected = document.is_keyframe_selected(keyframe_index);
     let draw_list = ui.get_window_draw_list();
     let mut cursor_pos = ui.get_cursor_screen_pos();
-    cursor_pos.0 += animation_frame_location.top_left.0;
+    cursor_pos.0 += keyframe_location.top_left.0;
 
     // Draw outline
     let top_left = cursor_pos;
@@ -167,7 +167,7 @@ fn draw_animation_frame<'a>(
         );
 
         // Draw name
-        if let Some(name) = animation_frame.get_frame().file_name() {
+        if let Some(name) = keyframe.get_frame().file_name() {
             draw_list.with_clip_rect_intersect(fill_top_left, fill_bottom_right, || {
                 let text_color = outline_color; // TODO.style
                 let text_position = (fill_top_left.0 + text_padding, fill_top_left.1);
@@ -187,16 +187,16 @@ fn draw_animation_frame<'a>(
                 ),
             ) {
                 let new_selection = MultiSelection::process(
-                    animation_frame_index,
+                    keyframe_index,
                     ui.imgui().key_shift(),
                     ui.imgui().key_ctrl(),
                     &(0..animation.get_num_frames()).collect(),
                     match &document.view.selection {
-                        Some(Selection::AnimationFrame(s)) => Some(s),
+                        Some(Selection::Keyframe(s)) => Some(s),
                         _ => None,
                     },
                 );
-                commands.select_animation_frames(&new_selection);
+                commands.select_keyframes(&new_selection);
             }
         }
     }
@@ -216,9 +216,9 @@ fn draw_animation_frame<'a>(
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         if document.transient.is_none() && is_mouse_dragging && is_hovering_frame_exact {
             if !is_selected {
-                commands.select_animation_frames(&MultiSelection::new(vec![animation_frame_index]));
+                commands.select_keyframes(&MultiSelection::new(vec![keyframe_index]));
             }
-            commands.begin_animation_frame_drag();
+            commands.begin_keyframe_drag();
         }
     }
 
@@ -236,17 +236,12 @@ fn draw_animation_frame<'a>(
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                 if is_mouse_down && !is_mouse_dragging {
                     if !is_selected {
-                        commands.select_animation_frames(&MultiSelection::new(vec![
-                            animation_frame_index,
-                        ]));
+                        commands.select_keyframes(&MultiSelection::new(vec![keyframe_index]));
                     }
                     let mouse_pos = ui.imgui().mouse_pos();
                     let clock_under_mouse =
                         ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
-                    commands.begin_animation_frame_duration_drag(
-                        clock_under_mouse,
-                        animation_frame_index,
-                    );
+                    commands.begin_keyframe_duration_drag(clock_under_mouse, keyframe_index);
                 }
             }
         }
@@ -291,13 +286,13 @@ fn get_frame_under_mouse<'a>(
 ) -> Option<(usize, FrameLocation)> {
     let mouse_pos = ui.imgui().mouse_pos();
     let mut cursor = Duration::new(0, 0);
-    for (frame_index, animation_frame) in animation.frames_iter().enumerate() {
-        let frame_location = get_frame_location(document, cursor, animation_frame);
+    for (keyframe_index, keyframe) in animation.frames_iter().enumerate() {
+        let frame_location = get_frame_location(document, cursor, keyframe);
         let frame_start_x = start_screen_position.0 + frame_location.top_left.0;
         if mouse_pos.0 >= frame_start_x && mouse_pos.0 < (frame_start_x + frame_location.size.0) {
-            return Some((frame_index, frame_location));
+            return Some((keyframe_index, frame_location));
         }
-        cursor += Duration::from_millis(u64::from(animation_frame.get_duration()));
+        cursor += Duration::from_millis(u64::from(keyframe.get_duration()));
     }
     None
 }
@@ -319,7 +314,7 @@ fn handle_drag_to_resize<'a>(
         let clock_under_mouse =
             ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
         let minimum_duration = (min_frame_drag_width / zoom).max(1.0).ceil() as u32;
-        commands.update_animation_frame_duration_drag(clock_under_mouse, minimum_duration);
+        commands.update_keyframe_duration_drag(clock_under_mouse, minimum_duration);
     }
 }
 
@@ -338,7 +333,7 @@ fn handle_drag_and_drop<'a>(
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if is_window_hovered {
         let dragging_content_frames = document.is_dragging_content_frames();
-        let dragging_animation_frame = document.is_dragging_timeline_frames();
+        let dragging_keyframe = document.is_dragging_timeline_frames();
         let frame_under_mouse = get_frame_under_mouse(ui, document, animation, cursor_start);
         let h = cursor_end.1 - cursor_start.1;
 
@@ -346,7 +341,7 @@ fn handle_drag_and_drop<'a>(
             match (
                 frame_under_mouse,
                 dragging_content_frames,
-                dragging_animation_frame,
+                dragging_keyframe,
             ) {
                 (Some((_, frame_location)), true, false)
                 | (Some((_, frame_location)), false, true) => {
@@ -371,7 +366,7 @@ fn handle_drag_and_drop<'a>(
             match (
                 frame_under_mouse,
                 dragging_content_frames,
-                dragging_animation_frame,
+                dragging_keyframe,
             ) {
                 (None, true, false) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
@@ -380,10 +375,8 @@ fn handle_drag_and_drop<'a>(
                         animation.get_num_frames()
                     };
                     if let Some(Selection::Frame(paths)) = &document.view.selection {
-                        commands.insert_animation_frames_before(
-                            paths.items.clone().iter().collect(),
-                            index,
-                        );
+                        commands
+                            .insert_keyframes_before(paths.items.clone().iter().collect(), index);
                     }
                 }
                 (None, false, true) => {
@@ -392,18 +385,16 @@ fn handle_drag_and_drop<'a>(
                     } else {
                         animation.get_num_frames()
                     };
-                    commands.reorder_animation_frames(index);
+                    commands.reorder_keyframes(index);
                 }
                 (Some((index, _)), true, false) => {
                     if let Some(Selection::Frame(paths)) = &document.view.selection {
-                        commands.insert_animation_frames_before(
-                            paths.items.clone().iter().collect(),
-                            index,
-                        );
+                        commands
+                            .insert_keyframes_before(paths.items.clone().iter().collect(), index);
                     }
                 }
                 (Some((index, _)), false, true) => {
-                    commands.reorder_animation_frames(index);
+                    commands.reorder_keyframes(index);
                 }
                 _ => (),
             }
@@ -443,24 +434,20 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                             let frames_cursor_position_start = ui.get_cursor_screen_pos();
                             let mut frames_cursor_position_end = frames_cursor_position_start;
                             let mut cursor = Duration::new(0, 0);
-                            for (frame_index, animation_frame) in
-                                animation.frames_iter().enumerate()
-                            {
+                            for (keyframe_index, keyframe) in animation.frames_iter().enumerate() {
                                 ui.set_cursor_screen_pos(frames_cursor_position_start);
-                                draw_animation_frame(
+                                draw_keyframe(
                                     ui,
                                     commands,
                                     document,
                                     animation,
-                                    frame_index,
-                                    animation_frame,
+                                    keyframe_index,
+                                    keyframe,
                                     frames_cursor_position_start,
                                     cursor,
                                 );
                                 frames_cursor_position_end = ui.get_cursor_screen_pos();
-                                cursor += Duration::from_millis(u64::from(
-                                    animation_frame.get_duration(),
-                                ));
+                                cursor += Duration::from_millis(u64::from(keyframe.get_duration()));
                             }
 
                             ui.set_cursor_pos(ticks_cursor_position);

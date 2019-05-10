@@ -218,9 +218,9 @@ impl CommandBuffer {
             .push(Sync(Document(SelectHitboxes(names.clone()))));
     }
 
-    pub fn select_animation_frames(&mut self, indexes: &MultiSelection<usize>) {
+    pub fn select_keyframes(&mut self, indexes: &MultiSelection<usize>) {
         self.queue
-            .push(Sync(Document(SelectAnimationFrames(indexes.clone()))));
+            .push(Sync(Document(SelectKeyframes(indexes.clone()))));
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {
@@ -246,81 +246,81 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(EndFramesDrag)));
     }
 
-    pub fn insert_animation_frames_before<T: AsRef<Path>>(
+    pub fn insert_keyframes_before<T: AsRef<Path>>(
         &mut self,
         frames: Vec<T>,
-        animation_frame_index: usize,
+        keyframe_index: usize,
     ) {
         let mut sorted_frames: Vec<PathBuf> =
             frames.iter().map(|p| p.as_ref().to_owned()).collect();
         sorted_frames.sort();
-        self.queue.push(Sync(Document(InsertAnimationFramesBefore(
+        self.queue.push(Sync(Document(InsertKeyframesBefore(
             sorted_frames,
-            animation_frame_index,
+            keyframe_index,
         ))));
     }
 
-    pub fn reorder_animation_frames(&mut self, new_index: usize) {
+    pub fn reorder_keyframes(&mut self, new_index: usize) {
         self.queue
-            .push(Sync(Document(ReorderAnimationFrames(new_index))));
+            .push(Sync(Document(ReorderKeyframes(new_index))));
     }
 
-    pub fn begin_animation_frame_duration_drag(
+    pub fn begin_keyframe_duration_drag(
         &mut self,
         clock_at_cursor: u32,
         frame_being_dragged: usize,
     ) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameDurationDrag(
+            .push(Sync(Document(BeginKeyframeDurationDrag(
                 clock_at_cursor,
                 frame_being_dragged,
             ))));
     }
 
-    pub fn update_animation_frame_duration_drag(
+    pub fn update_keyframe_duration_drag(
         &mut self,
         clock_at_cursor: u32,
         minimum_duration: u32,
     ) {
         self.queue
-            .push(Sync(Document(UpdateAnimationFrameDurationDrag(
+            .push(Sync(Document(UpdateKeyframeDurationDrag(
                 clock_at_cursor,
                 minimum_duration,
             ))));
     }
 
-    pub fn end_animation_frame_duration_drag(&mut self) {
+    pub fn end_keyframe_duration_drag(&mut self) {
         self.queue
-            .push(Sync(Document(EndAnimationFrameDurationDrag)));
+            .push(Sync(Document(EndKeyframeDurationDrag)));
     }
 
-    pub fn begin_animation_frame_drag(&mut self) {
-        self.queue.push(Sync(Document(BeginAnimationFrameDrag)));
+    pub fn begin_keyframe_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginKeyframeDrag)));
     }
 
-    pub fn end_animation_frame_drag(&mut self) {
-        self.queue.push(Sync(Document(EndAnimationFrameDrag)));
+    pub fn end_keyframe_drag(&mut self) {
+        self.queue.push(Sync(Document(EndKeyframeDrag)));
     }
 
-    pub fn begin_animation_frame_offset_drag(&mut self) {
+    pub fn begin_keyframe_offset_drag(&mut self) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameOffsetDrag)));
+            .push(Sync(Document(BeginKeyframeOffsetDrag)));
     }
 
-    pub fn update_animation_frame_offset_drag(
+    pub fn update_keyframe_offset_drag(
         &mut self,
         mouse_delta: Vector2D<f32>,
         both_axis: bool,
     ) {
         self.queue
-            .push(Sync(Document(UpdateAnimationFrameOffsetDrag(
+            .push(Sync(Document(UpdateKeyframeOffsetDrag(
                 mouse_delta,
                 both_axis,
             ))));
     }
 
-    pub fn end_animation_frame_offset_drag(&mut self) {
-        self.queue.push(Sync(Document(EndAnimationFrameOffsetDrag)));
+    pub fn end_keyframe_offset_drag(&mut self) {
+        self.queue.push(Sync(Document(EndKeyframeOffsetDrag)));
     }
 
     pub fn workbench_zoom_in(&mut self) {

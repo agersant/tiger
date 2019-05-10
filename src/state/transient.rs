@@ -51,12 +51,12 @@ pub struct HitboxPosition {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct AnimationFramePosition {
+pub struct KeyframePosition {
     pub initial_offset: HashMap<usize, Vector2D<i32>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct AnimationFrameDuration {
+pub struct KeyframeDuration {
     pub reference_clock: u32,
     pub frame_being_dragged: usize,
     pub initial_duration: HashMap<usize, u32>,
@@ -68,8 +68,8 @@ pub enum Transient {
     Rename(Rename),
     HitboxPosition(HitboxPosition),
     HitboxSize(HitboxSize),
-    AnimationFramePosition(AnimationFramePosition),
-    AnimationFrameDuration(AnimationFrameDuration),
+    KeyframePosition(KeyframePosition),
+    KeyframeDuration(KeyframeDuration),
     TimelineFrameDrag,
     TimelineScrub,
 }
@@ -79,11 +79,11 @@ impl Transient {
         use DocumentCommand::*;
         match command {
             BeginFramesDrag
-            | BeginAnimationFrameDurationDrag(_, _)
-            | UpdateAnimationFrameDurationDrag(_, _)
-            | BeginAnimationFrameDrag
-            | BeginAnimationFrameOffsetDrag
-            | UpdateAnimationFrameOffsetDrag(_, _)
+            | BeginKeyframeDurationDrag(_, _)
+            | UpdateKeyframeDurationDrag(_, _)
+            | BeginKeyframeDrag
+            | BeginKeyframeOffsetDrag
+            | UpdateKeyframeOffsetDrag(_, _)
             | BeginHitboxScale(_)
             | UpdateHitboxScale(_, _)
             | BeginHitboxDrag

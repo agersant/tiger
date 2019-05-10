@@ -123,7 +123,7 @@ pub enum Selection {
 	Frame(MultiSelection<PathBuf>),
 	Animation(MultiSelection<String>),
 	Hitbox(MultiSelection<String>),
-	AnimationFrame(MultiSelection<usize>),
+	Keyframe(MultiSelection<usize>),
 }
 
 impl Selection {
@@ -148,9 +148,9 @@ impl Selection {
 		}
 	}
 
-	pub fn is_animation_frame_selected(&self, index: usize) -> bool {
+	pub fn is_keyframe_selected(&self, index: usize) -> bool {
 		match self {
-			Selection::AnimationFrame(s) => s.items.iter().any(|i| *i == index),
+			Selection::Keyframe(s) => s.items.iter().any(|i| *i == index),
 			_ => false,
 		}
 	}

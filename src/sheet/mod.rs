@@ -40,8 +40,8 @@ impl Sheet {
                 .ok_or(SheetError::AbsoluteToRelativePath)?;
         }
         for animation in sheet.animations.iter_mut() {
-            for animation_frame in animation.frames_iter_mut() {
-                animation_frame.frame = diff_paths(&animation_frame.frame, relative_to.as_ref())
+            for keyframe in animation.frames_iter_mut() {
+                keyframe.frame = diff_paths(&keyframe.frame, relative_to.as_ref())
                     .ok_or(SheetError::AbsoluteToRelativePath)?;
             }
         }
@@ -57,9 +57,8 @@ impl Sheet {
             frame.source = canonicalize(relative_to.as_ref().join(&frame.source))?;
         }
         for animation in sheet.animations.iter_mut() {
-            for animation_frame in animation.frames_iter_mut() {
-                animation_frame.frame =
-                    canonicalize(relative_to.as_ref().join(&&animation_frame.frame))?;
+            for keyframe in animation.frames_iter_mut() {
+                keyframe.frame = canonicalize(relative_to.as_ref().join(&&keyframe.frame))?;
             }
         }
         if let Some(e) = sheet.export_settings {
@@ -150,7 +149,7 @@ impl Sheet {
     pub fn delete_frame<T: AsRef<Path>>(&mut self, path: T) {
         self.frames.retain(|f| f.source != path.as_ref());
         for animation in self.animations.iter_mut() {
-            animation.timeline.retain(|af| af.frame != path.as_ref())
+            animation.timeline.retain(|kf| kf.frame != path.as_ref())
         }
     }
 
@@ -164,7 +163,7 @@ impl Sheet {
         self.animations.retain(|a| a.name != name.as_ref());
     }
 
-    pub fn delete_animation_frame<T: AsRef<str>>(&mut self, animation_name: T, frame_index: usize) {
+    pub fn delete_keyframe<T: AsRef<str>>(&mut self, animation_name: T, frame_index: usize) {
         if let Some(animation) = self.get_animation_mut(animation_name) {
             if frame_index < animation.timeline.len() {
                 animation.timeline.remove(frame_index);
@@ -205,21 +204,21 @@ impl Animation {
         Some(self.timeline.iter().map(|f| f.duration).sum())
     }
 
-    pub fn get_frame(&self, index: usize) -> Option<&AnimationFrame> {
+    pub fn get_frame(&self, index: usize) -> Option<&Keyframe> {
         if index >= self.timeline.len() {
             return None;
         }
         Some(&self.timeline[index])
     }
 
-    pub fn get_frame_mut(&mut self, index: usize) -> Option<&mut AnimationFrame> {
+    pub fn get_frame_mut(&mut self, index: usize) -> Option<&mut Keyframe> {
         if index >= self.timeline.len() {
             return None;
         }
         Some(&mut self.timeline[index])
     }
 
-    pub fn get_frame_at(&self, time: Duration) -> Option<(usize, &AnimationFrame)> {
+    pub fn get_frame_at(&self, time: Duration) -> Option<(usize, &Keyframe)> {
         let duration = match self.get_duration() {
             None => return None,
             Some(0) => return None,
@@ -259,35 +258,31 @@ impl Animation {
         if index > self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
         }
-        let animation_frame = AnimationFrame::new(frame);
-        self.timeline.insert(index, animation_frame);
+        let keyframe = Keyframe::new(frame);
+        self.timeline.insert(index, keyframe);
         Ok(())
     }
 
-    pub fn insert_frame(
-        &mut self,
-        animation_frame: AnimationFrame,
-        index: usize,
-    ) -> Result<(), Error> {
+    pub fn insert_frame(&mut self, keyframe: Keyframe, index: usize) -> Result<(), Error> {
         if index > self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
         }
-        self.timeline.insert(index, animation_frame);
+        self.timeline.insert(index, keyframe);
         Ok(())
     }
 
-    pub fn take_frame(&mut self, index: usize) -> Result<AnimationFrame, Error> {
+    pub fn take_frame(&mut self, index: usize) -> Result<Keyframe, Error> {
         if index >= self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
         }
         Ok(self.timeline.remove(index))
     }
 
-    pub fn frames_iter(&self) -> std::slice::Iter<'_, AnimationFrame> {
+    pub fn frames_iter(&self) -> std::slice::Iter<'_, Keyframe> {
         self.timeline.iter()
     }
 
-    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<'_, AnimationFrame> {
+    pub fn frames_iter_mut(&mut self) -> std::slice::IterMut<'_, Keyframe> {
         self.timeline.iter_mut()
     }
 }
@@ -434,9 +429,9 @@ impl PartialOrd for Hitbox {
     }
 }
 
-impl AnimationFrame {
-    pub fn new<T: AsRef<Path>>(frame: T) -> AnimationFrame {
-        AnimationFrame {
+impl Keyframe {
+    pub fn new<T: AsRef<Path>>(frame: T) -> Keyframe {
+        Keyframe {
             frame: frame.as_ref().to_owned(),
             duration: 100, // TODO better default?
             offset: (0, 0),

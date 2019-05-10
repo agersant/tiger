@@ -44,7 +44,7 @@ impl From<previous_version::Sheet> for Sheet {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Animation {
     pub name: String,
-    pub timeline: Vec<AnimationFrame>,
+    pub timeline: Vec<Keyframe>,
     pub is_looping: bool,
 }
 
@@ -74,15 +74,15 @@ impl From<previous_version::Frame> for Frame {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AnimationFrame {
+pub struct Keyframe {
     pub frame: PathBuf,
     pub duration: u32, // in ms
     pub offset: (i32, i32),
 }
 
-impl From<previous_version::AnimationFrame> for AnimationFrame {
-    fn from(old: previous_version::AnimationFrame) -> AnimationFrame {
-        AnimationFrame {
+impl From<previous_version::Keyframe> for Keyframe {
+    fn from(old: previous_version::Keyframe) -> Keyframe {
+        Keyframe {
             frame: old.frame,
             duration: old.duration,
             offset: old.offset,

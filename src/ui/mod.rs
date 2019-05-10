@@ -389,13 +389,9 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
             match document.transient {
                 Some(Transient::ContentFramesDrag) => commands.end_frames_drag(),
-                Some(Transient::AnimationFrameDuration(_)) => {
-                    commands.end_animation_frame_duration_drag()
-                }
-                Some(Transient::AnimationFramePosition(_)) => {
-                    commands.end_animation_frame_offset_drag()
-                }
-                Some(Transient::TimelineFrameDrag) => commands.end_animation_frame_drag(),
+                Some(Transient::KeyframeDuration(_)) => commands.end_keyframe_duration_drag(),
+                Some(Transient::KeyframePosition(_)) => commands.end_keyframe_offset_drag(),
+                Some(Transient::TimelineFrameDrag) => commands.end_keyframe_drag(),
                 Some(Transient::HitboxPosition(_)) => commands.end_hitbox_drag(),
                 Some(Transient::HitboxSize(_)) => commands.end_hitbox_scale(),
                 Some(Transient::TimelineScrub) => commands.end_scrub(),

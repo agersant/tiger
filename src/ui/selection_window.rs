@@ -82,11 +82,11 @@ fn draw_animation<'a>(
                 let time = Duration::from_millis(
                     app_state.get_clock().as_millis() as u64 % u64::from(duration),
                 ); // TODO pause on first and last frame for non looping animation?
-                let (_, animation_frame) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
-                match texture_cache.get(animation_frame.get_frame()) {
+                let (_, keyframe) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
+                match texture_cache.get(keyframe.get_frame()) {
                     Some(TextureCacheResult::Loaded(texture)) => {
                         let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
-                        let frame_offset = animation_frame.get_offset().to_f32();
+                        let frame_offset = keyframe.get_offset().to_f32();
                         let draw_position = cursor_pos
                             + fill.rect.origin.to_vector()
                             + (frame_offset
@@ -113,17 +113,13 @@ fn draw_animation<'a>(
     }
 }
 
-fn draw_animation_frame<'a>(
-    ui: &Ui<'a>,
-    texture_cache: &TextureCache,
-    animation_frame: &AnimationFrame,
-) {
-    let frame = animation_frame.get_frame();
+fn draw_keyframe<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, keyframe: &Keyframe) {
+    let frame = keyframe.get_frame();
     if let Some(name) = frame.file_name() {
         ui.text(&ImString::new(name.to_string_lossy()));
         ui.text(&ImString::new(format!(
             "Duration: {}ms",
-            animation_frame.get_duration()
+            keyframe.get_duration()
         )));
         let space = ui.get_content_region_avail().into();
         match texture_cache.get(frame) {
@@ -168,14 +164,14 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
                                 draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
-                        Some(Selection::AnimationFrame(indexes)) => {
+                        Some(Selection::Keyframe(indexes)) => {
                             if let Some(WorkbenchItem::Animation(name)) =
                                 &document.view.workbench_item
                             {
                                 let index = indexes.last_touched_in_range;
                                 if let Some(animation) = document.sheet.get_animation(name) {
-                                    if let Some(animation_frame) = animation.get_frame(index) {
-                                        draw_animation_frame(ui, texture_cache, animation_frame);
+                                    if let Some(keyframe) = animation.get_frame(index) {
+                                        draw_keyframe(ui, texture_cache, keyframe);
                                     }
                                 }
                             }
