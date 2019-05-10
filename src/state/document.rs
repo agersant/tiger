@@ -636,7 +636,7 @@ impl Document {
 
         let animation = self
             .sheet
-            .get_animation_mut(animation_name)
+            .get_animation(animation_name)
             .ok_or(StateError::AnimationNotInDocument)?;
 
         let mut initial_offset = HashMap::new();
