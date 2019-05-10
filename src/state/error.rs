@@ -4,16 +4,24 @@ pub enum StateError {
     NoDocumentOpen,
     #[fail(display = "Requested document was not found")]
     DocumentNotFound,
-    #[fail(display = "Sheet has no export settings")]
-    NoExistingExportSettings,
     #[fail(display = "Cannot perform undo operation")]
     UndoOperationNowAllowed,
+    #[fail(display = "Sheet has no export settings")]
+    NoExistingExportSettings,
     #[fail(display = "Requested frame is not in document")]
     FrameNotInDocument,
     #[fail(display = "Requested animation is not in document")]
     AnimationNotInDocument,
-    #[fail(display = "Requested hitbox is not in frame")]
-    HitboxNotInFrame,
+    #[fail(display = "Frame does not have a hitbox with the requested name")]
+    InvalidHitboxName,
+    #[fail(display = "Animation does not have a frame at the requested index")]
+    InvalidAnimationFrameIndex,
+    #[fail(display = "No animation frame found for requested time")]
+    NoAnimationFrameForThisTime,
+    #[fail(display = "Expected a hitbox to be selected")]
+    NoHitboxSelected,
+    #[fail(display = "Expected an animation frame to be selected")]
+    NoAnimationFrameSelected,
     #[fail(display = "A hitbox with this name already exists")]
     HitboxAlreadyExists,
     #[fail(display = "An animation with this name already exists")]
@@ -22,18 +30,24 @@ pub enum StateError {
     NotEditingAnyFrame,
     #[fail(display = "Not currently editing any animation")]
     NotEditingAnyAnimation,
-    #[fail(display = "Currently not adjusting a hitbox")]
-    NotDraggingAHitbox,
-    #[fail(display = "Frame does not have a hitbox at the requested index")]
-    InvalidHitboxIndex,
-    #[fail(display = "Animation does not have a frame at the requested index")]
-    InvalidAnimationFrameIndex,
-    #[fail(display = "Currently not adjusting the duration of an animation frame")]
-    NotDraggingATimelineFrame,
-    #[fail(display = "No animation frame found for requested time")]
-    NoAnimationFrameForThisTime,
     #[fail(display = "Not currently adjusting export settings")]
     NotExporting,
     #[fail(display = "Not currently renaming an item")]
     NotRenaming,
+    #[fail(display = "Not currently adjusting animation frame position")]
+    NotAdjustingAnimationFramePosition,
+    #[fail(display = "Not currently adjusting hitbox size")]
+    NotAdjustingHitboxSize,
+    #[fail(display = "Not currently adjusting hitbox position")]
+    NotAdjustingHitboxPosition,
+    #[fail(display = "Not currently adjusting animation frame duration")]
+    NotAdjustingAnimationFrameDuration,
+    #[fail(display = "Missing data while adjusting hitbox size")]
+    MissingHitboxSizeData,
+    #[fail(display = "Missing data while adjusting hitbox position")]
+    MissingHitboxPositionData,
+    #[fail(display = "Missing data while adjusting animation frame position")]
+    MissingAnimationFramePositionData,
+    #[fail(display = "Missing data while adjusting animation frame duration")]
+    MissingAnimationFrameDurationData,
 }

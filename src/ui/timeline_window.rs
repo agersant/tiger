@@ -15,7 +15,7 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: 
     let cursor_start = ui.get_cursor_screen_pos();
     let max_draw_x = cursor_start.0 + ui.get_content_region_avail().0
         - ui.get_window_content_region_min().0
-        + 2.0 * ui.get_cursor_pos().0;
+        + 2.0 * ui.get_cursor_pos().0; // TODO DPI on 2x factor?
 
     let mut x = cursor_start.0;
     let mut delta_t = 0;
@@ -49,8 +49,7 @@ fn draw_timeline_ticks<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: 
     {
         commands.begin_scrub();
     }
-    let is_scrubbing = document.transient.timeline_scrubbing;
-    if clicked || is_scrubbing {
+    if clicked || document.is_scrubbing_timeline() {
         let mouse_pos = ui.imgui().mouse_pos();
         let delta = mouse_pos.0 - cursor_start.0;
         let new_t = delta / zoom;
@@ -103,6 +102,7 @@ fn draw_animation_frame<'a>(
     animation: &Animation,
     animation_frame_index: usize,
     animation_frame: &AnimationFrame,
+    frames_cursor_position_start: (f32, f32),
     frame_starts_at: Duration,
 ) {
     let animation_frame_location = get_frame_location(document, frame_starts_at, animation_frame);
@@ -110,7 +110,6 @@ fn draw_animation_frame<'a>(
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
-    let min_frame_drag_width = 24.0; // TODO DPI?
     let w = animation_frame_location.size.0;
     let h = animation_frame_location.size.1;
     let is_too_small = w < 2.0 * outline_size + 1.0;
@@ -127,12 +126,7 @@ fn draw_animation_frame<'a>(
         .min(resize_handle_size_right)
         .max(1.0);
 
-    let is_selected = &document.view.selection
-        == &Some(Selection::AnimationFrame(
-            animation.get_name().to_string(),
-            animation_frame_index,
-        ));
-
+    let is_selected = document.is_animation_frame_selected(animation_frame_index);
     let draw_list = ui.get_window_draw_list();
     let mut cursor_pos = ui.get_cursor_screen_pos();
     cursor_pos.0 += animation_frame_location.top_left.0;
@@ -192,13 +186,23 @@ fn draw_animation_frame<'a>(
                     bottom_right.1 - top_left.1,
                 ),
             ) {
-                commands.select_animation_frame(animation_frame_index);
+                let new_selection = MultiSelection::process(
+                    animation_frame_index,
+                    ui.imgui().key_shift(),
+                    ui.imgui().key_ctrl(),
+                    &(0..animation.get_num_frames()).collect(),
+                    match &document.view.selection {
+                        Some(Selection::AnimationFrame(s)) => Some(s),
+                        _ => None,
+                    },
+                );
+                commands.select_animation_frames(&new_selection);
             }
         }
     }
 
     // Drag and drop interactions
-    let is_dragging_duration = document.transient.timeline_frame_being_scaled.is_some();
+    let is_dragging_duration = document.is_adjusting_frame_duration();
     if !is_dragging_duration {
         let is_hovering_frame_exact = if is_too_small {
             false
@@ -210,14 +214,11 @@ fn draw_animation_frame<'a>(
         };
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
-        let dragging_frame = document.transient.content_frame_being_dragged.is_some();
-        let dragging_animation_frame = document.transient.timeline_frame_being_dragged.is_some();
-
-        if !dragging_frame & !dragging_animation_frame
-            && is_mouse_dragging
-            && is_hovering_frame_exact
-        {
-            commands.begin_animation_frame_drag(animation_frame_index);
+        if document.transient.is_none() && is_mouse_dragging && is_hovering_frame_exact {
+            if !is_selected {
+                commands.select_animation_frames(&MultiSelection::new(vec![animation_frame_index]));
+            }
+            commands.begin_animation_frame_drag();
         }
     }
 
@@ -230,26 +231,25 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        match document.transient.timeline_frame_being_scaled {
-            None => {
-                if ui.is_item_hovered() {
-                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                    if is_mouse_down && !is_mouse_dragging {
-                        commands.begin_animation_frame_duration_drag(animation_frame_index);
-                    }
-                }
-            }
-            Some(i) if i == animation_frame_index => {
+        if document.transient.is_none() {
+            if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-                if is_mouse_dragging {
+                if is_mouse_down && !is_mouse_dragging {
+                    if !is_selected {
+                        commands.select_animation_frames(&MultiSelection::new(vec![
+                            animation_frame_index,
+                        ]));
+                    }
                     let mouse_pos = ui.imgui().mouse_pos();
-                    let new_width = (mouse_pos.0 - top_left.0).max(min_frame_drag_width);
-                    let new_duration = std::cmp::max((new_width / zoom).ceil() as i32, 1) as u32;
-                    commands.update_animation_frame_duration_drag(new_duration);
+                    let clock_under_mouse =
+                        ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
+                    commands.begin_animation_frame_duration_drag(
+                        clock_under_mouse,
+                        animation_frame_index,
+                    );
                 }
             }
-            _ => (),
-        };
+        }
     }
 
     ui.set_cursor_screen_pos(bottom_right);
@@ -302,6 +302,27 @@ fn get_frame_under_mouse<'a>(
     None
 }
 
+fn handle_drag_to_resize<'a>(
+    ui: &Ui<'a>,
+    commands: &mut CommandBuffer,
+    document: &Document,
+    frames_cursor_position_start: (f32, f32),
+) {
+    let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+    let is_dragging_duration = document.is_adjusting_frame_duration();
+    let zoom = document.view.get_timeline_zoom_factor();
+    let min_frame_drag_width = 24.0; // TODO DPI?
+
+    if is_dragging_duration && is_mouse_dragging {
+        ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
+        let mouse_pos = ui.imgui().mouse_pos();
+        let clock_under_mouse =
+            ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
+        let minimum_duration = (min_frame_drag_width / zoom).max(1.0).ceil() as u32;
+        commands.update_animation_frame_duration_drag(clock_under_mouse, minimum_duration);
+    }
+}
+
 fn handle_drag_and_drop<'a>(
     ui: &Ui<'a>,
     commands: &mut CommandBuffer,
@@ -316,24 +337,26 @@ fn handle_drag_and_drop<'a>(
     let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
     let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
     if is_window_hovered {
+        let dragging_content_frames = document.is_dragging_content_frames();
+        let dragging_animation_frame = document.is_dragging_timeline_frames();
         let frame_under_mouse = get_frame_under_mouse(ui, document, animation, cursor_start);
         let h = cursor_end.1 - cursor_start.1;
 
         if is_mouse_dragging {
             match (
                 frame_under_mouse,
-                &document.transient.content_frame_being_dragged,
-                &document.transient.timeline_frame_being_dragged,
+                dragging_content_frames,
+                dragging_animation_frame,
             ) {
-                (Some((_, frame_location)), Some(_), None)
-                | (Some((_, frame_location)), None, Some(_)) => {
+                (Some((_, frame_location)), true, false)
+                | (Some((_, frame_location)), false, true) => {
                     ui.set_cursor_screen_pos((
                         cursor_start.0 + frame_location.top_left.0,
                         cursor_start.1,
                     ));
                     draw_insert_marker(ui, &ui.get_window_draw_list(), h);
                 }
-                (None, Some(_), None) | (None, None, Some(_)) => {
+                (None, true, false) | (None, false, true) => {
                     let x = if mouse_pos.0 <= cursor_start.0 {
                         cursor_start.0
                     } else {
@@ -347,30 +370,40 @@ fn handle_drag_and_drop<'a>(
         } else if !is_mouse_down {
             match (
                 frame_under_mouse,
-                &document.transient.content_frame_being_dragged,
-                &document.transient.timeline_frame_being_dragged,
+                dragging_content_frames,
+                dragging_animation_frame,
             ) {
-                (None, Some(ref dragged_frame), None) => {
+                (None, true, false) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
                         0
                     } else {
                         animation.get_num_frames()
                     };
-                    commands.insert_animation_frame_before(dragged_frame, index);
+                    if let Some(Selection::Frame(paths)) = &document.view.selection {
+                        commands.insert_animation_frames_before(
+                            paths.items.clone().iter().collect(),
+                            index,
+                        );
+                    }
                 }
-                (None, None, Some(ref dragged_animation_frame)) => {
+                (None, false, true) => {
                     let index = if mouse_pos.0 <= cursor_start.0 {
                         0
                     } else {
                         animation.get_num_frames()
                     };
-                    commands.reorder_animation_frame(*dragged_animation_frame, index);
+                    commands.reorder_animation_frames(index);
                 }
-                (Some((index, _)), Some(ref dragged_frame), None) => {
-                    commands.insert_animation_frame_before(dragged_frame, index);
+                (Some((index, _)), true, false) => {
+                    if let Some(Selection::Frame(paths)) = &document.view.selection {
+                        commands.insert_animation_frames_before(
+                            paths.items.clone().iter().collect(),
+                            index,
+                        );
+                    }
                 }
-                (Some((index, _)), None, Some(ref dragged_animation_frame)) => {
-                    commands.reorder_animation_frame(*dragged_animation_frame, index);
+                (Some((index, _)), false, true) => {
+                    commands.reorder_animation_frames(index);
                 }
                 _ => (),
             }
@@ -421,6 +454,7 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
                                     animation,
                                     frame_index,
                                     animation_frame,
+                                    frames_cursor_position_start,
                                     cursor,
                                 );
                                 frames_cursor_position_end = ui.get_cursor_screen_pos();
@@ -431,6 +465,13 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
 
                             ui.set_cursor_pos(ticks_cursor_position);
                             draw_playback_head(ui, document, animation);
+
+                            handle_drag_to_resize(
+                                ui,
+                                commands,
+                                document,
+                                frames_cursor_position_start,
+                            );
 
                             handle_drag_and_drop(
                                 ui,

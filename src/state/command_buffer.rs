@@ -1,5 +1,5 @@
 use euclid::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sheet::*;
@@ -204,33 +204,23 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(ClearSelection)));
     }
 
-    pub fn select_frame(&mut self, frame: &Frame) {
+    pub fn select_frames(&mut self, paths: &MultiSelection<PathBuf>) {
+        self.queue.push(Sync(Document(SelectFrames(paths.clone()))));
+    }
+
+    pub fn select_animations(&mut self, names: &MultiSelection<String>) {
         self.queue
-            .push(Sync(Document(SelectFrame(frame.get_source().to_owned()))));
+            .push(Sync(Document(SelectAnimations(names.clone()))));
     }
 
-    pub fn select_animation(&mut self, animation: &Animation) {
-        self.queue.push(Sync(Document(SelectAnimation(
-            animation.get_name().to_owned(),
-        ))));
-    }
-
-    pub fn select_hitbox(&mut self, hitbox: &Hitbox) {
+    pub fn select_hitboxes(&mut self, names: &MultiSelection<String>) {
         self.queue
-            .push(Sync(Document(SelectHitbox(hitbox.get_name().to_owned()))));
+            .push(Sync(Document(SelectHitboxes(names.clone()))));
     }
 
-    pub fn select_animation_frame(&mut self, animation_frame_index: usize) {
+    pub fn select_animation_frames(&mut self, indexes: &MultiSelection<usize>) {
         self.queue
-            .push(Sync(Document(SelectAnimationFrame(animation_frame_index))));
-    }
-
-    pub fn select_previous(&mut self) {
-        self.queue.push(Sync(Document(SelectPrevious)));
-    }
-
-    pub fn select_next(&mut self) {
-        self.queue.push(Sync(Document(SelectNext)));
+            .push(Sync(Document(SelectAnimationFrames(indexes.clone()))));
     }
 
     pub fn edit_frame(&mut self, frame: &Frame) {
@@ -248,43 +238,54 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(CreateAnimation)));
     }
 
-    pub fn begin_frame_drag(&mut self, frame: &Frame) {
-        self.queue.push(Sync(Document(BeginFrameDrag(
-            frame.get_source().to_owned(),
-        ))));
+    pub fn begin_frames_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginFramesDrag)));
     }
 
-    pub fn end_frame_drag(&mut self) {
-        self.queue.push(Sync(Document(EndFrameDrag)));
+    pub fn end_frames_drag(&mut self) {
+        self.queue.push(Sync(Document(EndFramesDrag)));
     }
 
-    pub fn insert_animation_frame_before<T: AsRef<Path>>(
+    pub fn insert_animation_frames_before<T: AsRef<Path>>(
         &mut self,
-        frame: T,
+        frames: Vec<T>,
         animation_frame_index: usize,
     ) {
-        self.queue.push(Sync(Document(InsertAnimationFrameBefore(
-            frame.as_ref().to_owned(),
+        let mut sorted_frames: Vec<PathBuf> =
+            frames.iter().map(|p| p.as_ref().to_owned()).collect();
+        sorted_frames.sort();
+        self.queue.push(Sync(Document(InsertAnimationFramesBefore(
+            sorted_frames,
             animation_frame_index,
         ))));
     }
 
-    pub fn reorder_animation_frame(&mut self, old_index: usize, new_index: usize) {
+    pub fn reorder_animation_frames(&mut self, new_index: usize) {
         self.queue
-            .push(Sync(Document(ReorderAnimationFrame(old_index, new_index))));
+            .push(Sync(Document(ReorderAnimationFrames(new_index))));
     }
 
-    pub fn begin_animation_frame_duration_drag(&mut self, animation_frame_index: usize) {
+    pub fn begin_animation_frame_duration_drag(
+        &mut self,
+        clock_at_cursor: u32,
+        frame_being_dragged: usize,
+    ) {
         self.queue
             .push(Sync(Document(BeginAnimationFrameDurationDrag(
-                animation_frame_index,
+                clock_at_cursor,
+                frame_being_dragged,
             ))));
     }
 
-    pub fn update_animation_frame_duration_drag(&mut self, new_duration: u32) {
+    pub fn update_animation_frame_duration_drag(
+        &mut self,
+        clock_at_cursor: u32,
+        minimum_duration: u32,
+    ) {
         self.queue
             .push(Sync(Document(UpdateAnimationFrameDurationDrag(
-                new_duration,
+                clock_at_cursor,
+                minimum_duration,
             ))));
     }
 
@@ -293,19 +294,17 @@ impl CommandBuffer {
             .push(Sync(Document(EndAnimationFrameDurationDrag)));
     }
 
-    pub fn begin_animation_frame_drag(&mut self, animation_frame_index: usize) {
-        self.queue.push(Sync(Document(BeginAnimationFrameDrag(
-            animation_frame_index,
-        ))));
+    pub fn begin_animation_frame_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginAnimationFrameDrag)));
     }
 
     pub fn end_animation_frame_drag(&mut self) {
         self.queue.push(Sync(Document(EndAnimationFrameDrag)));
     }
 
-    pub fn begin_animation_frame_offset_drag(&mut self, frame_index: usize) {
+    pub fn begin_animation_frame_offset_drag(&mut self) {
         self.queue
-            .push(Sync(Document(BeginAnimationFrameOffsetDrag(frame_index))));
+            .push(Sync(Document(BeginAnimationFrameOffsetDrag)));
     }
 
     pub fn update_animation_frame_offset_drag(
@@ -349,11 +348,8 @@ impl CommandBuffer {
             .push(Sync(Document(CreateHitbox(mouse_position))));
     }
 
-    pub fn begin_hitbox_scale(&mut self, hitbox: &Hitbox, axis: ResizeAxis) {
-        self.queue.push(Sync(Document(BeginHitboxScale(
-            hitbox.get_name().to_owned(),
-            axis,
-        ))));
+    pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) {
+        self.queue.push(Sync(Document(BeginHitboxScale(axis))));
     }
 
     pub fn update_hitbox_scale(&mut self, mouse_delta: Vector2D<f32>, preserve_aspect_ratio: bool) {
@@ -367,10 +363,8 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(EndHitboxScale)));
     }
 
-    pub fn begin_hitbox_drag(&mut self, hitbox: &Hitbox) {
-        self.queue.push(Sync(Document(BeginHitboxDrag(
-            hitbox.get_name().to_owned(),
-        ))));
+    pub fn begin_hitbox_drag(&mut self) {
+        self.queue.push(Sync(Document(BeginHitboxDrag)));
     }
 
     pub fn update_hitbox_drag(&mut self, mouse_delta: Vector2D<f32>, both_axis: bool) {

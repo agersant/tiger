@@ -33,13 +33,11 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
         .collect();
     frames.sort_unstable();
     for (name, frame) in frames.iter() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Frame(p)) => p == frame.get_source(),
-            _ => false,
-        };
+        let is_selected = document.is_frame_selected(frame);
 
         let mut flags = ImGuiSelectableFlags::empty();
         flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
+
         if ui.selectable(
             &ImString::new(name.to_string_lossy()),
             is_selected,
@@ -49,15 +47,29 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_frame(frame);
             } else {
-                commands.select_frame(frame);
+                let new_selection = MultiSelection::process(
+                    frame.get_source().to_owned(),
+                    ui.imgui().key_shift(),
+                    ui.imgui().key_ctrl(),
+                    &frames
+                        .iter()
+                        .map(|(_, f)| f.get_source().to_owned())
+                        .collect(),
+                    match &document.view.selection {
+                        Some(Selection::Frame(s)) => Some(s),
+                        _ => None,
+                    },
+                );
+                commands.select_frames(&new_selection);
             }
-        }
-
-        if document.transient.content_frame_being_dragged.is_none()
+        } else if document.transient.is_none()
             && ui.is_item_active()
             && ui.imgui().is_mouse_dragging(ImMouseButton::Left)
         {
-            commands.begin_frame_drag(frame);
+            if !is_selected {
+                commands.select_frames(&MultiSelection::new(vec![frame.get_source().to_owned()]));
+            }
+            commands.begin_frames_drag();
         }
     }
 }
@@ -69,10 +81,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     let mut animations: Vec<&Animation> = document.sheet.animations_iter().collect();
     animations.sort_unstable();
     for animation in animations.iter() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Animation(a)) => a == animation.get_name(),
-            _ => false,
-        };
+        let is_selected = document.is_animation_selected(animation);
         let mut flags = ImGuiSelectableFlags::empty();
         flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
         if ui.selectable(
@@ -84,7 +93,17 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
             if ui.imgui().is_mouse_double_clicked(ImMouseButton::Left) {
                 commands.edit_animation(animation);
             } else {
-                commands.select_animation(animation);
+                let new_selection = MultiSelection::process(
+                    animation.get_name().to_owned(),
+                    ui.imgui().key_shift(),
+                    ui.imgui().key_ctrl(),
+                    &animations.iter().map(|a| a.get_name().to_owned()).collect(),
+                    match &document.view.selection {
+                        Some(Selection::Animation(s)) => Some(s),
+                        _ => None,
+                    },
+                );
+                commands.select_animations(&new_selection);
             }
         }
     }

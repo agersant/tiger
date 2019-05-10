@@ -46,25 +46,23 @@ pub enum DocumentCommand {
     EndImport(PathBuf, PathBuf),
     SwitchToContentTab(ContentTab),
     ClearSelection,
-    SelectFrame(PathBuf),
-    SelectAnimation(String),
-    SelectHitbox(String),
-    SelectAnimationFrame(usize),
-    SelectPrevious,
-    SelectNext,
+    SelectFrames(MultiSelection<PathBuf>),
+    SelectAnimations(MultiSelection<String>),
+    SelectHitboxes(MultiSelection<String>),
+    SelectAnimationFrames(MultiSelection<usize>),
     EditFrame(PathBuf),
     EditAnimation(String),
     CreateAnimation,
-    BeginFrameDrag(PathBuf),
-    EndFrameDrag,
-    InsertAnimationFrameBefore(PathBuf, usize),
-    ReorderAnimationFrame(usize, usize),
-    BeginAnimationFrameDurationDrag(usize),
-    UpdateAnimationFrameDurationDrag(u32),
+    BeginFramesDrag,
+    EndFramesDrag,
+    InsertAnimationFramesBefore(Vec<PathBuf>, usize),
+    ReorderAnimationFrames(usize),
+    BeginAnimationFrameDurationDrag(u32, usize),
+    UpdateAnimationFrameDurationDrag(u32, u32),
     EndAnimationFrameDurationDrag,
-    BeginAnimationFrameDrag(usize),
+    BeginAnimationFrameDrag,
     EndAnimationFrameDrag,
-    BeginAnimationFrameOffsetDrag(usize),
+    BeginAnimationFrameOffsetDrag,
     UpdateAnimationFrameOffsetDrag(Vector2D<f32>, bool),
     EndAnimationFrameOffsetDrag,
     WorkbenchZoomIn,
@@ -73,10 +71,10 @@ pub enum DocumentCommand {
     WorkbenchCenter,
     Pan(Vector2D<f32>),
     CreateHitbox(Vector2D<f32>),
-    BeginHitboxScale(String, ResizeAxis),
+    BeginHitboxScale(ResizeAxis),
     UpdateHitboxScale(Vector2D<f32>, bool),
     EndHitboxScale,
-    BeginHitboxDrag(String),
+    BeginHitboxDrag,
     UpdateHitboxDrag(Vector2D<f32>, bool),
     EndHitboxDrag,
     TogglePlayback,
@@ -118,12 +116,10 @@ impl fmt::Display for DocumentCommand {
             // Navigation
             SwitchToContentTab(_)
             | ClearSelection
-            | SelectFrame(_)
-            | SelectAnimation(_)
-            | SelectHitbox(_)
-            | SelectAnimationFrame(_)
-            | SelectPrevious
-            | SelectNext
+            | SelectFrames(_)
+            | SelectAnimations(_)
+            | SelectHitboxes(_)
+            | SelectAnimationFrames(_)
             | EditFrame(_)
             | EditAnimation(_)
             | WorkbenchZoomIn
@@ -148,25 +144,25 @@ impl fmt::Display for DocumentCommand {
             // Animation
             CreateAnimation => write!(f, "Create Animation"),
             ToggleLooping => write!(f, "Toggle Looping"),
-            BeginFrameDrag(_) | EndFrameDrag | InsertAnimationFrameBefore(_, _) => {
+            BeginFramesDrag | EndFramesDrag | InsertAnimationFramesBefore(_, _) => {
                 write!(f, "Create Frame")
             }
-            BeginAnimationFrameDrag(_) | EndAnimationFrameDrag | ReorderAnimationFrame(_, _) => {
+            BeginAnimationFrameDrag | EndAnimationFrameDrag | ReorderAnimationFrames(_) => {
                 write!(f, "Re-order Frames")
             }
-            BeginAnimationFrameDurationDrag(_)
-            | UpdateAnimationFrameDurationDrag(_)
+            BeginAnimationFrameDurationDrag(_, _)
+            | UpdateAnimationFrameDurationDrag(_, _)
             | EndAnimationFrameDurationDrag => write!(f, "Adjust Frame Duration"),
-            BeginAnimationFrameOffsetDrag(_)
+            BeginAnimationFrameOffsetDrag
             | UpdateAnimationFrameOffsetDrag(_, _)
             | EndAnimationFrameOffsetDrag => write!(f, "Move Frame"),
 
             // Hitbox
             CreateHitbox(_) => write!(f, "Create Hitbox"),
-            BeginHitboxScale(_, _) | UpdateHitboxScale(_, _) | EndHitboxScale => {
+            BeginHitboxScale(_) | UpdateHitboxScale(_, _) | EndHitboxScale => {
                 write!(f, "Resize Hitbox")
             }
-            BeginHitboxDrag(_) | UpdateHitboxDrag(_, _) | EndHitboxDrag => write!(f, "Move Hitbox"),
+            BeginHitboxDrag | UpdateHitboxDrag(_, _) | EndHitboxDrag => write!(f, "Move Hitbox"),
 
             NudgeSelection(_, _) => write!(f, "Nudge"),
             DeleteSelection => write!(f, "Delete"),

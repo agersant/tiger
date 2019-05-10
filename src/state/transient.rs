@@ -1,12 +1,7 @@
 use euclid::*;
-use std::path::PathBuf;
-use std::time::Duration;
+use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum RenameItem {
-    Animation(String),
-    Hitbox(PathBuf, String),
-}
+use crate::state::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ResizeAxis {
@@ -33,24 +28,71 @@ impl ResizeAxis {
     }
 }
 
-// State preventing undo/redo while not default
-// Reset when focusing different document
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Transient {
-    pub content_frame_being_dragged: Option<PathBuf>,
-    pub item_being_renamed: Option<RenameItem>,
-    pub rename_buffer: Option<String>,
-    pub workbench_hitbox_being_dragged: Option<String>,
-    pub workbench_hitbox_drag_initial_offset: Vector2D<i32>,
-    pub workbench_hitbox_being_scaled: Option<String>,
-    pub workbench_hitbox_scale_axis: ResizeAxis,
-    pub workbench_hitbox_scale_initial_position: Vector2D<i32>,
-    pub workbench_hitbox_scale_initial_size: Vector2D<u32>,
-    pub workbench_animation_frame_being_dragged: Option<usize>,
-    pub workbench_animation_frame_drag_initial_offset: Vector2D<i32>,
-    pub timeline_frame_being_scaled: Option<usize>,
-    pub timeline_frame_scale_initial_duration: u32,
-    pub timeline_frame_scale_initial_clock: Duration,
-    pub timeline_frame_being_dragged: Option<usize>,
-    pub timeline_scrubbing: bool,
+pub struct Rename {
+    pub new_name: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HitboxInitialState {
+    pub position: Vector2D<i32>,
+    pub size: Vector2D<u32>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HitboxSize {
+    pub axis: ResizeAxis,
+    pub initial_state: HashMap<String, HitboxInitialState>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HitboxPosition {
+    pub initial_offset: HashMap<String, Vector2D<i32>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AnimationFramePosition {
+    pub initial_offset: HashMap<usize, Vector2D<i32>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AnimationFrameDuration {
+    pub reference_clock: u32,
+    pub frame_being_dragged: usize,
+    pub initial_duration: HashMap<usize, u32>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Transient {
+    ContentFramesDrag,
+    Rename(Rename),
+    HitboxPosition(HitboxPosition),
+    HitboxSize(HitboxSize),
+    AnimationFramePosition(AnimationFramePosition),
+    AnimationFrameDuration(AnimationFrameDuration),
+    TimelineFrameDrag,
+    TimelineScrub,
+}
+
+impl Transient {
+    pub fn is_transient_command(command: &DocumentCommand) -> bool {
+        use DocumentCommand::*;
+        match command {
+            BeginFramesDrag
+            | BeginAnimationFrameDurationDrag(_, _)
+            | UpdateAnimationFrameDurationDrag(_, _)
+            | BeginAnimationFrameDrag
+            | BeginAnimationFrameOffsetDrag
+            | UpdateAnimationFrameOffsetDrag(_, _)
+            | BeginHitboxScale(_)
+            | UpdateHitboxScale(_, _)
+            | BeginHitboxDrag
+            | UpdateHitboxDrag(_, _)
+            | BeginScrub
+            | UpdateScrub(_)
+            | BeginRenameSelection
+            | UpdateRenameSelection(_) => true,
+            _ => false,
+        }
+    }
 }

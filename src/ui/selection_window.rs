@@ -156,27 +156,38 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cac
             .build(|| {
                 if let Some(document) = app_state.get_current_document() {
                     match &document.view.selection {
-                        Some(Selection::Frame(path)) => {
+                        Some(Selection::Frame(paths)) => {
+                            let path = &paths.last_touched_in_range;
                             if let Some(frame) = document.sheet.get_frame(path) {
                                 draw_frame(ui, texture_cache, frame);
                             }
                         }
-                        Some(Selection::Animation(name)) => {
+                        Some(Selection::Animation(names)) => {
+                            let name = &names.last_touched_in_range;
                             if let Some(animation) = document.sheet.get_animation(name) {
                                 draw_animation(ui, app_state, texture_cache, animation);
                             }
                         }
-                        Some(Selection::AnimationFrame(name, index)) => {
-                            if let Some(animation) = document.sheet.get_animation(name) {
-                                if let Some(animation_frame) = animation.get_frame(*index) {
-                                    draw_animation_frame(ui, texture_cache, animation_frame);
+                        Some(Selection::AnimationFrame(indexes)) => {
+                            if let Some(WorkbenchItem::Animation(name)) =
+                                &document.view.workbench_item
+                            {
+                                let index = indexes.last_touched_in_range;
+                                if let Some(animation) = document.sheet.get_animation(name) {
+                                    if let Some(animation_frame) = animation.get_frame(index) {
+                                        draw_animation_frame(ui, texture_cache, animation_frame);
+                                    }
                                 }
                             }
                         }
-                        Some(Selection::Hitbox(path, name)) => {
-                            if let Some(frame) = document.sheet.get_frame(path) {
-                                if let Some(hitbox) = frame.get_hitbox(name) {
-                                    draw_hitbox(ui, hitbox);
+                        Some(Selection::Hitbox(names)) => {
+                            let name = &names.last_touched_in_range;
+                            if let Some(WorkbenchItem::Frame(path)) = &document.view.workbench_item
+                            {
+                                if let Some(frame) = document.sheet.get_frame(path) {
+                                    if let Some(hitbox) = frame.get_hitbox(name) {
+                                        draw_hitbox(ui, hitbox);
+                                    }
                                 }
                             }
                         }

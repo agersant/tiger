@@ -387,30 +387,19 @@ fn draw_documents_window<'a>(
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
         if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
-            if document.transient.content_frame_being_dragged.is_some() {
-                commands.end_frame_drag();
-            }
-            if document.transient.timeline_frame_being_scaled.is_some() {
-                commands.end_animation_frame_duration_drag();
-            }
-            if document.transient.timeline_frame_being_dragged.is_some() {
-                commands.end_animation_frame_drag();
-            }
-            if document
-                .transient
-                .workbench_animation_frame_being_dragged
-                .is_some()
-            {
-                commands.end_animation_frame_offset_drag();
-            }
-            if document.transient.workbench_hitbox_being_dragged.is_some() {
-                commands.end_hitbox_drag();
-            }
-            if document.transient.workbench_hitbox_being_scaled.is_some() {
-                commands.end_hitbox_scale();
-            }
-            if document.transient.timeline_scrubbing {
-                commands.end_scrub();
+            match document.transient {
+                Some(Transient::ContentFramesDrag) => commands.end_frames_drag(),
+                Some(Transient::AnimationFrameDuration(_)) => {
+                    commands.end_animation_frame_duration_drag()
+                }
+                Some(Transient::AnimationFramePosition(_)) => {
+                    commands.end_animation_frame_offset_drag()
+                }
+                Some(Transient::TimelineFrameDrag) => commands.end_animation_frame_drag(),
+                Some(Transient::HitboxPosition(_)) => commands.end_hitbox_drag(),
+                Some(Transient::HitboxSize(_)) => commands.end_hitbox_scale(),
+                Some(Transient::TimelineScrub) => commands.end_scrub(),
+                Some(Transient::Rename(_)) | None => (),
             }
         }
     }
@@ -418,10 +407,11 @@ fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Co
 
 fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &TextureCache) {
     if let Some(document) = app_state.get_current_document() {
-        if let Some(ref path) = document.transient.content_frame_being_dragged {
-            if ui.imgui().is_mouse_dragging(ImMouseButton::Left) {
+        if document.transient == Some(Transient::ContentFramesDrag) {
+            if let Some(Selection::Frame(paths)) = &document.view.selection {
                 ui.tooltip(|| {
                     let tooltip_size = vec2(128.0, 128.0); // TODO hidpi?
+                    let path = &paths.last_touched_in_range;
                     match texture_cache.get(path) {
                         Some(TextureCacheResult::Loaded(texture)) => {
                             if let Some(fill) = utils::fill(tooltip_size, texture.size) {
@@ -429,13 +419,14 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
                             }
                         }
                         Some(TextureCacheResult::Loading) => {
-                            // TODO this doesn't work. Prob an issue with broken tooltip draw list
+                            // TODO this doesn't work. Prob need to pad with ui.dummy()
                             spinner::draw_spinner(ui, &ui.get_window_draw_list(), tooltip_size);
                         }
                         _ => {
                             // TODO
                         }
                     }
+                    // TODO Draw number of items selected
                 });
             }
         }
@@ -525,33 +516,33 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 
 fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
-        let max_length = match document.transient.item_being_renamed {
-            Some(RenameItem::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
-            Some(RenameItem::Hitbox(_, _)) => MAX_HITBOX_NAME_LENGTH,
-            None => return,
-        };
+        if let Some(Transient::Rename(rename)) = &document.transient {
+            let max_length = match &document.view.selection {
+                Some(Selection::Animation(_)) => MAX_ANIMATION_NAME_LENGTH,
+                Some(Selection::Hitbox(_)) => MAX_HITBOX_NAME_LENGTH,
+                _ => return,
+            };
 
-        let popup_id = im_str!("Rename");
-        // TODO position modal where selectable is
-        ui.popup_modal(&popup_id)
-            .title_bar(false)
-            .resizable(false)
-            .always_auto_resize(true)
-            .build(|| {
-                let mut s = ImString::with_capacity(max_length);
-                if let Some(current) = &document.transient.rename_buffer {
-                    s.push_str(current);
-                };
-                let end_rename = ui
-                    .input_text(im_str!(""), &mut s)
-                    .enter_returns_true(true)
-                    .build();
-                commands.update_rename_selection(s.to_str());
-                if end_rename {
-                    commands.end_rename_selection();
-                }
-            });
-        ui.open_popup(&popup_id);
+            let popup_id = im_str!("Rename");
+            // TODO position modal where selectable is
+            ui.popup_modal(&popup_id)
+                .title_bar(false)
+                .resizable(false)
+                .always_auto_resize(true)
+                .build(|| {
+                    let mut s = ImString::with_capacity(max_length);
+                    s.push_str(&rename.new_name);
+                    let end_rename = ui
+                        .input_text(im_str!(""), &mut s)
+                        .enter_returns_true(true)
+                        .build();
+                    commands.update_rename_selection(s.to_str());
+                    if end_rename {
+                        commands.end_rename_selection();
+                    }
+                });
+            ui.open_popup(&popup_id);
+        }
     }
 }
 
@@ -670,12 +661,6 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
         }
         if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
             commands.snap_to_next_frame();
-        }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
-            commands.select_previous(); // TODO autoscroll somehow?
-        }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
-            commands.select_next(); // TODO autoscroll somehow?
         }
     }
 

@@ -14,10 +14,7 @@ fn draw_hitboxes<'a>(
     let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
     hitboxes.sort_unstable();
     for hitbox in hitboxes.iter() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Hitbox(p, n)) => p == frame.get_source() && n == hitbox.get_name(),
-            _ => false,
-        };
+        let is_selected = document.is_hitbox_selected(hitbox);
 
         let flags = ImGuiSelectableFlags::empty();
         if ui.selectable(
@@ -26,7 +23,17 @@ fn draw_hitboxes<'a>(
             flags,
             ImVec2::new(0.0, 0.0),
         ) {
-            commands.select_hitbox(hitbox);
+            let new_selection = MultiSelection::process(
+                hitbox.get_name().to_owned(),
+                ui.imgui().key_shift(),
+                ui.imgui().key_ctrl(),
+                &hitboxes.iter().map(|h| h.get_name().to_owned()).collect(),
+                match &document.view.selection {
+                    Some(Selection::Hitbox(s)) => Some(s),
+                    _ => None,
+                },
+            );
+            commands.select_hitboxes(&new_selection);
         }
     }
 }

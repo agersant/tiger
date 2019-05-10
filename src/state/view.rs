@@ -2,13 +2,7 @@ use euclid::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Selection {
-    Frame(PathBuf),
-    Animation(String),
-    Hitbox(PathBuf, String),
-    AnimationFrame(String, usize),
-}
+use crate::state::Selection;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ContentTab {

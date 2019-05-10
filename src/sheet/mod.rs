@@ -254,7 +254,7 @@ impl Animation {
             .collect()
     }
 
-    pub fn insert_frame<T: AsRef<Path>>(&mut self, frame: T, index: usize) -> Result<(), Error> {
+    pub fn create_frame<T: AsRef<Path>>(&mut self, frame: T, index: usize) -> Result<(), Error> {
         // TODO validate that frame exists in sheet!
         if index > self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
@@ -264,18 +264,23 @@ impl Animation {
         Ok(())
     }
 
-    pub fn reorder_frame(&mut self, old_index: usize, new_index: usize) -> Result<(), Error> {
-        if old_index >= self.timeline.len() || new_index > self.timeline.len() {
+    pub fn insert_frame(
+        &mut self,
+        animation_frame: AnimationFrame,
+        index: usize,
+    ) -> Result<(), Error> {
+        if index > self.timeline.len() {
             return Err(SheetError::InvalidFrameIndex.into());
         }
-        let moving_element = self.timeline.remove(old_index);
-        let adjusted_index = if new_index > old_index {
-            new_index - 1
-        } else {
-            new_index
-        };
-        self.timeline.insert(adjusted_index, moving_element);
+        self.timeline.insert(index, animation_frame);
         Ok(())
+    }
+
+    pub fn take_frame(&mut self, index: usize) -> Result<AnimationFrame, Error> {
+        if index >= self.timeline.len() {
+            return Err(SheetError::InvalidFrameIndex.into());
+        }
+        Ok(self.timeline.remove(index))
     }
 
     pub fn frames_iter(&self) -> std::slice::Iter<'_, AnimationFrame> {
