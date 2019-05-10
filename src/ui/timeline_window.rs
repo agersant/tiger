@@ -110,7 +110,6 @@ fn draw_animation_frame<'a>(
     let outline_size = 1.0; // TODO DPI?
     let text_padding = 4.0; // TODO DPI?
     let max_resize_handle_size = 16.0; // TODO DPI?
-    let min_frame_drag_width = 24.0; // TODO DPI?
     let w = animation_frame_location.size.0;
     let h = animation_frame_location.size.1;
     let is_too_small = w < 2.0 * outline_size + 1.0;
@@ -232,17 +231,7 @@ fn draw_animation_frame<'a>(
 
         let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
         let is_mouse_down = ui.imgui().is_mouse_down(ImMouseButton::Left);
-        if is_dragging_duration && is_selected {
-            // TODO important dont emit once per selected animation frame
-            ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
-            if is_mouse_dragging {
-                let mouse_pos = ui.imgui().mouse_pos();
-                let clock_under_mouse =
-                    ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
-                let minimum_duration = (min_frame_drag_width / zoom).max(1.0).ceil() as u32;
-                commands.update_animation_frame_duration_drag(clock_under_mouse, minimum_duration);
-            }
-        } else {
+        if document.transient.is_none() {
             if ui.is_item_hovered() {
                 ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
                 if is_mouse_down && !is_mouse_dragging {
@@ -311,6 +300,27 @@ fn get_frame_under_mouse<'a>(
         cursor += Duration::from_millis(u64::from(animation_frame.get_duration()));
     }
     None
+}
+
+fn handle_drag_to_resize<'a>(
+    ui: &Ui<'a>,
+    commands: &mut CommandBuffer,
+    document: &Document,
+    frames_cursor_position_start: (f32, f32),
+) {
+    let is_mouse_dragging = ui.imgui().is_mouse_dragging(ImMouseButton::Left);
+    let is_dragging_duration = document.is_adjusting_frame_duration();
+    let zoom = document.view.get_timeline_zoom_factor();
+    let min_frame_drag_width = 24.0; // TODO DPI?
+
+    if is_dragging_duration && is_mouse_dragging {
+        ui.imgui().set_mouse_cursor(ImGuiMouseCursor::ResizeEW);
+        let mouse_pos = ui.imgui().mouse_pos();
+        let clock_under_mouse =
+            ((mouse_pos.0 - frames_cursor_position_start.0) / zoom).max(0.0) as u32;
+        let minimum_duration = (min_frame_drag_width / zoom).max(1.0).ceil() as u32;
+        commands.update_animation_frame_duration_drag(clock_under_mouse, minimum_duration);
+    }
 }
 
 fn handle_drag_and_drop<'a>(
@@ -455,6 +465,13 @@ pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, commands: &
 
                             ui.set_cursor_pos(ticks_cursor_position);
                             draw_playback_head(ui, document, animation);
+
+                            handle_drag_to_resize(
+                                ui,
+                                commands,
+                                document,
+                                frames_cursor_position_start,
+                            );
 
                             handle_drag_and_drop(
                                 ui,
