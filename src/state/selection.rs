@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MultiSelection<T>
@@ -60,4 +60,34 @@ pub enum Selection {
 	Animation(MultiSelection<String>),
 	Hitbox(MultiSelection<String>),
 	AnimationFrame(MultiSelection<usize>),
+}
+
+impl Selection {
+	pub fn is_frame_selected(&self, path: &Path) -> bool {
+		match self {
+			Selection::Frame(s) => s.items.iter().any(|f| f.as_path() == path),
+			_ => false,
+		}
+	}
+
+	pub fn is_animation_selected(&self, name: &str) -> bool {
+		match self {
+			Selection::Animation(s) => s.items.iter().any(|a| a.as_str() == name),
+			_ => false,
+		}
+	}
+
+	pub fn is_hitbox_selected(&self, name: &str) -> bool {
+		match self {
+			Selection::Hitbox(s) => s.items.iter().any(|h| h.as_str() == name),
+			_ => false,
+		}
+	}
+
+	pub fn is_animation_frame_selected(&self, index: usize) -> bool {
+		match self {
+			Selection::AnimationFrame(s) => s.items.iter().any(|i| *i == index),
+			_ => false,
+		}
+	}
 }

@@ -14,10 +14,7 @@ fn draw_hitboxes<'a>(
     let mut hitboxes: Vec<&Hitbox> = frame.hitboxes_iter().collect();
     hitboxes.sort_unstable();
     for (hitbox_index, hitbox) in hitboxes.iter().enumerate() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Hitbox(names)) => names.items.iter().any(|n| n == hitbox.get_name()),
-            _ => false,
-        };
+        let is_selected = document.is_hitbox_selected(hitbox);
 
         let flags = ImGuiSelectableFlags::empty();
         if ui.selectable(

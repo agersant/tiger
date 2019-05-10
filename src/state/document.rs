@@ -314,6 +314,33 @@ impl Document {
         }
     }
 
+    pub fn is_frame_selected(&self, frame: &Frame) -> bool {
+        self.view
+            .selection
+            .as_ref()
+            .map_or(false, |s| s.is_frame_selected(frame.get_source()))
+    }
+
+    pub fn is_animation_selected(&self, animation: &Animation) -> bool {
+        self.view
+            .selection
+            .as_ref()
+            .map_or(false, |s| s.is_animation_selected(animation.get_name()))
+    }
+
+    pub fn is_hitbox_selected(&self, hitbox: &Hitbox) -> bool {
+        self.view
+            .selection
+            .as_ref()
+            .map_or(false, |s| s.is_hitbox_selected(hitbox.get_name()))
+    }
+
+    pub fn is_animation_frame_selected(&self, animation_frame_index: usize) -> bool {
+        self.view.selection.as_ref().map_or(false, |s| {
+            s.is_animation_frame_selected(animation_frame_index)
+        })
+    }
+
     pub fn clear_selection(&mut self) {
         self.view.selection = None;
     }

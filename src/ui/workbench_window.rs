@@ -141,10 +141,7 @@ fn draw_hitbox<'a>(
     let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
     let bottom_right = top_left + rectangle.size.to_f32().to_vector() * zoom;
 
-    let is_selected = match &document.view.selection {
-        Some(Selection::Hitbox(names)) => names.items.iter().any(|n| n == hitbox.get_name()),
-        _ => false,
-    };
+    let is_selected = document.is_hitbox_selected(hitbox);
 
     let (is_hovered, is_active) = if is_selectable
         && !rectangle.size.is_empty_or_negative()
@@ -390,12 +387,7 @@ fn draw_animation<'a>(
 ) {
     let now = document.view.timeline_clock;
     if let Some((frame_index, animation_frame)) = animation.get_frame_at(now) {
-        let is_selected = match &document.view.selection {
-            Some(Selection::AnimationFrame(frame_indexes)) => {
-                frame_indexes.items.iter().any(|i| *i == frame_index)
-            }
-            _ => false,
-        };
+        let is_selected = document.is_animation_frame_selected(frame_index);
 
         let drew = draw_animation_frame(
             ui,

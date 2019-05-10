@@ -34,13 +34,7 @@ fn draw_frames<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Documen
         .collect();
     frames.sort_unstable();
     for (frame_index, (name, frame)) in frames.iter().enumerate() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Frame(paths)) => paths
-                .items
-                .iter()
-                .any(|p| p.as_path() == frame.get_source()),
-            _ => false,
-        };
+        let is_selected = document.is_frame_selected(frame);
 
         let mut flags = ImGuiSelectableFlags::empty();
         flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
@@ -124,12 +118,7 @@ fn draw_animations<'a>(ui: &Ui<'a>, commands: &mut CommandBuffer, document: &Doc
     let mut animations: Vec<&Animation> = document.sheet.animations_iter().collect();
     animations.sort_unstable();
     for (animation_index, animation) in animations.iter().enumerate() {
-        let is_selected = match &document.view.selection {
-            Some(Selection::Animation(names)) => {
-                names.items.iter().any(|n| n == animation.get_name())
-            }
-            _ => false,
-        };
+        let is_selected = document.is_animation_selected(animation);
         let mut flags = ImGuiSelectableFlags::empty();
         flags.set(ImGuiSelectableFlags::AllowDoubleClick, true);
         if ui.selectable(
