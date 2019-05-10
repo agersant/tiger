@@ -21,7 +21,71 @@ impl<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone + std::cmp::Ord> Mult
 		}
 	}
 
-	pub fn add(&mut self, added_items: &Vec<T>) {
+	// TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
+	pub fn process(
+		active_item: T,
+		shift: bool,
+		ctrl: bool,
+		item_set: &Vec<T>,
+		existing_selection: Option<&MultiSelection<T>>,
+	) -> MultiSelection<T> {
+		let (mut selection, was_blank) = match existing_selection {
+			Some(s) => (s.clone(), false),
+			_ => (MultiSelection::new(vec![active_item.clone()]), true),
+		};
+
+		let active_item_index = item_set
+			.iter()
+			.position(|item| item == &active_item)
+			.unwrap_or(0);
+
+		if shift {
+			let from = if !was_blank {
+				let last_touched_index = item_set
+					.iter()
+					.position(|item| item == &selection.last_touched)
+					.unwrap_or(0);
+				if last_touched_index < active_item_index {
+					last_touched_index + 1
+				} else if last_touched_index > active_item_index {
+					last_touched_index - 1
+				} else {
+					last_touched_index
+				}
+			} else {
+				0
+			};
+
+			let mut affected_items = item_set
+				[from.min(active_item_index)..=from.max(active_item_index)]
+				.iter()
+				.cloned()
+				.collect::<Vec<T>>();
+
+			if from > active_item_index {
+				affected_items = affected_items.into_iter().rev().collect();
+			}
+
+			if ctrl {
+				selection.toggle(&affected_items);
+				if was_blank {
+					selection.toggle(&vec![active_item]);
+				}
+			} else {
+				selection.add(&affected_items);
+			}
+		} else if ctrl {
+			if !was_blank {
+				selection.toggle(&vec![active_item]);
+			}
+		} else {
+			selection = MultiSelection::new(vec![active_item]);
+		}
+
+		selection
+	}
+
+	fn add(&mut self, added_items: &Vec<T>) {
 		if added_items.len() == 0 {
 			return;
 		}

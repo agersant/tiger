@@ -187,53 +187,17 @@ fn draw_animation_frame<'a>(
                     bottom_right.1 - top_left.1,
                 ),
             ) {
-                commands.select_animation_frames(&MultiSelection::new(vec![animation_frame_index]));
-
-                let (mut selection, was_blank) = match &document.view.selection {
-                    Some(Selection::AnimationFrame(s)) => (s.clone(), false),
-                    _ => (MultiSelection::new(vec![animation_frame_index]), true),
-                };
-
-                // TODO Use upstream version: https://github.com/ocornut/imgui/issues/1861
-                if ui.imgui().key_shift() {
-                    let from = if let Some(Selection::AnimationFrame(indexes)) =
-                        &document.view.selection
-                    {
-                        let last_touched_index = indexes.last_touched;
-                        if last_touched_index < animation_frame_index {
-                            last_touched_index + 1
-                        } else if last_touched_index > animation_frame_index {
-                            last_touched_index - 1
-                        } else {
-                            last_touched_index
-                        }
-                    } else {
-                        0
-                    };
-                    let mut affected_indexes: Vec<usize> = (from.min(animation_frame_index)
-                        ..=from.max(animation_frame_index))
-                        .collect();
-                    if from > animation_frame_index {
-                        affected_indexes = affected_indexes.into_iter().rev().collect();
-                    }
-
-                    if ui.imgui().key_ctrl() {
-                        selection.toggle(&affected_indexes);
-                        if was_blank {
-                            selection.toggle(&vec![animation_frame_index]);
-                        }
-                    } else {
-                        selection.add(&affected_indexes);
-                    }
-                } else if ui.imgui().key_ctrl() {
-                    if !was_blank {
-                        selection.toggle(&vec![animation_frame_index]);
-                    }
-                } else {
-                    selection = MultiSelection::new(vec![animation_frame_index]);
-                }
-
-                commands.select_animation_frames(&selection);
+                let new_selection = MultiSelection::process(
+                    animation_frame_index,
+                    ui.imgui().key_shift(),
+                    ui.imgui().key_ctrl(),
+                    &(0..animation.get_num_frames()).collect(),
+                    match &document.view.selection {
+                        Some(Selection::AnimationFrame(s)) => Some(s),
+                        _ => None,
+                    },
+                );
+                commands.select_animation_frames(&new_selection);
             }
         }
     }
