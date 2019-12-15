@@ -1099,7 +1099,7 @@ impl Document {
     }
 
     pub fn begin_rename_selection(&mut self) {
-        match &self.view.selection {
+        match self.view.selection.clone() {
             Some(Selection::Animation(names)) | Some(Selection::Hitbox(names)) => {
                 self.begin_rename(names.last_touched_in_range.clone())
             }

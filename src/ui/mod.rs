@@ -3,7 +3,6 @@ use failure::Error;
 use glutin::VirtualKeyCode;
 use imgui::StyleVar::*;
 use imgui::*;
-use std::borrow::Borrow;
 
 use crate::sheet::constants::*;
 use crate::sheet::ExportFormat;
@@ -441,7 +440,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         ui.push_id(0);
                         ui.label_text(
-                            &ImString::new(settings.texture_destination.to_string_lossy().borrow()),
+                            &ImString::new(settings.texture_destination.to_string_lossy()),
                             im_str!("Texture atlas destination:"),
                         );
                         ui.same_line(0.0);
@@ -455,9 +454,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         ui.push_id(1);
                         ui.label_text(
-                            &ImString::new(
-                                settings.metadata_destination.to_string_lossy().borrow(),
-                            ),
+                            &ImString::new(settings.metadata_destination.to_string_lossy()),
                             im_str!("Metadata destination:"),
                         );
                         ui.same_line(0.0);
@@ -470,7 +467,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         ui.push_id(2);
                         ui.label_text(
-                            &ImString::new(settings.metadata_paths_root.to_string_lossy().borrow()),
+                            &ImString::new(settings.metadata_paths_root.to_string_lossy()),
                             im_str!("Store paths relative to:"),
                         );
                         ui.same_line(0.0);
@@ -485,7 +482,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         match &settings.format {
                             ExportFormat::Template(p) => {
                                 ui.label_text(
-                                    &ImString::new(p.to_string_lossy().borrow()),
+                                    &ImString::new(p.to_string_lossy()),
                                     im_str!("Data Format:"),
                                 );
                                 ui.same_line(0.0);
