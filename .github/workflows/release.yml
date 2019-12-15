@@ -3,7 +3,7 @@ on:
     tags:
     - '[0-9]+.[0-9]+.[0-9]+**'
 
-name: Upload Release Asset
+name: Release
 
 jobs:
   build:
