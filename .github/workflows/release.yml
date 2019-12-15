@@ -21,7 +21,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: rustc
-          args: '--release --verbose -- -C link-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"'
+          args: --release --verbose -- -C link-args=/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1.0.0
