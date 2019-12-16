@@ -16,7 +16,7 @@ image = "0.22"
 imgui = { git = "https://github.com/agersant/imgui-rs" }
 imgui-gfx-renderer = { git = "https://github.com/agersant/imgui-rs" }
 imgui-winit-support = { git = "https://github.com/agersant/imgui-rs" }
-liquid = "0.17"
+liquid = "0.19"
 nfd = "0.0.4"
 notify = "4.0.10"
 pathdiff = "0.1.0"

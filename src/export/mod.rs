@@ -2,7 +2,6 @@ use euclid::*;
 use failure::Error;
 use liquid::value::{Scalar, Value};
 use pathdiff::diff_paths;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -11,7 +10,7 @@ use crate::sheet::{Animation, ExportFormat, ExportSettings, Frame, Hitbox, Keyfr
 mod pack;
 pub use pack::*;
 
-type LiquidData = HashMap<Cow<'static, str>, Value>;
+type LiquidData = liquid::value::map::Map;
 type TextureLayout = HashMap<PathBuf, PackedFrame>;
 
 #[derive(Fail, Debug)]
@@ -257,13 +256,13 @@ pub fn export_sheet(
     match &export_settings.format {
         ExportFormat::Template(p) => {
             template = liquid::ParserBuilder::with_liquid()
-                .build()
-                .parse_file(p)
+                .build()?
+                .parse_file(&p)
                 .map_err(|_| ExportError::TemplateParsingError)?;
         }
     }
 
-    let globals: LiquidData = liquid_data_from_sheet(sheet, export_settings, texture_layout)?;
+    let globals = liquid_data_from_sheet(sheet, export_settings, texture_layout)?;
     let output = template
         .render(&globals)
         .map_err(|_| ExportError::TemplateRenderingError)?;
