@@ -1,9 +1,10 @@
 # How to make a release
 
-Run `make_release.bat x.y.z`
+- Update version number in Cargo.toml
+- Run `make_release.ps1`
+- After CI completes, find the release on Github and move it from Draft to Published
 
-After CI completes, find the release on Github and move it from Draft to Published.
-Note that the web UI will separate the release from the corresponding tag until published.
+Note that the Github web UI will separate the release from the corresponding tag until published.
 
 # How to increment Tiger format version
 
