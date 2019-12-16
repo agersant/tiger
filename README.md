@@ -2,7 +2,7 @@
 
 Tiger is a graphical tool for generating spritesheets and metadata about the animation and hitboxes they contain.
 
-![Tiger](res/readme/screenshot-0.1.0.png?raw=true "Tiger")
+[![Actions Status](https://github.com/agersant/tiger/workflows/Build/badge.svg)](https://github.com/agersant/tiger/actions)
 
 # Key Features
 
