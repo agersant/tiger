@@ -1,7 +1,6 @@
 # How to make a release
 
-1. git tag -a x.y.z -m "Tiger x.y.z"
-2. git push origin x.y.z
+Run `make_release.bat x.y.z`
 
 After CI completes, find the release on Github and move it from Draft to Published.
 Note that the web UI will separate the release from the corresponding tag until published.
