@@ -1,4 +1,4 @@
-use euclid::*;
+use euclid::default::*;
 use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
 use gfx::Factory;
 use gfx_device_gl::Resources;

@@ -1,6 +1,7 @@
 use core::cmp::Ordering;
 use dunce::canonicalize;
-use euclid::*;
+use euclid::default::*;
+use euclid::rect;
 use failure::Error;
 use pathdiff::diff_paths;
 use std::path::{Path, PathBuf};

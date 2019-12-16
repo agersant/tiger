@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::{point2, vec2};
 use failure::Error;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -800,32 +801,23 @@ impl Document {
             let zoom = self.view.get_workbench_zoom_factor();
             let mouse_delta = (mouse_delta / zoom).round().to_i32();
 
+            let bottom_left = point2(initial_hitbox.min_x(), initial_hitbox.max_y());
+            let top_right = point2(initial_hitbox.max_x(), initial_hitbox.min_y());
+
             let new_hitbox = Rect::from_points(match axis {
-                NW => vec![
-                    initial_hitbox.bottom_right(),
-                    initial_hitbox.origin + mouse_delta,
-                ],
-                NE => vec![
-                    initial_hitbox.bottom_left(),
-                    initial_hitbox.top_right() + mouse_delta,
-                ],
-                SW => vec![
-                    initial_hitbox.top_right(),
-                    initial_hitbox.bottom_left() + mouse_delta,
-                ],
-                SE => vec![
-                    initial_hitbox.origin,
-                    initial_hitbox.bottom_right() + mouse_delta,
-                ],
+                NW => vec![initial_hitbox.max(), initial_hitbox.origin + mouse_delta],
+                NE => vec![bottom_left, top_right + mouse_delta],
+                SW => vec![top_right, bottom_left + mouse_delta],
+                SE => vec![initial_hitbox.origin, initial_hitbox.max() + mouse_delta],
                 N => vec![
-                    initial_hitbox.bottom_left(),
+                    bottom_left,
                     point2(
                         initial_hitbox.max_x(),
                         initial_hitbox.min_y() + mouse_delta.y,
                     ),
                 ],
                 W => vec![
-                    initial_hitbox.top_right(),
+                    top_right,
                     point2(
                         initial_hitbox.min_x() + mouse_delta.x,
                         initial_hitbox.max_y(),

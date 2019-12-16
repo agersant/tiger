@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::rect;
 
 use crate::sheet::Animation;
 use crate::streamer::{TextureCache, TextureCacheResult};
@@ -57,11 +58,11 @@ impl BoundingBox {
         self.rect = Rect::<i32>::from_points(&[
             self.rect.origin,
             self.rect.origin * -1,
-            self.rect.bottom_right(),
-            self.rect.bottom_right() * -1,
+            self.rect.max(),
+            self.rect.max() * -1,
         ]);
         let delta = self.rect.origin * -1 + self.rect.size / -2;
-        self.rect = self.rect.translate(&delta.to_vector());
+        self.rect = self.rect.translate(delta.to_vector());
     }
 }
 

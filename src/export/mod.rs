@@ -1,4 +1,4 @@
-use euclid::*;
+use euclid::default::*;
 use failure::Error;
 use liquid::value::{Scalar, Value};
 use pathdiff::diff_paths;

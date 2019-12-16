@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 dunce = "1.0"
-euclid = "0.19"
+euclid = "0.20"
 failure = "0.1.3"
 gfx = "0.18"
 gfx_core = "0.9.0"

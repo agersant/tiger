@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::vec2;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -261,8 +262,7 @@ impl CommandBuffer {
     }
 
     pub fn reorder_keyframes(&mut self, new_index: usize) {
-        self.queue
-            .push(Sync(Document(ReorderKeyframes(new_index))));
+        self.queue.push(Sync(Document(ReorderKeyframes(new_index))));
     }
 
     pub fn begin_keyframe_duration_drag(
@@ -270,28 +270,21 @@ impl CommandBuffer {
         clock_at_cursor: u32,
         frame_being_dragged: usize,
     ) {
-        self.queue
-            .push(Sync(Document(BeginKeyframeDurationDrag(
-                clock_at_cursor,
-                frame_being_dragged,
-            ))));
+        self.queue.push(Sync(Document(BeginKeyframeDurationDrag(
+            clock_at_cursor,
+            frame_being_dragged,
+        ))));
     }
 
-    pub fn update_keyframe_duration_drag(
-        &mut self,
-        clock_at_cursor: u32,
-        minimum_duration: u32,
-    ) {
-        self.queue
-            .push(Sync(Document(UpdateKeyframeDurationDrag(
-                clock_at_cursor,
-                minimum_duration,
-            ))));
+    pub fn update_keyframe_duration_drag(&mut self, clock_at_cursor: u32, minimum_duration: u32) {
+        self.queue.push(Sync(Document(UpdateKeyframeDurationDrag(
+            clock_at_cursor,
+            minimum_duration,
+        ))));
     }
 
     pub fn end_keyframe_duration_drag(&mut self) {
-        self.queue
-            .push(Sync(Document(EndKeyframeDurationDrag)));
+        self.queue.push(Sync(Document(EndKeyframeDurationDrag)));
     }
 
     pub fn begin_keyframe_drag(&mut self) {
@@ -303,20 +296,14 @@ impl CommandBuffer {
     }
 
     pub fn begin_keyframe_offset_drag(&mut self) {
-        self.queue
-            .push(Sync(Document(BeginKeyframeOffsetDrag)));
+        self.queue.push(Sync(Document(BeginKeyframeOffsetDrag)));
     }
 
-    pub fn update_keyframe_offset_drag(
-        &mut self,
-        mouse_delta: Vector2D<f32>,
-        both_axis: bool,
-    ) {
-        self.queue
-            .push(Sync(Document(UpdateKeyframeOffsetDrag(
-                mouse_delta,
-                both_axis,
-            ))));
+    pub fn update_keyframe_offset_drag(&mut self, mouse_delta: Vector2D<f32>, both_axis: bool) {
+        self.queue.push(Sync(Document(UpdateKeyframeOffsetDrag(
+            mouse_delta,
+            both_axis,
+        ))));
     }
 
     pub fn end_keyframe_offset_drag(&mut self) {

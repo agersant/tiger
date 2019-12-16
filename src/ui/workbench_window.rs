@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::vec2;
 use imgui::StyleVar::*;
 use imgui::*;
 
@@ -49,7 +50,7 @@ fn draw_hitbox_resize_controls<'a>(
         .get_rectangle()
         .to_f32()
         .scale(zoom, zoom)
-        .translate(&(offset + space / 2.0));
+        .translate(offset + space / 2.0);
 
     let draw_list = ui.get_window_draw_list();
     let knob_size = 4.0; // TODO dpi

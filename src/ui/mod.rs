@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::{rect, vec2};
 use failure::Error;
 use glutin::VirtualKeyCode;
 use imgui::StyleVar::*;

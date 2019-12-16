@@ -1,4 +1,4 @@
-use euclid::*;
+use euclid::default::*;
 use imgui::StyleVar::*;
 use imgui::*;
 use std::time::Duration;
@@ -55,9 +55,9 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
         let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
         draw_list
             .add_rect(
-                (cursor_screen_pos + space * padding / 2.0 + fill.rect.origin.to_vector())
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.min().to_vector())
                     .to_tuple(),
-                (cursor_screen_pos + space * padding / 2.0 + fill.rect.bottom_right().to_vector())
+                (cursor_screen_pos + space * padding / 2.0 + fill.rect.max().to_vector())
                     .to_tuple(),
                 color,
             )

@@ -1,4 +1,4 @@
-use euclid::*;
+use euclid::default::*;
 use std::collections::HashMap;
 
 use crate::state::*;

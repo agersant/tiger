@@ -1,4 +1,5 @@
-use euclid::*;
+use euclid::default::*;
+use euclid::vec2;
 use imgui::*;
 use std::f32::consts::PI;
 

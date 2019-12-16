@@ -1,4 +1,4 @@
-use euclid::*;
+use euclid::default::*;
 use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
