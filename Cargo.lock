@@ -441,12 +441,12 @@ dependencies = [
 
 [[package]]
 name = "gfx_window_glutin"
-version = "0.30.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gfx_core 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_device_gl 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "glutin 0.20.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glutin 0.21.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "glutin"
-version = "0.20.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -497,15 +497,15 @@ dependencies = [
  "core-foundation 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "core-graphics 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin_egl_sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glutin_emscripten_sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin_gles2_sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin_glx_sys 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin_wgl_sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "objc 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "osmesa-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "shared_library 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-client 0.21.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.19.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -519,6 +519,11 @@ dependencies = [
  "gl_generator 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "glutin_emscripten_sys"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "glutin_gles2_sys"
@@ -599,39 +604,40 @@ dependencies = [
 
 [[package]]
 name = "imgui"
-version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "imgui-sys 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
+ "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "imgui-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "imgui-gfx-renderer"
-version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gfx 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
- "imgui-sys 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
+ "imgui 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "imgui-sys"
-version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
- "gfx 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "imgui-winit-support"
-version = "0.0.24-pre"
-source = "git+https://github.com/agersant/imgui-rs#262af80c1019413ed52113ce6d99bca6a0e38706"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
+ "imgui 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.19.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1509,12 +1515,12 @@ dependencies = [
  "gfx 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_core 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_device_gl 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "gfx_window_glutin 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glutin 0.20.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx_window_glutin 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glutin 0.21.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.22.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
- "imgui-gfx-renderer 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
- "imgui-winit-support 0.0.24-pre (git+https://github.com/agersant/imgui-rs)",
+ "imgui 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "imgui-gfx-renderer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "imgui-winit-support 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "liquid 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nfd 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "notify 4.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1805,13 +1811,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum gfx_core 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)" = "75fbddaef2e12b4995900539d7209d947b988a3d87ee8737484d049b526e5441"
 "checksum gfx_device_gl 0.16.2 (registry+https://github.com/rust-lang/crates.io-index)" = "109c385fa380c18888633aa27d1e16cbae518469702a2f69dcb5f52d5378bebc"
 "checksum gfx_gl 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8525888d909a6424b04f9136976f07a85fc1f3704555c1a73897e258326c8319"
-"checksum gfx_window_glutin 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f415d3534e6ea92f3ded1683e9e00592a76e2e67050e33244bb507719a211eb2"
+"checksum gfx_window_glutin 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)" = "310ff66f08b5a55854b18fea2f48bdbb75c94458207ba574c9723be78e97a646"
 "checksum gif 0.10.3 (registry+https://github.com/rust-lang/crates.io-index)" = "471d90201b3b223f3451cd4ad53e34295f16a1df17b1edf3736d47761c3981af"
 "checksum gl_generator 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "39a23d5e872a275135d66895d954269cf5e8661d234eb1c2480f4ce0d586acbd"
 "checksum gl_generator 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ca98bbde17256e02d17336a6bdb5a50f7d0ccacee502e191d3e3d0ec2f96f84a"
 "checksum gleam 0.6.19 (registry+https://github.com/rust-lang/crates.io-index)" = "cae10d7c99d0e77b4766e850a60898a17c1abaf01075531f1066f03dc7dc5fc5"
-"checksum glutin 0.20.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6e5cc17ac6cb35704f434faaa5bb5e4254a66f50853976c7e6f00aee09ff1bf2"
+"checksum glutin 0.21.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5371b35b309dace06be1b81b5f6adb1c9de578b7dbe1e74bf7e4ef762cf6febd"
 "checksum glutin_egl_sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "772edef3b28b8ad41e4ea202748e65eefe8e5ffd1f4535f1219793dbb20b3d4c"
+"checksum glutin_emscripten_sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "245b3fdb08df6ffed7585365851f8404af9c7e2dd4b59f15262e968b6a95a0c7"
 "checksum glutin_gles2_sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "89996c30857ae1b4de4b5189abf1ea822a20a9fe9e1c93e5e7b862ff0bdd5cdf"
 "checksum glutin_glx_sys 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "1290a5ca5e46fcfa7f66f949cc9d9194b2cb6f2ed61892c8c2b82343631dba57"
 "checksum glutin_wgl_sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f801bbc91efc22dd1c4818a47814fc72bf74d024510451b119381579bfa39021"
@@ -1819,10 +1826,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "38f09e0f0b1fb55fdee1f17470ad800da77af5186a1a76c026b679358b7e844e"
 "checksum image 0.21.3 (registry+https://github.com/rust-lang/crates.io-index)" = "35371e467cd7b0b3d1d6013d619203658467df12d61b0ca43cd67b743b1965eb"
 "checksum image 0.22.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7b4be8aaefbe7545dc42ae925afb55a0098f226a3fe5ef721872806f44f57826"
-"checksum imgui 0.0.24-pre (git+https://github.com/agersant/imgui-rs)" = "<none>"
-"checksum imgui-gfx-renderer 0.0.24-pre (git+https://github.com/agersant/imgui-rs)" = "<none>"
-"checksum imgui-sys 0.0.24-pre (git+https://github.com/agersant/imgui-rs)" = "<none>"
-"checksum imgui-winit-support 0.0.24-pre (git+https://github.com/agersant/imgui-rs)" = "<none>"
+"checksum imgui 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e70a1b421ac503e94009cc9bcd6ed256f6bf38ced98d841b095da6b94ea67702"
+"checksum imgui-gfx-renderer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3637284fef18e3ace53d4c57add0e4fa7d3cf58dc8abaa4ca1dab9360a992989"
+"checksum imgui-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0350b22f0a64eeb852ed3995ddb5d6d24bd3038024d2bd81720a6573baa602dc"
+"checksum imgui-winit-support 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6c63c45c058634dbc045dde485a7baf0f4321b77c00cca90c5d2d9b3ab2f5eec"
 "checksum inflate 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "1cdb29978cc5797bd8dcc8e5bf7de604891df2a8dc576973d71a281e916db2ff"
 "checksum inotify 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "40b54539f3910d6f84fbf9a643efd6e3aa6e4f001426c0329576128255994718"
 "checksum inotify-sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "e74a1aa87c59aeff6ef2cc2fa62d41bc43f54952f55652656b18a02fd5e356c0"

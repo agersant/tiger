@@ -5,7 +5,7 @@ use gfx_device_gl;
 use gfx_window_glutin;
 use glutin;
 use imgui_gfx_renderer;
-use imgui_winit_support;
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
 #[macro_use]
 extern crate serde_derive;
 
@@ -72,28 +72,29 @@ struct AsyncResults {
 fn main() -> Result<(), failure::Error> {
     let mut events_loop = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
-    let window = glutin::WindowBuilder::new().with_title(WINDOW_TITLE);
+    let window_builder = glutin::WindowBuilder::new().with_title(WINDOW_TITLE);
 
-    let (window, mut device, mut factory, mut color_rt, mut depth_rt) =
+    let (windowed_context, mut device, mut factory, mut color_rt, mut depth_rt) =
         gfx_window_glutin::init::<gfx::format::Rgba8, gfx::format::DepthStencil>(
-            window,
+            window_builder,
             context,
             &events_loop,
         )
         .or(Err(MainError::WindowInitError))?;
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let mut imgui_instance = ui::init(&window);
+    let mut imgui_instance = ui::init(&windowed_context.window());
     let mut renderer = imgui_gfx_renderer::Renderer::init(
         &mut imgui_instance,
         &mut factory,
         get_shaders(device.get_info().shading_language),
-        color_rt.clone(),
     )
     .or(Err(MainError::RendererInitError))?;
 
     let icon = include_bytes!("../res/app_icon.png");
-    window.set_window_icon(glutin::Icon::from_bytes(icon).ok());
+    windowed_context
+        .window()
+        .set_window_icon(glutin::Icon::from_bytes(icon).ok());
 
     // Init application state
     let async_commands: Arc<(Mutex<AsyncCommands>, Condvar)> =
@@ -180,12 +181,17 @@ fn main() -> Result<(), failure::Error> {
 
     // Main thread
     {
+        let mut platform = WinitPlatform::init(&mut imgui_instance);
+        platform.attach_window(
+            imgui_instance.io_mut(),
+            &windowed_context.window(),
+            HiDpiMode::Default,
+        );
+
         let mut last_frame = std::time::Instant::now();
         let mut quit = false;
 
         loop {
-            let rounded_hidpi_factor = window.get_hidpi_factor().round();
-
             // Handle Windows events
             events_loop.poll_events(|event| {
                 use glutin::{
@@ -193,47 +199,42 @@ fn main() -> Result<(), failure::Error> {
                     WindowEvent::{CloseRequested, Resized},
                 };
 
-                imgui_winit_support::handle_event(
-                    &mut imgui_instance,
-                    &event,
-                    window.get_hidpi_factor(),
-                    rounded_hidpi_factor,
-                );
+                platform.handle_event(imgui_instance.io_mut(), windowed_context.window(), &event);
 
                 if let Event::WindowEvent { event, .. } = event {
                     match event {
                         Resized(_) => {
-                            gfx_window_glutin::update_views(&window, &mut color_rt, &mut depth_rt);
-                            renderer.update_render_target(color_rt.clone());
+                            gfx_window_glutin::update_views(
+                                &windowed_context,
+                                &mut color_rt,
+                                &mut depth_rt,
+                            );
                         }
                         CloseRequested => quit = true,
                         _ => (),
                     }
                 }
             });
-            imgui_winit_support::update_mouse_cursor(&imgui_instance, &window);
 
-            // Update delta-time
-            let now = std::time::Instant::now();
-            let delta = now - last_frame;
-            let delta_s = delta.as_secs() as f32 + delta.subsec_nanos() as f32 / 1_000_000_000.0;
-            last_frame = now;
+            // Imgui frame
+            let io = imgui_instance.io_mut();
+            platform
+                .prepare_frame(io, windowed_context.window())
+                .expect("Failed to start frame");
+            last_frame = io.update_delta_time(last_frame);
+            let delta_time = io.delta_time;
+            let ui_frame = imgui_instance.frame();
 
-            // Begin imgui frame
-            let ui_frame;
-            {
-                let frame_size = imgui_winit_support::get_frame_size(&window, rounded_hidpi_factor)
-                    .ok_or(MainError::FrameSizeError)?;
-                ui_frame = imgui_instance.frame(frame_size, delta_s);
-            }
-
+            // Tiger frame
             let mut state = state_mutex.lock().unwrap().clone();
-            state.tick(delta);
+            state.tick(std::time::Duration::new(
+                delta_time.floor() as u64,
+                (delta_time.fract() * 1_000_000_000 as f32) as u32,
+            ));
 
-            // Run Tiger UI frame
             let mut new_commands = {
                 let texture_cache = texture_cache.lock().unwrap();
-                ui::run(&ui_frame, &state, &texture_cache)?
+                ui::run(windowed_context.window(), &ui_frame, &state, &texture_cache)?
             };
 
             // Exit
@@ -303,12 +304,16 @@ fn main() -> Result<(), failure::Error> {
 
             // Render screen
             {
+                platform.prepare_render(&ui_frame, windowed_context.window());
+                let draw_data = ui_frame.render();
                 encoder.clear(&color_rt, [0.0, 0.0, 0.0, 0.0]);
                 renderer
-                    .render(ui_frame, &mut factory, &mut encoder)
+                    .render(&mut factory, &mut encoder, &mut color_rt, draw_data)
                     .or(Err(MainError::DrawError))?;
                 encoder.flush(&mut device);
-                window.swap_buffers().or(Err(MainError::SwapError))?;
+                windowed_context
+                    .swap_buffers()
+                    .or(Err(MainError::SwapError))?;
                 device.cleanup();
             }
 
@@ -318,7 +323,7 @@ fn main() -> Result<(), failure::Error> {
                 streamer::upload(
                     &mut texture_cache,
                     &mut factory,
-                    &mut renderer,
+                    renderer.textures(),
                     &streamer_to_gpu,
                 );
             }

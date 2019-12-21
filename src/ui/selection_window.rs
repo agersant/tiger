@@ -13,14 +13,14 @@ use crate::utils::*;
 fn draw_frame<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, frame: &Frame) {
     if let Some(name) = frame.get_source().file_name() {
         ui.text(&ImString::new(name.to_string_lossy()));
-        let space = ui.get_content_region_avail().into();
+        let space = ui.content_region_avail().into();
         match texture_cache.get(frame.get_source()) {
             Some(TextureCacheResult::Loaded(texture)) => {
                 if let Some(fill) = utils::fill(space, texture.size) {
-                    let cursor_pos = Vector2D::<f32>::from(ui.get_cursor_pos());
+                    let cursor_pos = Vector2D::<f32>::from(ui.cursor_pos());
                     let draw_position = cursor_pos + fill.rect.origin.to_vector();
-                    ui.set_cursor_pos(draw_position.to_tuple());
-                    ui.image(texture.id, fill.rect.size.to_tuple()).build();
+                    ui.set_cursor_pos(draw_position.to_array());
+                    Image::new(texture.id, fill.rect.size.to_array()).build(ui);
                 }
             }
             Some(TextureCacheResult::Loading) => {
@@ -46,19 +46,19 @@ fn draw_hitbox<'a>(ui: &Ui<'a>, hitbox: &Hitbox) {
         size.x, size.y
     )));
 
-    let space: Vector2D<f32> = ui.get_content_region_avail().into();
+    let space: Vector2D<f32> = ui.content_region_avail().into();
     let padding = 0.2;
 
     if let Some(fill) = utils::fill(space * (1.0 - padding), size.to_f32()) {
-        let cursor_screen_pos: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+        let cursor_screen_pos: Vector2D<f32> = ui.cursor_screen_pos().into();
         let draw_list = ui.get_window_draw_list();
         let color = [1.0, 1.0, 1.0, 1.0]; // TODO.style
         draw_list
             .add_rect(
                 (cursor_screen_pos + space * padding / 2.0 + fill.rect.min().to_vector())
-                    .to_tuple(),
+                    .to_array(),
                 (cursor_screen_pos + space * padding / 2.0 + fill.rect.max().to_vector())
-                    .to_tuple(),
+                    .to_array(),
                 color,
             )
             .thickness(2.0) // TODO dpi
@@ -73,7 +73,7 @@ fn draw_animation<'a>(
     animation: &Animation,
 ) {
     ui.text(&ImString::new(animation.get_name().to_owned()));
-    let space = ui.get_content_region_avail().into();
+    let space = ui.content_region_avail().into();
     match utils::get_bounding_box(animation, texture_cache) {
         Ok(mut bbox) => {
             bbox.center_on_origin();
@@ -85,7 +85,7 @@ fn draw_animation<'a>(
                 let (_, keyframe) = animation.get_frame_at(time).unwrap(); // TODO no unwrap
                 match texture_cache.get(keyframe.get_frame()) {
                     Some(TextureCacheResult::Loaded(texture)) => {
-                        let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
+                        let cursor_pos: Vector2D<f32> = ui.cursor_pos().into();
                         let frame_offset = keyframe.get_offset().to_f32();
                         let draw_position = cursor_pos
                             + fill.rect.origin.to_vector()
@@ -94,8 +94,8 @@ fn draw_animation<'a>(
                                 - texture.size / 2.0)
                                 * fill.zoom;
                         let draw_size = texture.size * fill.zoom;
-                        ui.set_cursor_pos(draw_position.to_tuple());
-                        ui.image(texture.id, draw_size.to_tuple()).build();
+                        ui.set_cursor_pos(draw_position.to_array());
+                        Image::new(texture.id, draw_size.to_array()).build(ui);
                     }
                     Some(TextureCacheResult::Loading) => {
                         draw_spinner(ui, &ui.get_window_draw_list(), space);
@@ -121,14 +121,14 @@ fn draw_keyframe<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, keyframe: &Keyfr
             "Duration: {}ms",
             keyframe.get_duration()
         )));
-        let space = ui.get_content_region_avail().into();
+        let space = ui.content_region_avail().into();
         match texture_cache.get(frame) {
             Some(TextureCacheResult::Loaded(texture)) => {
                 if let Some(fill) = utils::fill(space, texture.size) {
-                    let cursor_pos: Vector2D<f32> = ui.get_cursor_pos().into();
+                    let cursor_pos: Vector2D<f32> = ui.cursor_pos().into();
                     let draw_position = cursor_pos + fill.rect.origin.to_vector();
-                    ui.set_cursor_pos(draw_position.to_tuple());
-                    ui.image(texture.id, fill.rect.size.to_tuple()).build();
+                    ui.set_cursor_pos(draw_position.to_array());
+                    Image::new(texture.id, fill.rect.size.to_array()).build(ui);
                 }
             }
             Some(TextureCacheResult::Loading) => {
@@ -142,54 +142,52 @@ fn draw_keyframe<'a>(ui: &Ui<'a>, texture_cache: &TextureCache, keyframe: &Keyfr
 }
 
 pub fn draw<'a>(ui: &Ui<'a>, rect: &Rect<f32>, app_state: &AppState, texture_cache: &TextureCache) {
-    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Selection"))
-            .position(rect.origin.to_tuple(), ImGuiCond::Always)
-            .size(rect.size.to_tuple(), ImGuiCond::Always)
-            .collapsible(false)
-            .resizable(false)
-            .movable(false)
-            .build(|| {
-                if let Some(document) = app_state.get_current_document() {
-                    match &document.view.selection {
-                        Some(Selection::Frame(paths)) => {
-                            let path = &paths.last_touched_in_range;
-                            if let Some(frame) = document.sheet.get_frame(path) {
-                                draw_frame(ui, texture_cache, frame);
-                            }
+    let styles = ui.push_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)]);
+    Window::new(im_str!("Selection"))
+        .position(rect.origin.to_array(), Condition::Always)
+        .size(rect.size.to_array(), Condition::Always)
+        .collapsible(false)
+        .resizable(false)
+        .movable(false)
+        .build(ui, || {
+            if let Some(document) = app_state.get_current_document() {
+                match &document.view.selection {
+                    Some(Selection::Frame(paths)) => {
+                        let path = &paths.last_touched_in_range;
+                        if let Some(frame) = document.sheet.get_frame(path) {
+                            draw_frame(ui, texture_cache, frame);
                         }
-                        Some(Selection::Animation(names)) => {
-                            let name = &names.last_touched_in_range;
-                            if let Some(animation) = document.sheet.get_animation(name) {
-                                draw_animation(ui, app_state, texture_cache, animation);
-                            }
-                        }
-                        Some(Selection::Keyframe(indexes)) => {
-                            if let Some(WorkbenchItem::Animation(name)) =
-                                &document.view.workbench_item
-                            {
-                                let index = indexes.last_touched_in_range;
-                                if let Some(animation) = document.sheet.get_animation(name) {
-                                    if let Some(keyframe) = animation.get_frame(index) {
-                                        draw_keyframe(ui, texture_cache, keyframe);
-                                    }
-                                }
-                            }
-                        }
-                        Some(Selection::Hitbox(names)) => {
-                            let name = &names.last_touched_in_range;
-                            if let Some(WorkbenchItem::Frame(path)) = &document.view.workbench_item
-                            {
-                                if let Some(frame) = document.sheet.get_frame(path) {
-                                    if let Some(hitbox) = frame.get_hitbox(name) {
-                                        draw_hitbox(ui, hitbox);
-                                    }
-                                }
-                            }
-                        }
-                        None => (),
                     }
+                    Some(Selection::Animation(names)) => {
+                        let name = &names.last_touched_in_range;
+                        if let Some(animation) = document.sheet.get_animation(name) {
+                            draw_animation(ui, app_state, texture_cache, animation);
+                        }
+                    }
+                    Some(Selection::Keyframe(indexes)) => {
+                        if let Some(WorkbenchItem::Animation(name)) = &document.view.workbench_item
+                        {
+                            let index = indexes.last_touched_in_range;
+                            if let Some(animation) = document.sheet.get_animation(name) {
+                                if let Some(keyframe) = animation.get_frame(index) {
+                                    draw_keyframe(ui, texture_cache, keyframe);
+                                }
+                            }
+                        }
+                    }
+                    Some(Selection::Hitbox(names)) => {
+                        let name = &names.last_touched_in_range;
+                        if let Some(WorkbenchItem::Frame(path)) = &document.view.workbench_item {
+                            if let Some(frame) = document.sheet.get_frame(path) {
+                                if let Some(hitbox) = frame.get_hitbox(name) {
+                                    draw_hitbox(ui, hitbox);
+                                }
+                            }
+                        }
+                    }
+                    None => (),
                 }
-            });
-    });
+            }
+        });
+    styles.pop(ui);
 }

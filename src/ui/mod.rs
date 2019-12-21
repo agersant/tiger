@@ -18,18 +18,18 @@ mod spinner;
 mod timeline_window;
 mod workbench_window;
 
-pub fn init(window: &glutin::Window) -> ImGui {
-    let mut imgui_instance = ImGui::init();
+pub fn init(window: &glutin::Window) -> Context {
+    let mut imgui_instance = Context::create();
     imgui_instance.set_ini_filename(None);
 
     // Fix incorrect colors with sRGB framebuffer
     {
-        fn imgui_gamma_to_linear(col: imgui::ImVec4) -> imgui::ImVec4 {
-            let x = col.x.powf(2.2);
-            let y = col.y.powf(2.2);
-            let z = col.z.powf(2.2);
-            let w = 1.0 - (1.0 - col.w).powf(2.2);
-            imgui::ImVec4::new(x, y, z, w)
+        fn imgui_gamma_to_linear(col: [f32; 4]) -> [f32; 4] {
+            let x = col[0].powf(2.2);
+            let y = col[1].powf(2.2);
+            let z = col[2].powf(2.2);
+            let w = 1.0 - (1.0 - col[3]).powf(2.2);
+            [x, y, z, w]
         }
 
         let style = imgui_instance.style_mut();
@@ -42,51 +42,53 @@ pub fn init(window: &glutin::Window) -> ImGui {
     {
         let rounded_hidpi_factor = window.get_hidpi_factor().round();
         let font_size = (15.0 * rounded_hidpi_factor) as f32;
-        let oversample = 8;
 
-        imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../../res/FiraSans-Regular.ttf"),
-            ImFontConfig::new()
-                .merge_mode(false)
-                .oversample_h(oversample)
-                .oversample_v(oversample)
-                .pixel_snap_h(true)
-                .size_pixels(font_size),
-            &FontGlyphRange::default(),
-        );
+        let font_data = include_bytes!("../../res/FiraSans-Regular.ttf");
 
-        imgui_instance.fonts().add_font_with_config(
-            include_bytes!("../../res/FiraSans-Regular.ttf"),
-            ImFontConfig::new()
-                .merge_mode(true)
-                .oversample_h(oversample)
-                .oversample_v(oversample)
-                .pixel_snap_h(true)
-                .size_pixels(font_size),
-            &FontGlyphRange::from_slice(&[8192, 8303, 0]), // General punctuation
-        );
-        imgui_instance.set_font_global_scale((1.0 / rounded_hidpi_factor) as f32);
+        imgui_instance.fonts().add_font(&[
+            FontSource::TtfData {
+                data: font_data,
+                size_pixels: font_size,
+                config: Some(FontConfig {
+                    glyph_ranges: FontGlyphRanges::default(),
+                    ..FontConfig::default()
+                }),
+            },
+            FontSource::TtfData {
+                data: font_data,
+                size_pixels: font_size,
+                config: Some(FontConfig {
+                    glyph_ranges: FontGlyphRanges::from_slice(&[8192, 8303, 0]), // General punctuation
+                    ..FontConfig::default()
+                }),
+            },
+        ]);
+
+        imgui_instance.io_mut().font_global_scale = (1.0 / rounded_hidpi_factor) as f32;
     }
-
-    imgui_winit_support::configure_keys(&mut imgui_instance);
 
     imgui_instance
 }
 
 pub fn run<'a>(
+    window: &glutin::Window,
     ui: &Ui<'a>,
     app_state: &AppState,
     texture_cache: &TextureCache,
 ) -> Result<CommandBuffer, Error> {
     let mut commands = CommandBuffer::new();
 
-    let (window_width, window_height) = ui.frame_size().logical_size;
-    let (window_width, window_height) = (window_width as f32, window_height as f32);
+    let window_size = match window.get_inner_size() {
+        Some(s) => s,
+        _ => bail!("Invalid window size"),
+    };
+    let (window_width, window_height) = (window_size.width as f32, window_size.height as f32);
+    let window_size = (window_width, window_height);
 
     let content_width = 0.12 * window_width;
     let hitboxes_width = 0.12 * window_width;
 
-    let (_, menu_height) = draw_main_menu(ui, app_state, &mut commands);
+    let [_, menu_height] = draw_main_menu(ui, app_state, &mut commands);
 
     {
         let workbench_width = window_width - content_width - hitboxes_width;
@@ -150,8 +152,8 @@ pub fn run<'a>(
 
     draw_export_popup(ui, app_state, &mut commands);
     draw_rename_popup(ui, app_state, &mut commands);
-    draw_unsaved_changes_popup(ui, app_state, &mut commands);
-    draw_saving_popup(ui, app_state);
+    draw_unsaved_changes_popup(ui, app_state, window_size, &mut commands);
+    draw_saving_popup(ui, app_state, window_size);
 
     update_drag_and_drop(ui, app_state, &mut commands);
     draw_drag_and_drop(ui, app_state, texture_cache);
@@ -166,187 +168,165 @@ fn save_all(app_state: &AppState, commands: &mut CommandBuffer) {
     }
 }
 
-fn draw_main_menu<'a>(
-    ui: &Ui<'a>,
-    app_state: &AppState,
-    commands: &mut CommandBuffer,
-) -> (f32, f32) {
-    let size = &mut (0.0, 0.0);
+fn draw_main_menu<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) -> [f32; 2] {
+    let mut size = [0.0, 0.0];
     let has_document = app_state.get_current_document().is_some();
 
-    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.main_menu_bar(|| {
-            ui.menu(im_str!("File")).build(|| {
-                if ui
-                    .menu_item(im_str!("New Sheet…"))
-                    .shortcut(im_str!("Ctrl+N"))
-                    .build()
-                {
-                    commands.begin_new_document();
+    let styles = ui.push_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)]);
+    ui.main_menu_bar(|| {
+        ui.menu(im_str!("File"), true, || {
+            if MenuItem::new(im_str!("New Sheet…"))
+                .shortcut(im_str!("Ctrl+N"))
+                .build(ui)
+            {
+                commands.begin_new_document();
+            }
+            if MenuItem::new(im_str!("Open Sheet…"))
+                .shortcut(im_str!("Ctrl+O"))
+                .build(ui)
+            {
+                commands.begin_open_document();
+            }
+            ui.separator();
+            if MenuItem::new(im_str!("Save"))
+                .shortcut(im_str!("Ctrl+S"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                if let Some(document) = app_state.get_current_document() {
+                    commands.save(&document.source, &document.sheet, document.get_version());
                 }
-                if ui
-                    .menu_item(im_str!("Open Sheet…"))
-                    .shortcut(im_str!("Ctrl+O"))
-                    .build()
-                {
-                    commands.begin_open_document();
+            }
+            if MenuItem::new(im_str!("Save As…"))
+                .shortcut(im_str!("Ctrl+Shift+S"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                if let Some(document) = app_state.get_current_document() {
+                    commands.save_as(&document.source, &document.sheet, document.get_version());
                 }
-                ui.separator();
-                if ui
-                    .menu_item(im_str!("Save"))
-                    .shortcut(im_str!("Ctrl+S"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    if let Some(document) = app_state.get_current_document() {
-                        commands.save(&document.source, &document.sheet, document.get_version());
-                    }
+            }
+            if MenuItem::new(im_str!("Save All"))
+                .shortcut(im_str!("Ctrl+Alt+S"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                save_all(app_state, commands);
+            }
+            if MenuItem::new(im_str!("Export"))
+                .shortcut(im_str!("Ctrl+E"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                if let Some(document) = app_state.get_current_document() {
+                    commands.export(&document.sheet);
                 }
-                if ui
-                    .menu_item(im_str!("Save As…"))
-                    .shortcut(im_str!("Ctrl+Shift+S"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    if let Some(document) = app_state.get_current_document() {
-                        commands.save_as(&document.source, &document.sheet, document.get_version());
-                    }
-                }
-                if ui
-                    .menu_item(im_str!("Save All"))
-                    .shortcut(im_str!("Ctrl+Alt+S"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    save_all(app_state, commands);
-                }
-                if ui
-                    .menu_item(im_str!("Export"))
-                    .shortcut(im_str!("Ctrl+E"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    if let Some(document) = app_state.get_current_document() {
-                        commands.export(&document.sheet);
-                    }
-                }
-                if ui
-                    .menu_item(im_str!("Export As…"))
-                    .shortcut(im_str!("Ctrl+Shift+E"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    commands.begin_export_as();
-                }
-                ui.separator();
-                if ui
-                    .menu_item(im_str!("Close"))
-                    .shortcut(im_str!("Ctrl+W"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    commands.close_current_document();
-                }
-                if ui
-                    .menu_item(im_str!("Close All"))
-                    .shortcut(im_str!("Ctrl+Shift+W"))
-                    .enabled(has_document)
-                    .build()
-                {
-                    commands.close_all_documents();
-                }
-            });
-
-            ui.menu(im_str!("Edit")).build(|| {
-                let undo_command_name = app_state
-                    .get_current_document()
-                    .and_then(|d| d.get_undo_command())
-                    .and_then(|c| Some(format!("Undo {}", c)));
-                if ui
-                    .menu_item(&ImString::new(
-                        undo_command_name.clone().unwrap_or("Undo".to_owned()),
-                    ))
-                    .shortcut(im_str!("Ctrl+Z"))
-                    .enabled(undo_command_name.is_some())
-                    .build()
-                {
-                    commands.undo();
-                }
-
-                let redo_command_name = app_state
-                    .get_current_document()
-                    .and_then(|d| d.get_redo_command())
-                    .and_then(|c| Some(format!("Redo {}", c)));
-                if ui
-                    .menu_item(&ImString::new(
-                        redo_command_name.clone().unwrap_or("Redo".to_owned()),
-                    ))
-                    .shortcut(im_str!("Ctrl+Shift+Z"))
-                    .enabled(redo_command_name.is_some())
-                    .build()
-                {
-                    commands.redo();
-                }
-            });
-
-            ui.menu(im_str!("View")).build(|| {
-                if ui
-                    .menu_item(im_str!("Center Workbench"))
-                    .shortcut(im_str!("Ctrl+Space"))
-                    .build()
-                {
-                    commands.workbench_center();
-                }
-                if ui
-                    .menu_item(im_str!("Zoom In (Workbench)"))
-                    .shortcut(im_str!("Ctrl++"))
-                    .build()
-                {
-                    commands.workbench_zoom_in();
-                }
-                if ui
-                    .menu_item(im_str!("Zoom Out (Workbench)"))
-                    .shortcut(im_str!("Ctrl+-"))
-                    .build()
-                {
-                    commands.workbench_zoom_out();
-                }
-                if ui
-                    .menu_item(im_str!("Reset Zoom (Workbench)"))
-                    .shortcut(im_str!("Ctrl+0"))
-                    .build()
-                {
-                    commands.workbench_reset_zoom();
-                }
-                ui.separator();
-                if ui
-                    .menu_item(im_str!("Zoom In (Timeline)"))
-                    .shortcut(im_str!("Ctrl+Alt++"))
-                    .build()
-                {
-                    commands.timeline_zoom_in();
-                }
-                if ui
-                    .menu_item(im_str!("Zoom Out (Timeline)"))
-                    .shortcut(im_str!("Ctrl+Alt+-"))
-                    .build()
-                {
-                    commands.timeline_zoom_out();
-                }
-                if ui
-                    .menu_item(im_str!("Reset Zoom (Timeline)"))
-                    .shortcut(im_str!("Ctrl+Alt+0"))
-                    .build()
-                {
-                    commands.timeline_reset_zoom();
-                }
-            });
-
-            *size = ui.get_window_size();
+            }
+            if MenuItem::new(im_str!("Export As…"))
+                .shortcut(im_str!("Ctrl+Shift+E"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                commands.begin_export_as();
+            }
+            ui.separator();
+            if MenuItem::new(im_str!("Close"))
+                .shortcut(im_str!("Ctrl+W"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                commands.close_current_document();
+            }
+            if MenuItem::new(im_str!("Close All"))
+                .shortcut(im_str!("Ctrl+Shift+W"))
+                .enabled(has_document)
+                .build(ui)
+            {
+                commands.close_all_documents();
+            }
         });
+
+        ui.menu(im_str!("Edit"), true, || {
+            let undo_command_name = app_state
+                .get_current_document()
+                .and_then(|d| d.get_undo_command())
+                .and_then(|c| Some(format!("Undo {}", c)));
+            if MenuItem::new(&ImString::new(
+                undo_command_name.clone().unwrap_or("Undo".to_owned()),
+            ))
+            .shortcut(im_str!("Ctrl+Z"))
+            .enabled(undo_command_name.is_some())
+            .build(ui)
+            {
+                commands.undo();
+            }
+
+            let redo_command_name = app_state
+                .get_current_document()
+                .and_then(|d| d.get_redo_command())
+                .and_then(|c| Some(format!("Redo {}", c)));
+            if MenuItem::new(&ImString::new(
+                redo_command_name.clone().unwrap_or("Redo".to_owned()),
+            ))
+            .shortcut(im_str!("Ctrl+Shift+Z"))
+            .enabled(redo_command_name.is_some())
+            .build(ui)
+            {
+                commands.redo();
+            }
+        });
+
+        ui.menu(im_str!("View"), true, || {
+            if MenuItem::new(im_str!("Center Workbench"))
+                .shortcut(im_str!("Ctrl+Space"))
+                .build(ui)
+            {
+                commands.workbench_center();
+            }
+            if MenuItem::new(im_str!("Zoom In (Workbench)"))
+                .shortcut(im_str!("Ctrl++"))
+                .build(ui)
+            {
+                commands.workbench_zoom_in();
+            }
+            if MenuItem::new(im_str!("Zoom Out (Workbench)"))
+                .shortcut(im_str!("Ctrl+-"))
+                .build(ui)
+            {
+                commands.workbench_zoom_out();
+            }
+            if MenuItem::new(im_str!("Reset Zoom (Workbench)"))
+                .shortcut(im_str!("Ctrl+0"))
+                .build(ui)
+            {
+                commands.workbench_reset_zoom();
+            }
+            ui.separator();
+            if MenuItem::new(im_str!("Zoom In (Timeline)"))
+                .shortcut(im_str!("Ctrl+Alt++"))
+                .build(ui)
+            {
+                commands.timeline_zoom_in();
+            }
+            if MenuItem::new(im_str!("Zoom Out (Timeline)"))
+                .shortcut(im_str!("Ctrl+Alt+-"))
+                .build(ui)
+            {
+                commands.timeline_zoom_out();
+            }
+            if MenuItem::new(im_str!("Reset Zoom (Timeline)"))
+                .shortcut(im_str!("Ctrl+Alt+0"))
+                .build(ui)
+            {
+                commands.timeline_reset_zoom();
+            }
+        });
+
+        size = ui.window_size();
     });
 
-    *size
+    styles.pop(ui);
+    size
 }
 
 fn draw_documents_window<'a>(
@@ -354,39 +334,39 @@ fn draw_documents_window<'a>(
     rect: &Rect<f32>,
     app_state: &AppState,
     commands: &mut CommandBuffer,
-) -> (f32, f32) {
-    let size = &mut (0.0, 0.0);
+) -> [f32; 2] {
+    let mut size = [0.0, 0.0];
+    let styles = ui.push_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)]);
 
-    ui.with_style_vars(&[WindowRounding(0.0), WindowBorderSize(0.0)], || {
-        ui.window(im_str!("Documents"))
-            .position(rect.origin.to_tuple(), ImGuiCond::Always)
-            .always_auto_resize(true)
-            .collapsible(false)
-            .resizable(false)
-            .title_bar(false)
-            .menu_bar(false)
-            .movable(false)
-            .build(|| {
-                for document in app_state.documents_iter() {
-                    let mut document_name = document.get_display_name();
-                    if !document.is_saved() {
-                        document_name += " [Modified]";
-                    }
-                    if ui.small_button(&ImString::new(document_name)) {
-                        commands.focus_document(document);
-                    }
-                    ui.same_line(0.0);
+    Window::new(im_str!("Documents"))
+        .position(rect.origin.to_array(), Condition::Always)
+        .always_auto_resize(true)
+        .collapsible(false)
+        .resizable(false)
+        .title_bar(false)
+        .menu_bar(false)
+        .movable(false)
+        .build(ui, || {
+            for document in app_state.documents_iter() {
+                let mut document_name = document.get_display_name();
+                if !document.is_saved() {
+                    document_name += " [Modified]";
                 }
-                *size = ui.get_window_size();
-            });
-    });
+                if ui.small_button(&ImString::new(document_name)) {
+                    commands.focus_document(document);
+                }
+                ui.same_line(0.0);
+            }
+            size = ui.window_size();
+        });
 
-    *size
+    styles.pop(ui);
+    size
 }
 
 fn update_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
-        if !ui.imgui().is_mouse_down(ImMouseButton::Left) {
+        if !ui.is_mouse_down(MouseButton::Left) {
             match document.transient {
                 Some(Transient::ContentFramesDrag) => commands.end_frames_drag(),
                 Some(Transient::KeyframeDuration(_)) => commands.end_keyframe_duration_drag(),
@@ -411,7 +391,7 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
                     match texture_cache.get(path) {
                         Some(TextureCacheResult::Loaded(texture)) => {
                             if let Some(fill) = utils::fill(tooltip_size, texture.size) {
-                                ui.image(texture.id, fill.rect.size.to_tuple()).build();
+                                Image::new(texture.id, fill.rect.size.to_array()).build(ui);
                             }
                         }
                         Some(TextureCacheResult::Loading) => {
@@ -433,13 +413,13 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
     if let Some(document) = app_state.get_current_document() {
         if let Some(settings) = &document.persistent.export_settings_edit {
             let popup_id = im_str!("Export Options");
-            ui.window(&popup_id)
+            Window::new(&popup_id)
                 .collapsible(false)
                 .resizable(true)
                 .always_auto_resize(true)
-                .build(|| {
+                .build(ui, || {
                     {
-                        ui.push_id(0);
+                        let token = ui.push_id(0);
                         ui.label_text(
                             &ImString::new(settings.texture_destination.to_string_lossy()),
                             im_str!("Texture atlas destination:"),
@@ -449,11 +429,11 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         if ui.small_button(im_str!("Browse…")) {
                             commands.begin_set_export_texture_destination(document);
                         }
-                        ui.pop_id();
+                        token.pop(ui);
                     }
 
                     {
-                        ui.push_id(1);
+                        let token = ui.push_id(1);
                         ui.label_text(
                             &ImString::new(settings.metadata_destination.to_string_lossy()),
                             im_str!("Metadata destination:"),
@@ -462,11 +442,11 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         if ui.small_button(im_str!("Browse…")) {
                             commands.begin_set_export_metadata_destination(document);
                         }
-                        ui.pop_id();
+                        token.pop(ui);
                     }
 
                     {
-                        ui.push_id(2);
+                        let token = ui.push_id(2);
                         ui.label_text(
                             &ImString::new(settings.metadata_paths_root.to_string_lossy()),
                             im_str!("Store paths relative to:"),
@@ -475,11 +455,11 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                         if ui.small_button(im_str!("Browse…")) {
                             commands.begin_set_export_metadata_paths_root(document);
                         }
-                        ui.pop_id();
+                        token.pop(ui);
                     }
 
                     {
-                        ui.push_id(3);
+                        let token = ui.push_id(3);
                         match &settings.format {
                             ExportFormat::Template(p) => {
                                 ui.label_text(
@@ -492,7 +472,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                                 }
                             }
                         };
-                        ui.pop_id();
+                        token.pop(ui);
                     }
 
                     // TODO grey out and disable if bad settings
@@ -540,25 +520,29 @@ fn draw_rename_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
     }
 }
 
-fn draw_unsaved_changes_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
+fn draw_unsaved_changes_popup<'a>(
+    ui: &Ui<'a>,
+    app_state: &AppState,
+    window_size: (f32, f32),
+    commands: &mut CommandBuffer,
+) {
     if let Some(document) = app_state.get_current_document() {
         match document.persistent.close_state {
             Some(CloseState::Saving) | Some(CloseState::Allowed) | None => (),
             Some(CloseState::Requested) => {
-                let frame_size = ui.frame_size().logical_size;
                 let popup_id = im_str!("Unsaved Changes");
-                ui.window(&popup_id)
+                Window::new(&popup_id)
                     .title_bar(true)
                     .collapsible(false)
                     .resizable(false)
                     .movable(true)
                     .always_auto_resize(true)
                     .position(
-                        (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
-                        ImGuiCond::Always,
+                        [window_size.0 as f32 / 2.0, window_size.1 as f32 / 2.0],
+                        Condition::Always,
                     )
-                    .position_pivot((0.5, 0.5))
-                    .build(|| {
+                    .position_pivot([0.5, 0.5])
+                    .build(ui, || {
                         let popup_text = format!(
                             "{} has been modified. Would you like to save changes?",
                             document.get_display_name()
@@ -586,29 +570,28 @@ fn draw_unsaved_changes_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &
         }
     }
 }
-fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState) {
+fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState, window_size: (f32, f32)) {
     if let Some(document) = app_state.get_current_document() {
         match document.persistent.close_state {
             Some(CloseState::Requested) | None => (),
             Some(CloseState::Saving) | Some(CloseState::Allowed) => {
-                let frame_size = ui.frame_size().logical_size;
                 let popup_id = im_str!("Saving");
-                ui.window(&popup_id)
+                Window::new(&popup_id)
                     .title_bar(false)
                     .resizable(false)
                     .movable(false)
                     .position(
-                        (frame_size.0 as f32 / 2.0, frame_size.1 as f32 / 2.0),
-                        ImGuiCond::Always,
+                        [window_size.0 as f32 / 2.0, window_size.1 as f32 / 2.0],
+                        Condition::Always,
                     )
-                    .position_pivot((0.5, 0.5))
-                    .size((80.0, 40.0), ImGuiCond::Always)
-                    .build(|| {
-                        ui.set_cursor_pos((0.0, 0.0));
+                    .position_pivot([0.5, 0.5])
+                    .size([80.0, 40.0], Condition::Always)
+                    .build(ui, || {
+                        ui.set_cursor_pos([0.0, 0.0]);
                         spinner::draw_spinner(
                             ui,
                             &ui.get_window_draw_list(),
-                            ui.get_window_size().into(),
+                            ui.window_size().into(),
                         );
                     });
             }
@@ -617,116 +600,116 @@ fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState) {
 }
 
 fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
-    if ui.want_capture_keyboard() {
+    if ui.io().want_capture_keyboard {
         return;
     }
 
     // Global shortcuts
-    if !ui.imgui().key_ctrl() {
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Delete as _) {
+    if !ui.io().key_ctrl {
+        if ui.is_key_pressed(VirtualKeyCode::Delete as _) {
             commands.delete_selection();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::F2 as _) {
+        if ui.is_key_pressed(VirtualKeyCode::F2 as _) {
             commands.begin_rename_selection();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Space as _) {
             commands.toggle_playback();
         }
     }
 
     // Arrow shortcuts
-    if ui.imgui().key_ctrl() {
-        let large_nudge = ui.imgui().key_shift();
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
+    if ui.io().key_ctrl {
+        let large_nudge = ui.io().key_shift;
+        if ui.is_key_pressed(VirtualKeyCode::Left as _) {
             commands.nudge_selection_left(large_nudge);
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Right as _) {
             commands.nudge_selection_right(large_nudge);
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Up as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Up as _) {
             commands.nudge_selection_up(large_nudge);
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Down as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Down as _) {
             commands.nudge_selection_down(large_nudge);
         }
     } else {
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Left as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Left as _) {
             commands.snap_to_previous_frame();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Right as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Right as _) {
             commands.snap_to_next_frame();
         }
     }
 
     // Menu commands
-    if ui.imgui().key_ctrl() {
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Z as _) {
-            if ui.imgui().key_shift() {
+    if ui.io().key_ctrl {
+        if ui.is_key_pressed(VirtualKeyCode::Z as _) {
+            if ui.io().key_shift {
                 commands.redo();
             } else {
                 commands.undo();
             }
         }
 
-        if ui.imgui().is_key_pressed(VirtualKeyCode::N as _) {
+        if ui.is_key_pressed(VirtualKeyCode::N as _) {
             commands.begin_new_document();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::O as _) {
+        if ui.is_key_pressed(VirtualKeyCode::O as _) {
             commands.begin_open_document();
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::S as _) {
-            if ui.imgui().key_shift() {
+        if ui.is_key_pressed(VirtualKeyCode::S as _) {
+            if ui.io().key_shift {
                 if let Some(document) = app_state.get_current_document() {
                     commands.save_as(&document.source, &document.sheet, document.get_version());
                 }
-            } else if ui.imgui().key_alt() {
+            } else if ui.io().key_alt {
                 save_all(app_state, commands);
             } else if let Some(document) = app_state.get_current_document() {
                 commands.save(&document.source, &document.sheet, document.get_version());
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::E as _) {
-            if ui.imgui().key_shift() {
+        if ui.is_key_pressed(VirtualKeyCode::E as _) {
+            if ui.io().key_shift {
                 commands.begin_export_as();
             } else if let Some(document) = app_state.get_current_document() {
                 commands.export(&document.sheet);
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::W as _) {
-            if ui.imgui().key_shift() {
+        if ui.is_key_pressed(VirtualKeyCode::W as _) {
+            if ui.io().key_shift {
                 commands.close_all_documents();
             } else {
                 commands.close_current_document();
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Add as _)
-            || ui.imgui().is_key_pressed(VirtualKeyCode::Equals as _)
+        if ui.is_key_pressed(VirtualKeyCode::Add as _)
+            || ui.is_key_pressed(VirtualKeyCode::Equals as _)
         {
-            if ui.imgui().key_alt() {
+            if ui.io().key_alt {
                 commands.timeline_zoom_in();
             } else {
                 commands.workbench_zoom_in();
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Subtract as _)
-            || ui.imgui().is_key_pressed(VirtualKeyCode::Minus as _)
+        if ui.is_key_pressed(VirtualKeyCode::Subtract as _)
+            || ui.is_key_pressed(VirtualKeyCode::Minus as _)
         {
-            if ui.imgui().key_alt() {
+            if ui.io().key_alt {
                 commands.timeline_zoom_out();
             } else {
                 commands.workbench_zoom_out();
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Key0 as _)
-            || ui.imgui().is_key_pressed(VirtualKeyCode::Numpad0 as _)
+        if ui.is_key_pressed(VirtualKeyCode::Key0 as _)
+            || ui.is_key_pressed(VirtualKeyCode::Numpad0 as _)
         {
-            if ui.imgui().key_alt() {
+            if ui.io().key_alt {
                 commands.timeline_reset_zoom();
             } else {
                 commands.workbench_reset_zoom();
             }
         }
-        if ui.imgui().is_key_pressed(VirtualKeyCode::Space as _) {
+        if ui.is_key_pressed(VirtualKeyCode::Space as _) {
             commands.workbench_center();
         }
     }

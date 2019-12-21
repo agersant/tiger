@@ -13,9 +13,9 @@ pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vect
     let thickness = 1.0; // TODO dpi?
     let num_control_points = 4;
 
-    let time = ui.imgui().get_time() as f32;
+    let time = ui.time() as f32;
 
-    let top_left: Vector2D<f32> = ui.get_cursor_screen_pos().into();
+    let top_left: Vector2D<f32> = ui.cursor_screen_pos().into();
     if let Some(fill) = utils::fill(space, vec2(size, size)) {
         let center = top_left + fill.rect.center().to_vector();
         let size = size * fill.zoom.min(1.0);
@@ -65,7 +65,7 @@ pub fn draw_spinner<'a>(ui: &Ui<'a>, draw_list: &WindowDrawList<'_>, space: Vect
             let b = segment_start_point + (segment_end_point - segment_start_point) * t_end;
 
             draw_list
-                .add_line(a.to_tuple(), b.to_tuple(), color)
+                .add_line(a.to_array(), b.to_array(), color)
                 .thickness(thickness)
                 .build();
         }

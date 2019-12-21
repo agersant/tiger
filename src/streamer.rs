@@ -1,9 +1,6 @@
 use euclid::default::*;
 use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
-use gfx::Factory;
-use gfx_device_gl::Resources;
-use imgui::ImTexture;
-use imgui_gfx_renderer::Renderer;
+use imgui::*;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -104,12 +101,15 @@ pub fn load_from_disk(
     }
 }
 
-pub fn upload(
+pub fn upload<R, F>(
     texture_cache: &mut TextureCache,
-    factory: &mut gfx_device_gl::Factory,
-    renderer: &mut Renderer<Resources>,
+    factory: &mut F,
+    imgui_textures: &mut Textures<imgui_gfx_renderer::Texture<R>>,
     receiver: &Receiver<StreamerPayload>,
-) {
+) where
+    R: gfx::Resources,
+    F: gfx::Factory<R>,
+{
     if let Ok(payload) = receiver.try_recv() {
         for (path, texture_data) in payload.new_textures {
             let sampler =
@@ -122,7 +122,7 @@ pub fn upload(
                 gfx::texture::Mipmap::Allocated,
                 &[&texture_data],
             ) {
-                let id = renderer.textures().insert((texture, sampler));
+                let id = imgui_textures.insert((texture, sampler));
                 texture_cache.insert_entry(path, id, size);
             } else {
                 texture_cache.insert_error(path);
@@ -136,7 +136,7 @@ pub fn upload(
         }
         for path in payload.obsolete_textures {
             if let Some(TextureCacheResult::Loaded(texture)) = texture_cache.get(&path) {
-                renderer.textures().remove(texture.id);
+                imgui_textures.remove(texture.id);
                 texture_cache.remove(path);
             }
         }
@@ -145,7 +145,7 @@ pub fn upload(
 
 #[derive(Clone)]
 struct TextureCacheImage {
-    pub id: ImTexture,
+    pub id: TextureId,
     pub size: Vector2D<u32>,
     // TODO dirty flag and file watches
 }
@@ -165,7 +165,7 @@ struct CacheEntry {
 
 #[derive(Clone)]
 pub struct TextureCacheResultImage {
-    pub id: ImTexture,
+    pub id: TextureId,
     pub size: Vector2D<f32>,
 }
 
@@ -224,7 +224,7 @@ impl TextureCache {
         }
     }
 
-    pub fn insert_entry<T: AsRef<Path>>(&mut self, path: T, id: ImTexture, size: Vector2D<u32>) {
+    pub fn insert_entry<T: AsRef<Path>>(&mut self, path: T, id: TextureId, size: Vector2D<u32>) {
         self.insert(
             path,
             CacheEntryState::Loaded(TextureCacheImage { id, size }),
