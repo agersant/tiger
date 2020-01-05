@@ -43,9 +43,13 @@ impl CommandBuffer {
         self.queue.push(Async(BeginOpenDocument));
     }
 
-    pub fn end_open_document<T: AsRef<Path>>(&mut self, path: T) {
+    pub fn read_document<T: AsRef<Path>>(&mut self, path: T) {
         self.queue
-            .push(Sync(App(EndOpenDocument(path.as_ref().to_owned()))));
+            .push(Async(ReadDocument(path.as_ref().to_owned())));
+    }
+
+    pub fn end_open_document(&mut self, document: crate::state::Document) {
+        self.queue.push(Sync(App(EndOpenDocument(document))));
     }
 
     pub fn relocate_document<T: AsRef<Path>, U: AsRef<Path>>(&mut self, from: T, to: U) {

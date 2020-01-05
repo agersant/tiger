@@ -10,6 +10,7 @@ use crate::state::*;
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
+    ReadDocument(PathBuf),
     Save(PathBuf, Sheet, i32),
     SaveAs(PathBuf, Sheet, i32),
     BeginSetExportTextureDestination(PathBuf),
@@ -20,10 +21,10 @@ pub enum AsyncCommand {
     Export(Sheet),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum AppCommand {
     EndNewDocument(PathBuf),
-    EndOpenDocument(PathBuf), // TODO This should be async (has IO + heavylifting)
+    EndOpenDocument(Document),
     CloseAllDocuments,
     FocusDocument(PathBuf),
     RelocateDocument(PathBuf, PathBuf),
@@ -33,7 +34,7 @@ pub enum AppCommand {
     CancelExit,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum DocumentCommand {
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
@@ -173,13 +174,13 @@ impl fmt::Display for DocumentCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SyncCommand {
     App(AppCommand),
     Document(DocumentCommand),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Command {
     Sync(SyncCommand),
     Async(AsyncCommand),

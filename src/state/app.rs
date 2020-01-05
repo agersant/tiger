@@ -108,18 +108,12 @@ impl AppState {
         Ok(())
     }
 
-    /*fn end_open_document(&mut self, document: Document) -> Result<(), Error> {
-        if self.get_document(document.source).is_none() {
+    fn end_open_document(&mut self, document: Document) -> Result<(), Error> {
+        let source = document.source.clone();
+        if self.get_document(&source).is_none() {
             self.add_document(document);
         }
-        self.focus_document(document.source)
-    }*/
-    fn end_open_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
-        if self.get_document(&path).is_none() {
-            let document = Document::open(&path)?;
-            self.add_document(document);
-        }
-        self.focus_document(path)
+        self.focus_document(&source)
     }
 
     fn relocate_document<T: AsRef<Path>, U: AsRef<Path>>(
@@ -208,7 +202,7 @@ impl AppState {
 
         match command {
             EndNewDocument(p) => self.end_new_document(p)?,
-            EndOpenDocument(p) => self.end_open_document(p)?,
+            EndOpenDocument(d) => self.end_open_document(d)?,
             RelocateDocument(from, to) => self.relocate_document(from, to)?,
             FocusDocument(p) => self.focus_document(p)?,
             CloseAllDocuments => self.close_all_documents(),
@@ -270,16 +264,23 @@ fn begin_open_document() -> Result<CommandBuffer, Error> {
     match nfd::open_file_multiple_dialog(Some(SHEET_FILE_EXTENSION), None)? {
         nfd::Response::Okay(path_string) => {
             let path = std::path::PathBuf::from(path_string);
-            buffer.end_open_document(path);
+            buffer.read_document(path);
         }
         nfd::Response::OkayMultiple(path_strings) => {
             for path_string in path_strings {
                 let path = std::path::PathBuf::from(path_string);
-                buffer.end_open_document(path);
+                buffer.read_document(path);
             }
         }
         _ => (),
     };
+    Ok(buffer)
+}
+
+fn read_document<T: AsRef<Path>>(source: T) -> Result<CommandBuffer, Error> {
+    let mut buffer = CommandBuffer::new();
+    let document = Document::open(source)?;
+    buffer.end_open_document(document);
     Ok(buffer)
 }
 
@@ -394,6 +395,7 @@ pub fn process_async_command(command: AsyncCommand) -> Result<CommandBuffer, Err
     match command {
         AsyncCommand::BeginNewDocument => begin_new_document(),
         AsyncCommand::BeginOpenDocument => begin_open_document(),
+        AsyncCommand::ReadDocument(p) => read_document(p),
         AsyncCommand::Save(p, sheet, version) => save(&sheet, p, version),
         AsyncCommand::SaveAs(p, sheet, version) => save_as(&sheet, p, version),
         AsyncCommand::BeginSetExportTextureDestination(p) => {
