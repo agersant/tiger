@@ -108,6 +108,12 @@ impl AppState {
         Ok(())
     }
 
+    /*fn end_open_document(&mut self, document: Document) -> Result<(), Error> {
+        if self.get_document(document.source).is_none() {
+            self.add_document(document);
+        }
+        self.focus_document(document.source)
+    }*/
     fn end_open_document<T: AsRef<Path>>(&mut self, path: T) -> Result<(), Error> {
         if self.get_document(&path).is_none() {
             let document = Document::open(&path)?;
@@ -197,7 +203,7 @@ impl AppState {
         self.exit_state = None;
     }
 
-    fn process_app_command(&mut self, command: &AppCommand) -> Result<(), Error> {
+    fn process_app_command(&mut self, command: AppCommand) -> Result<(), Error> {
         use AppCommand::*;
 
         match command {
@@ -221,9 +227,9 @@ impl AppState {
         Ok(())
     }
 
-    fn process_document_command(&mut self, command: &DocumentCommand) -> Result<(), Error> {
+    fn process_document_command(&mut self, command: DocumentCommand) -> Result<(), Error> {
         use DocumentCommand::*;
-        let document = match command {
+        let document = match &command {
             EndImport(p, _)
             | MarkAsSaved(p, _)
             | EndSetExportTextureDestination(p, _)
@@ -236,10 +242,10 @@ impl AppState {
                 .get_current_document_mut()
                 .ok_or(StateError::NoDocumentOpen),
         }?;
-        document.process_command(command)
+        document.process_command(&command)
     }
 
-    pub fn process_sync_command(&mut self, command: &SyncCommand) -> Result<(), Error> {
+    pub fn process_sync_command(&mut self, command: SyncCommand) -> Result<(), Error> {
         match command {
             SyncCommand::App(c) => self.process_app_command(c),
             SyncCommand::Document(c) => self.process_document_command(c),
@@ -383,13 +389,13 @@ fn export(sheet: &Sheet) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Error> {
+pub fn process_async_command(command: AsyncCommand) -> Result<CommandBuffer, Error> {
     let no_commands = CommandBuffer::new();
     match command {
         AsyncCommand::BeginNewDocument => begin_new_document(),
         AsyncCommand::BeginOpenDocument => begin_open_document(),
-        AsyncCommand::Save(p, sheet, version) => save(sheet, p, *version),
-        AsyncCommand::SaveAs(p, sheet, version) => save_as(sheet, p, *version),
+        AsyncCommand::Save(p, sheet, version) => save(&sheet, p, version),
+        AsyncCommand::SaveAs(p, sheet, version) => save_as(&sheet, p, version),
         AsyncCommand::BeginSetExportTextureDestination(p) => {
             begin_set_export_texture_destination(p)
         }
@@ -399,6 +405,6 @@ pub fn process_async_command(command: &AsyncCommand) -> Result<CommandBuffer, Er
         AsyncCommand::BeginSetExportMetadataPathsRoot(p) => begin_set_export_metadata_paths_root(p),
         AsyncCommand::BeginSetExportFormat(p) => begin_set_export_format(p),
         AsyncCommand::BeginImport(p) => begin_import(p),
-        AsyncCommand::Export(sheet) => export(sheet).and(Ok(no_commands)),
+        AsyncCommand::Export(sheet) => export(&sheet).and(Ok(no_commands)),
     }
 }

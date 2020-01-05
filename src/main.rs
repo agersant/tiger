@@ -122,8 +122,9 @@ fn main() -> Result<(), failure::Error> {
             commands = async_commands.commands.clone();
         }
 
-        for command in &commands {
-            let process_result = state::process_async_command(&command);
+        let num_commands = commands.len();
+        for command in commands {
+            let process_result = state::process_async_command(command);
             {
                 let mut result_mutex = async_results_for_worker.lock().unwrap();
                 result_mutex.results.push(process_result);
@@ -132,7 +133,7 @@ fn main() -> Result<(), failure::Error> {
 
         let &(ref commands_mutex, ref _cvar) = &*async_commands_for_worker;
         let mut async_commands = commands_mutex.lock().unwrap();
-        async_commands.commands.drain(..commands.len());
+        async_commands.commands.drain(..num_commands);
     });
 
     // File watcher thread
@@ -266,10 +267,10 @@ fn main() -> Result<(), failure::Error> {
 
             // Process new commands
             use state::Command;
-            for command in &new_commands.flush() {
+            for command in new_commands.flush() {
                 match command {
                     Command::Sync(sync_command) => {
-                        if let Err(e) = state.process_sync_command(&sync_command) {
+                        if let Err(e) = state.process_sync_command(sync_command) {
                             // TODO surface to user
                             println!("Error: {}", e);
                             break;
@@ -280,7 +281,7 @@ fn main() -> Result<(), failure::Error> {
                         {
                             let mut work = lock.lock().unwrap();
                             let commands = &*work.commands;
-                            if commands.contains(async_command) {
+                            if commands.contains(&async_command) {
                                 // This avoids queuing redundant work or dialogs when holding shortcuts
                                 // TODO: Ignore key repeats instead (second arg of is_key_pressed, not exposed by imgui-rs)
                                 println!("Ignoring duplicate async command");
