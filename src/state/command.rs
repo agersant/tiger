@@ -6,7 +6,7 @@ use std::time::Duration;
 use crate::sheet::*;
 use crate::state::*;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
@@ -21,7 +21,7 @@ pub enum AsyncCommand {
     Export(Sheet),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum AppCommand {
     EndNewDocument(PathBuf),
     EndOpenDocument(Document),
@@ -34,7 +34,7 @@ pub enum AppCommand {
     CancelExit,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum DocumentCommand {
     BeginExportAs,
     EndSetExportTextureDestination(PathBuf, PathBuf),
@@ -174,13 +174,13 @@ impl fmt::Display for DocumentCommand {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SyncCommand {
     App(AppCommand),
     Document(DocumentCommand),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Command {
     Sync(SyncCommand),
     Async(AsyncCommand),

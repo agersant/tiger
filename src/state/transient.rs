@@ -84,6 +84,7 @@ impl Transient {
             | BeginKeyframeDrag
             | BeginKeyframeOffsetDrag
             | UpdateKeyframeOffsetDrag(_, _)
+            | CreateHitbox(_)
             | BeginHitboxScale(_)
             | UpdateHitboxScale(_, _)
             | BeginHitboxDrag

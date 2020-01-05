@@ -8,8 +8,6 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use crate::state::AppState;
-
 const MAX_TEXTURES_LOAD_TIME_PER_TICK: u128 = 250; // ms
 
 pub struct StreamerPayload {
@@ -24,18 +22,10 @@ pub fn init() -> (Sender<StreamerPayload>, Receiver<StreamerPayload>) {
 }
 
 pub fn load_from_disk(
-    app_state: &AppState,
+    desired_textures: HashSet<PathBuf>,
     texture_cache: Arc<Mutex<TextureCache>>,
     sender: &Sender<StreamerPayload>,
 ) {
-    // List textures we want loaded
-    let mut desired_textures = HashSet::new();
-    for document in app_state.documents_iter() {
-        for frame in document.sheet.frames_iter() {
-            desired_textures.insert(frame.get_source().to_owned());
-        }
-    }
-
     // List textures we already have (or have tried to load)
     let cache_content;
     {

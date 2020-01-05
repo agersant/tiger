@@ -1,16 +1,18 @@
 #[macro_use]
 extern crate failure;
+
+#[macro_use]
+extern crate serde_derive;
+
 use gfx;
+use gfx::Device;
 use gfx_device_gl;
 use gfx_window_glutin;
 use glutin;
 use imgui_gfx_renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-#[macro_use]
-extern crate serde_derive;
-
-use gfx::Device;
 use notify::DebouncedEvent;
+use std::collections::HashSet;
 use std::sync::*;
 
 mod export;
@@ -111,18 +113,18 @@ fn main() -> Result<(), failure::Error> {
     let async_commands_for_worker = async_commands.clone();
     let async_results_for_worker = async_results.clone();
     std::thread::spawn(move || loop {
-        let commands;
-
-        {
+        let commands = {
             let &(ref commands_mutex, ref cvar) = &*async_commands_for_worker;
             let mut async_commands = commands_mutex.lock().unwrap();
             while async_commands.commands.is_empty() {
                 async_commands = cvar.wait(async_commands).unwrap();
             }
-            commands = async_commands.commands.clone();
-        }
+            async_commands
+                .commands
+                .drain(..)
+                .collect::<Vec<state::AsyncCommand>>()
+        };
 
-        let num_commands = commands.len();
         for command in commands {
             let process_result = state::process_async_command(command);
             {
@@ -130,10 +132,6 @@ fn main() -> Result<(), failure::Error> {
                 result_mutex.results.push(process_result);
             }
         }
-
-        let &(ref commands_mutex, ref _cvar) = &*async_commands_for_worker;
-        let mut async_commands = commands_mutex.lock().unwrap();
-        async_commands.commands.drain(..num_commands);
     });
 
     // File watcher thread
@@ -168,12 +166,18 @@ fn main() -> Result<(), failure::Error> {
                 *lock = false;
             }
 
-            let state;
+            let mut desired_textures = HashSet::new();
             {
-                state = state_mutex_for_streamer.lock().unwrap().clone();
+                let state = state_mutex_for_streamer.lock().unwrap();
+                for document in state.documents_iter() {
+                    for frame in document.sheet.frames_iter() {
+                        desired_textures.insert(frame.get_source().to_owned());
+                    }
+                }
             }
+
             streamer::load_from_disk(
-                &state,
+                desired_textures,
                 texture_cache_for_streamer.clone(),
                 &streamer_from_disk,
             );
@@ -227,81 +231,77 @@ fn main() -> Result<(), failure::Error> {
             let ui_frame = imgui_instance.frame();
 
             // Tiger frame
-            let mut state = state_mutex.lock().unwrap().clone();
-            state.tick(std::time::Duration::new(
-                delta_time.floor() as u64,
-                (delta_time.fract() * 1_000_000_000 as f32) as u32,
-            ));
-
-            let mut new_commands = {
-                let texture_cache = texture_cache.lock().unwrap();
-                ui::run(windowed_context.window(), &ui_frame, &state, &texture_cache)?
-            };
-
-            // Exit
-            if quit {
-                new_commands.close_all_documents();
-                new_commands.exit();
-                quit = false;
-            }
-
-            if state.get_exit_state() == Some(state::ExitState::Allowed) {
-                break;
-            }
-
-            // Grab results from async worker
             {
-                let mut result_mutex = async_results.lock().unwrap();
-                for result in std::mem::replace(&mut result_mutex.results, vec![]) {
-                    match result {
-                        Ok(buffer) => {
-                            new_commands.append(buffer);
-                        }
-                        Err(e) => {
-                            // TODO surface to user
-                            println!("Error: {}", e);
-                        }
-                    }
-                }
-            }
+                let mut state = state_mutex.lock().unwrap();
+                state.tick(std::time::Duration::new(
+                    delta_time.floor() as u64,
+                    (delta_time.fract() * 1_000_000_000 as f32) as u32,
+                ));
 
-            // Process new commands
-            use state::Command;
-            for command in new_commands.flush() {
-                match command {
-                    Command::Sync(sync_command) => {
-                        if let Err(e) = state.process_sync_command(sync_command) {
+                let mut new_commands = {
+                    let texture_cache = texture_cache.lock().unwrap();
+                    ui::run(windowed_context.window(), &ui_frame, &state, &texture_cache)?
+                };
+
+                // Exit
+                if quit {
+                    new_commands.close_all_documents();
+                    new_commands.exit();
+                    quit = false;
+                }
+
+                if state.get_exit_state() == Some(state::ExitState::Allowed) {
+                    break;
+                }
+
+                // Grab results from async worker
+                {
+                    let mut result_mutex = async_results.lock().unwrap();
+                    for result in std::mem::replace(&mut result_mutex.results, vec![]) {
+                        match result {
+                            Ok(buffer) => {
+                                new_commands.append(buffer);
+                            }
+                            Err(e) => {
                             // TODO surface to user
-                            println!("Error: {}", e);
-                            break;
-                        }
-                    }
-                    Command::Async(async_command) => {
-                        let &(ref lock, ref cvar) = &*async_commands;
-                        {
-                            let mut work = lock.lock().unwrap();
-                            let commands = &*work.commands;
-                            if commands.contains(&async_command) {
-                                // This avoids queuing redundant work or dialogs when holding shortcuts
-                                // TODO: Ignore key repeats instead (second arg of is_key_pressed, not exposed by imgui-rs)
-                                println!("Ignoring duplicate async command");
-                            } else {
-                                work.commands.push(async_command.clone());
+                                println!("Error: {}", e);
                             }
                         }
-                        cvar.notify_all();
                     }
                 }
-            }
 
-            // Commit new state
-            {
-                let mut s = state_mutex.lock().unwrap();
-                *s = state.clone();
-            }
+                // Process new commands
+                use state::Command;
+                for command in new_commands.flush() {
+                    match command {
+                        Command::Sync(sync_command) => {
+                            if let Err(e) = state.process_sync_command(sync_command) {
+                                // TODO surface to user
+                                println!("Error: {}", e);
+                                break;
+                            }
+                        }
+                        Command::Async(async_command) => {
+                            let &(ref lock, ref cvar) = &*async_commands;
+                            {
+                                let mut work = lock.lock().unwrap();
+                                let commands = &*work.commands;
+                                if commands.contains(&async_command) {
+                                    // This avoids queuing redundant work or dialogs when holding shortcuts
+                                    // TODO: Ignore key repeats instead (second arg of is_key_pressed, not exposed by imgui-rs)
+                                    println!("Ignoring duplicate async command");
+                                } else {
+                                    work.commands.push(async_command);
+                                }
+                            }
+                            cvar.notify_all();
+                        }
+                    }
+                }
 
-            // Update file watches
-            file_watcher.update_watched_files(&state);
+                // Update file watches
+                file_watcher.update_watched_files(&state);
+            }
 
             // Render screen
             {

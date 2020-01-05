@@ -8,7 +8,7 @@ use std::time::Duration;
 use crate::sheet::*;
 use crate::state::*;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 struct HistoryEntry {
     last_command: Option<DocumentCommand>,
     sheet: Sheet,
@@ -31,7 +31,7 @@ pub struct Persistent {
     disk_version: i32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Document {
     pub source: PathBuf,
     pub sheet: Sheet, // Sheet being edited, fully recorded in history
@@ -46,14 +46,17 @@ pub struct Document {
 impl Document {
     pub fn new<T: AsRef<Path>>(path: T) -> Document {
         let history_entry: HistoryEntry = Default::default();
+        let sheet = history_entry.sheet.clone();
+        let view = history_entry.view.clone();
+        let next_version = history_entry.version;
         Document {
             source: path.as_ref().to_owned(),
-            history: vec![history_entry.clone()],
-            sheet: history_entry.sheet.clone(),
-            view: history_entry.view.clone(),
+            history: vec![history_entry],
+            sheet: sheet,
+            view: view,
             transient: None,
             persistent: Default::default(),
-            next_version: history_entry.version,
+            next_version: next_version,
             history_index: 0,
         }
     }
@@ -154,37 +157,34 @@ impl Document {
         self.transient.is_none()
     }
 
-    fn record_command(&mut self, command: &DocumentCommand, new_document: Document) {
-        self.sheet = new_document.sheet.clone();
-        self.view = new_document.view.clone();
-        self.transient = new_document.transient.clone();
-        self.persistent = new_document.persistent.clone();
+    fn record_command(&mut self, command: DocumentCommand) {
+        if !self.can_use_undo_system() {
+            return;
+        }
 
-        if self.can_use_undo_system() {
-            let has_sheet_changes = &self.history[self.history_index].sheet != &new_document.sheet;
+        let has_sheet_changes = &self.history[self.history_index].sheet != &self.sheet;
 
-            if has_sheet_changes {
-                self.next_version += 1;
-            }
+        if has_sheet_changes {
+            self.next_version += 1;
+        }
 
-            let new_undo_state = HistoryEntry {
-                sheet: new_document.sheet,
-                view: new_document.view,
-                last_command: Some(command.clone()),
-                version: self.next_version,
-            };
+        let new_undo_state = HistoryEntry {
+            sheet: self.sheet.clone(),
+            view: self.view.clone(),
+            last_command: Some(command),
+            version: self.next_version,
+        };
 
-            if has_sheet_changes {
+        if has_sheet_changes {
+            self.push_undo_state(new_undo_state);
+        } else if &self.history[self.history_index].view != &new_undo_state.view {
+            let merge = self.history_index > 0
+                && self.history[self.history_index - 1].sheet
+                    == self.history[self.history_index].sheet;
+            if merge {
+                self.history[self.history_index].view = new_undo_state.view;
+            } else {
                 self.push_undo_state(new_undo_state);
-            } else if &self.history[self.history_index].view != &new_undo_state.view {
-                let merge = self.history_index > 0
-                    && self.history[self.history_index - 1].sheet
-                        == self.history[self.history_index].sheet;
-                if merge {
-                    self.history[self.history_index].view = new_undo_state.view;
-                } else {
-                    self.push_undo_state(new_undo_state);
-                }
             }
         }
     }
@@ -712,7 +712,8 @@ impl Document {
             hitbox.set_position(mouse_position.floor().to_i32());
             hitbox.get_name().to_owned()
         };
-        self.select_hitboxes(&MultiSelection::new(vec![hitbox_name]))
+        self.select_hitboxes(&MultiSelection::new(vec![hitbox_name]))?;
+        self.begin_hitbox_scale(ResizeAxis::SE)
     }
 
     pub fn begin_hitbox_scale(&mut self, axis: ResizeAxis) -> Result<(), Error> {
@@ -1216,80 +1217,68 @@ impl Document {
         }
     }
 
-    pub fn process_command(&mut self, command: &DocumentCommand) -> Result<(), Error> {
+    pub fn process_command(&mut self, command: DocumentCommand) -> Result<(), Error> {
         use DocumentCommand::*;
 
-        let mut new_document = self.clone();
-
-        match command {
-            MarkAsSaved(_, v) => new_document.persistent.disk_version = *v,
-            EndImport(_, f) => new_document.sheet.add_frame(f),
-            BeginExportAs => new_document.begin_export_as(),
-            CancelExportAs => new_document.cancel_export_as(),
-            EndSetExportTextureDestination(_, d) => {
-                new_document.end_set_export_texture_destination(d)?
-            }
-            EndSetExportMetadataDestination(_, d) => {
-                new_document.end_set_export_metadata_destination(d)?
-            }
-            EndSetExportMetadataPathsRoot(_, d) => {
-                new_document.end_set_export_metadata_paths_root(d)?
-            }
-            EndSetExportFormat(_, f) => new_document.end_set_export_format(f.clone())?,
-            EndExportAs => new_document.end_export_as()?,
-            SwitchToContentTab(t) => new_document.view.content_tab = *t,
-            ClearSelection => new_document.clear_selection(),
-            SelectFrames(s) => new_document.select_frames(&s)?,
-            SelectAnimations(s) => new_document.select_animations(&s)?,
-            SelectHitboxes(s) => new_document.select_hitboxes(&s)?,
-            SelectKeyframes(s) => new_document.select_keyframes(&s)?,
-            EditFrame(p) => new_document.edit_frame(&p)?,
-            EditAnimation(a) => new_document.edit_animation(&a)?,
-            CreateAnimation => new_document.create_animation()?,
-            BeginFramesDrag => new_document.transient = Some(Transient::ContentFramesDrag),
-            InsertKeyframesBefore(frames, n) => {
-                new_document.insert_keyframes_before(frames.clone(), *n)?
-            }
-            ReorderKeyframes(i) => new_document.reorder_keyframes(*i)?,
-            BeginKeyframeDurationDrag(c, i) => new_document.begin_keyframe_duration_drag(*i, *c)?,
-            UpdateKeyframeDurationDrag(d, m) => {
-                new_document.update_keyframe_duration_drag(*d, *m)?
-            }
-            BeginKeyframeDrag => new_document.begin_keyframe_drag(),
-            BeginKeyframeOffsetDrag => new_document.begin_keyframe_offset_drag()?,
-            UpdateKeyframeOffsetDrag(o, b) => new_document.update_keyframe_offset_drag(*o, *b)?,
-            WorkbenchZoomIn => new_document.view.workbench_zoom_in(),
-            WorkbenchZoomOut => new_document.view.workbench_zoom_out(),
-            WorkbenchResetZoom => new_document.view.workbench_reset_zoom(),
-            WorkbenchCenter => new_document.view.workbench_center(),
-            Pan(delta) => new_document.view.pan(*delta),
-            CreateHitbox(p) => new_document.create_hitbox(*p)?,
-            BeginHitboxScale(axis) => new_document.begin_hitbox_scale(*axis)?,
-            UpdateHitboxScale(delta, ar) => new_document.update_hitbox_scale(*delta, *ar)?,
-            BeginHitboxDrag => new_document.begin_hitbox_drag()?,
-            UpdateHitboxDrag(delta, b) => new_document.update_hitbox_drag(*delta, *b)?,
-            TogglePlayback => new_document.toggle_playback()?,
-            SnapToPreviousFrame => new_document.snap_to_previous_frame()?,
-            SnapToNextFrame => new_document.snap_to_next_frame()?,
-            ToggleLooping => new_document.toggle_looping()?,
-            TimelineZoomIn => new_document.view.timeline_zoom_in(),
-            TimelineZoomOut => new_document.view.timeline_zoom_out(),
-            TimelineResetZoom => new_document.view.timeline_reset_zoom(),
-            BeginScrub => new_document.transient = Some(Transient::TimelineScrub),
-            UpdateScrub(t) => new_document.update_timeline_scrub(*t)?,
-            NudgeSelection(d, l) => new_document.nudge_selection(*d, *l)?,
-            DeleteSelection => new_document.delete_selection()?,
-            BeginRenameSelection => new_document.begin_rename_selection(),
+        match &command {
+            MarkAsSaved(_, v) => self.persistent.disk_version = *v,
+            EndImport(_, f) => self.sheet.add_frame(f),
+            BeginExportAs => self.begin_export_as(),
+            CancelExportAs => self.cancel_export_as(),
+            EndSetExportTextureDestination(_, d) => self.end_set_export_texture_destination(d)?,
+            EndSetExportMetadataDestination(_, d) => self.end_set_export_metadata_destination(d)?,
+            EndSetExportMetadataPathsRoot(_, d) => self.end_set_export_metadata_paths_root(d)?,
+            EndSetExportFormat(_, f) => self.end_set_export_format(f.clone())?,
+            EndExportAs => self.end_export_as()?,
+            SwitchToContentTab(t) => self.view.content_tab = *t,
+            ClearSelection => self.clear_selection(),
+            SelectFrames(s) => self.select_frames(&s)?,
+            SelectAnimations(s) => self.select_animations(&s)?,
+            SelectHitboxes(s) => self.select_hitboxes(&s)?,
+            SelectKeyframes(s) => self.select_keyframes(&s)?,
+            EditFrame(p) => self.edit_frame(&p)?,
+            EditAnimation(a) => self.edit_animation(&a)?,
+            CreateAnimation => self.create_animation()?,
+            BeginFramesDrag => self.transient = Some(Transient::ContentFramesDrag),
+            InsertKeyframesBefore(frames, n) => self.insert_keyframes_before(frames.clone(), *n)?,
+            ReorderKeyframes(i) => self.reorder_keyframes(*i)?,
+            BeginKeyframeDurationDrag(c, i) => self.begin_keyframe_duration_drag(*i, *c)?,
+            UpdateKeyframeDurationDrag(d, m) => self.update_keyframe_duration_drag(*d, *m)?,
+            BeginKeyframeDrag => self.begin_keyframe_drag(),
+            BeginKeyframeOffsetDrag => self.begin_keyframe_offset_drag()?,
+            UpdateKeyframeOffsetDrag(o, b) => self.update_keyframe_offset_drag(*o, *b)?,
+            WorkbenchZoomIn => self.view.workbench_zoom_in(),
+            WorkbenchZoomOut => self.view.workbench_zoom_out(),
+            WorkbenchResetZoom => self.view.workbench_reset_zoom(),
+            WorkbenchCenter => self.view.workbench_center(),
+            Pan(delta) => self.view.pan(*delta),
+            CreateHitbox(p) => self.create_hitbox(*p)?,
+            BeginHitboxScale(axis) => self.begin_hitbox_scale(*axis)?,
+            UpdateHitboxScale(delta, ar) => self.update_hitbox_scale(*delta, *ar)?,
+            BeginHitboxDrag => self.begin_hitbox_drag()?,
+            UpdateHitboxDrag(delta, b) => self.update_hitbox_drag(*delta, *b)?,
+            TogglePlayback => self.toggle_playback()?,
+            SnapToPreviousFrame => self.snap_to_previous_frame()?,
+            SnapToNextFrame => self.snap_to_next_frame()?,
+            ToggleLooping => self.toggle_looping()?,
+            TimelineZoomIn => self.view.timeline_zoom_in(),
+            TimelineZoomOut => self.view.timeline_zoom_out(),
+            TimelineResetZoom => self.view.timeline_reset_zoom(),
+            BeginScrub => self.transient = Some(Transient::TimelineScrub),
+            UpdateScrub(t) => self.update_timeline_scrub(*t)?,
+            NudgeSelection(d, l) => self.nudge_selection(*d, *l)?,
+            DeleteSelection => self.delete_selection()?,
+            BeginRenameSelection => self.begin_rename_selection(),
             UpdateRenameSelection(n) => {
-                new_document.transient = Some(Transient::Rename(Rename {
+                self.transient = Some(Transient::Rename(Rename {
                     new_name: n.to_owned(),
                 }))
             }
-            EndRenameSelection => new_document.end_rename_selection()?,
-            Close => new_document.begin_close(),
-            CloseAfterSaving => new_document.persistent.close_state = Some(CloseState::Saving),
-            CloseWithoutSaving => new_document.persistent.close_state = Some(CloseState::Allowed),
-            CancelClose => new_document.persistent.close_state = None,
+            EndRenameSelection => self.end_rename_selection()?,
+            Close => self.begin_close(),
+            CloseAfterSaving => self.persistent.close_state = Some(CloseState::Saving),
+            CloseWithoutSaving => self.persistent.close_state = Some(CloseState::Allowed),
+            CancelClose => self.persistent.close_state = None,
             EndFramesDrag
             | EndKeyframeDurationDrag
             | EndKeyframeDrag
@@ -1299,11 +1288,11 @@ impl Document {
             | EndScrub => (),
         };
 
-        if !Transient::is_transient_command(command) {
-            new_document.transient = None;
+        if !Transient::is_transient_command(&command) {
+            self.transient = None;
         }
 
-        self.record_command(command, new_document);
+        self.record_command(command);
 
         Ok(())
     }

@@ -288,7 +288,6 @@ fn draw_frame<'a>(
             {
                 let drag_delta: Vector2D<f32> = ui.mouse_drag_delta(MouseButton::Left).into();
                 commands.create_hitbox(mouse_position_in_workbench - drag_delta / zoom);
-                commands.begin_hitbox_scale(ResizeAxis::SE);
             }
         }
         Some(TextureCacheResult::Loading) => {

@@ -19,7 +19,7 @@ pub enum ExitState {
     Allowed,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct AppState {
     documents: Vec<Document>,
     current_document: Option<PathBuf>,
@@ -236,7 +236,7 @@ impl AppState {
                 .get_current_document_mut()
                 .ok_or(StateError::NoDocumentOpen),
         }?;
-        document.process_command(&command)
+        document.process_command(command)
     }
 
     pub fn process_sync_command(&mut self, command: SyncCommand) -> Result<(), Error> {
