@@ -6,7 +6,7 @@ use std::time::Duration;
 use crate::sheet::*;
 use crate::state::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AsyncCommand {
     BeginNewDocument,
     BeginOpenDocument,
@@ -30,6 +30,8 @@ pub enum AppCommand {
     RelocateDocument(PathBuf, PathBuf),
     Undo,
     Redo,
+    ShowError(UserFacingError),
+    ClearError(),
     Exit,
     CancelExit,
 }

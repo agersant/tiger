@@ -24,6 +24,7 @@ pub struct AppState {
     documents: Vec<Document>,
     current_document: Option<PathBuf>,
     clock: Duration,
+    errors: Vec<UserFacingError>,
     exit_state: Option<ExitState>,
 }
 
@@ -56,6 +57,14 @@ impl AppState {
 
     pub fn get_clock(&self) -> Duration {
         self.clock
+    }
+
+    pub fn get_error(&self) -> Option<&UserFacingError> {
+        if self.errors.is_empty() {
+            None
+        } else {
+            Some(&self.errors[0])
+        }
     }
 
     pub fn get_exit_state(&self) -> Option<ExitState> {
@@ -187,6 +196,15 @@ impl AppState {
         }
     }
 
+    fn show_error(&mut self, e: UserFacingError) {
+        self.errors.push(e);
+    }
+
+    fn clear_error(&mut self) {
+        assert!(!self.errors.is_empty());
+        self.errors.remove(0);
+    }
+
     fn exit(&mut self) {
         if self.exit_state.is_none() {
             self.exit_state = Some(ExitState::Requested);
@@ -214,6 +232,8 @@ impl AppState {
                 .get_current_document_mut()
                 .ok_or(StateError::NoDocumentOpen)?
                 .redo()?,
+            ShowError(e) => self.show_error(e),
+            ClearError() => self.clear_error(),
             Exit => self.exit(),
             CancelExit => self.cancel_exit(),
         }

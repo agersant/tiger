@@ -103,6 +103,14 @@ impl CommandBuffer {
         self.queue.push(Sync(App(Redo)));
     }
 
+    pub fn show_error(&mut self, e: UserFacingError) {
+        self.queue.push(Sync(App(ShowError(e))));
+    }
+
+    pub fn clear_error(&mut self) {
+        self.queue.push(Sync(App(ClearError())));
+    }
+
     pub fn begin_export_as(&mut self) {
         self.queue.push(Sync(Document(BeginExportAs)));
     }

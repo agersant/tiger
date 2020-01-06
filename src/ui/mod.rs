@@ -154,6 +154,7 @@ pub fn run<'a>(
     draw_rename_popup(ui, app_state, &mut commands);
     draw_unsaved_changes_popup(ui, app_state, window_size, &mut commands);
     draw_saving_popup(ui, app_state, window_size);
+    draw_error_popup(ui, app_state, window_size, &mut commands);
 
     update_drag_and_drop(ui, app_state, &mut commands);
     draw_drag_and_drop(ui, app_state, texture_cache);
@@ -570,6 +571,7 @@ fn draw_unsaved_changes_popup<'a>(
         }
     }
 }
+
 fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState, window_size: (f32, f32)) {
     if let Some(document) = app_state.get_current_document() {
         match document.persistent.close_state {
@@ -595,6 +597,34 @@ fn draw_saving_popup<'a>(ui: &Ui<'a>, app_state: &AppState, window_size: (f32, f
                         );
                     });
             }
+        }
+    }
+}
+
+fn draw_error_popup<'a>(
+    ui: &Ui<'a>,
+    app_state: &AppState,
+    window_size: (f32, f32),
+    commands: &mut CommandBuffer,
+) {
+    match app_state.get_error() {
+        None => (),
+        Some(error) => {
+            let popup_id = im_str!("Error");
+            Window::new(&popup_id)
+                .resizable(false)
+                .movable(false)
+                .position(
+                    [window_size.0 as f32 / 2.0, window_size.1 as f32 / 2.0],
+                    Condition::Always,
+                )
+                .position_pivot([0.5, 0.5])
+                .build(ui, || {
+                    ui.text(&ImString::new(format!("{}", error)));
+                    if ui.small_button(im_str!("Ok")) {
+                        commands.clear_error();
+                    }
+                });
         }
     }
 }

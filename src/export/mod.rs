@@ -16,7 +16,7 @@ type TextureLayout = HashMap<PathBuf, PackedFrame>;
 #[derive(Fail, Debug)]
 pub enum ExportError {
     #[fail(display = "Template parsing error")]
-    TemplateParsingError,
+    TemplateParsingError(#[cause] Error),
     #[fail(display = "Template rendering error")]
     TemplateRenderingError,
     #[fail(display = "An animation references a frame which is not part of the sheet")]
@@ -258,7 +258,7 @@ pub fn export_sheet(
             template = liquid::ParserBuilder::with_liquid()
                 .build()?
                 .parse_file(&p)
-                .map_err(|_| ExportError::TemplateParsingError)?;
+                .map_err(|e| ExportError::TemplateParsingError(e.into()))?;
         }
     }
 

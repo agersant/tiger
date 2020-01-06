@@ -1,3 +1,8 @@
+use failure::Error;
+use std::fmt;
+
+use crate::state::command::AsyncCommand;
+
 #[derive(Fail, Debug)]
 pub enum StateError {
     #[fail(display = "No document is open")]
@@ -50,4 +55,39 @@ pub enum StateError {
     MissingKeyframePositionData,
     #[fail(display = "Missing data while adjusting keyframe duration")]
     MissingKeyframeDurationData,
+}
+
+#[derive(Debug)]
+pub enum UserFacingError {
+    Open,
+    Save,
+    Export(String),
+}
+
+impl UserFacingError {
+    pub fn from_command(
+        source_command: AsyncCommand,
+        inner_error: &Error,
+    ) -> Option<UserFacingError> {
+        match source_command {
+            AsyncCommand::ReadDocument(_) => Some(UserFacingError::Open),
+            AsyncCommand::Save(_, _, _) => Some(UserFacingError::Save),
+            AsyncCommand::SaveAs(_, _, _) => Some(UserFacingError::Save),
+            AsyncCommand::Export(_) => Some(UserFacingError::Export(format!(
+                "{}",
+                inner_error.find_root_cause()
+            ))),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for UserFacingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UserFacingError::Open => write!(f, "Could not open document"),
+            UserFacingError::Save => write!(f, "Could not save document"),
+            UserFacingError::Export(ref details) => write!(f, "Export failed:\n{}", details),
+        }
+    }
 }

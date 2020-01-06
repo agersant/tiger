@@ -66,9 +66,15 @@ struct AsyncCommands {
     commands: Vec<state::AsyncCommand>,
 }
 
+#[derive(Debug)]
+struct AsyncResult {
+    command: state::AsyncCommand,
+    outcome: Result<state::CommandBuffer, failure::Error>,
+}
+
 #[derive(Debug, Default)]
 struct AsyncResults {
-    results: Vec<Result<state::CommandBuffer, failure::Error>>,
+    results: Vec<AsyncResult>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -126,10 +132,13 @@ fn main() -> Result<(), failure::Error> {
         };
 
         for command in commands {
-            let process_result = state::process_async_command(command);
+            let outcome = state::process_async_command(command.clone());
             {
                 let mut result_mutex = async_results_for_worker.lock().unwrap();
-                result_mutex.results.push(process_result);
+                result_mutex.results.push(AsyncResult {
+                    command: command,
+                    outcome: outcome,
+                });
             }
         }
     });
@@ -258,13 +267,19 @@ fn main() -> Result<(), failure::Error> {
                 {
                     let mut result_mutex = async_results.lock().unwrap();
                     for result in std::mem::replace(&mut result_mutex.results, vec![]) {
-                        match result {
+                        match result.outcome {
                             Ok(buffer) => {
                                 new_commands.append(buffer);
                             }
                             Err(e) => {
-                            // TODO surface to user
                                 println!("Error: {}", e);
+                                match state::UserFacingError::from_command(result.command, &e) {
+                                    None => (),
+                                    Some(user_facing_error) => {
+                                        println!("Error: {}", user_facing_error);
+                                        new_commands.show_error(user_facing_error);
+                                    }
+                                };
                             }
                         }
                     }
