@@ -617,7 +617,9 @@ fn draw_error_popup<'a>(
             let popup_id = im_str!("Error");
             Window::new(&popup_id)
                 .resizable(false)
+                .collapsible(false)
                 .movable(false)
+                .always_auto_resize(true)
                 .position(
                     [window_size.0 as f32 / 2.0, window_size.1 as f32 / 2.0],
                     Condition::Always,
