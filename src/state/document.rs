@@ -67,8 +67,7 @@ impl Document {
         let mut directory = path.as_ref().to_owned();
         directory.pop();
         let sheet: Sheet = compat::read_sheet(path.as_ref())?;
-        document.sheet = sheet.with_absolute_paths(&directory)?;
-
+        document.sheet = sheet.with_absolute_paths(&directory);
         document.history[0].sheet = document.sheet.clone();
         document.persistent.disk_version = document.next_version;
 

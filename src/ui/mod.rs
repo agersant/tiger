@@ -413,6 +413,8 @@ fn draw_drag_and_drop<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &Tex
 fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut CommandBuffer) {
     if let Some(document) = app_state.get_current_document() {
         if let Some(settings) = &document.persistent.export_settings_edit {
+            let relative_settings = settings.with_relative_paths(&document.source);
+            let relative_settings = relative_settings.as_ref().unwrap_or(settings);
             let popup_id = im_str!("Export Options");
             Window::new(&popup_id)
                 .collapsible(false)
@@ -422,7 +424,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         let token = ui.push_id(0);
                         ui.label_text(
-                            &ImString::new(settings.texture_destination.to_string_lossy()),
+                            &ImString::new(relative_settings.texture_destination.to_string_lossy()),
                             im_str!("Texture atlas destination:"),
                         );
                         ui.same_line(0.0);
@@ -436,7 +438,9 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         let token = ui.push_id(1);
                         ui.label_text(
-                            &ImString::new(settings.metadata_destination.to_string_lossy()),
+                            &ImString::new(
+                                relative_settings.metadata_destination.to_string_lossy(),
+                            ),
                             im_str!("Metadata destination:"),
                         );
                         ui.same_line(0.0);
@@ -449,7 +453,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                     {
                         let token = ui.push_id(2);
                         ui.label_text(
-                            &ImString::new(settings.metadata_paths_root.to_string_lossy()),
+                            &ImString::new(relative_settings.metadata_paths_root.to_string_lossy()),
                             im_str!("Store paths relative to:"),
                         );
                         ui.same_line(0.0);
@@ -461,7 +465,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 
                     {
                         let token = ui.push_id(3);
-                        match &settings.format {
+                        match &relative_settings.format {
                             ExportFormat::Template(p) => {
                                 ui.label_text(
                                     &ImString::new(p.to_string_lossy()),

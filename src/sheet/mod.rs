@@ -1,5 +1,4 @@
 use core::cmp::Ordering;
-use dunce::canonicalize;
 use euclid::default::*;
 use euclid::rect;
 use failure::Error;
@@ -52,20 +51,20 @@ impl Sheet {
         Ok(sheet)
     }
 
-    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> Result<Sheet, Error> {
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> Sheet {
         let mut sheet = self.clone();
         for frame in sheet.frames_iter_mut() {
-            frame.source = canonicalize(relative_to.as_ref().join(&frame.source))?;
+            frame.source = relative_to.as_ref().join(&frame.source);
         }
         for animation in sheet.animations.iter_mut() {
             for keyframe in animation.frames_iter_mut() {
-                keyframe.frame = canonicalize(relative_to.as_ref().join(&&keyframe.frame))?;
+                keyframe.frame = relative_to.as_ref().join(&&keyframe.frame);
             }
         }
         if let Some(e) = sheet.export_settings {
-            sheet.export_settings = Some(e.with_absolute_paths(relative_to)?);
+            sheet.export_settings = Some(e.with_absolute_paths(relative_to));
         }
-        Ok(sheet)
+        sheet
     }
 
     pub fn frames_iter(&self) -> std::slice::Iter<'_, Frame> {
@@ -472,14 +471,9 @@ impl ExportFormat {
         }
     }
 
-    pub fn with_absolute_paths<T: AsRef<Path>>(
-        &self,
-        relative_to: T,
-    ) -> Result<ExportFormat, Error> {
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> ExportFormat {
         match self {
-            ExportFormat::Template(p) => Ok(ExportFormat::Template(canonicalize(
-                relative_to.as_ref().join(&p),
-            )?)),
+            ExportFormat::Template(p) => ExportFormat::Template(relative_to.as_ref().join(&p)),
         }
     }
 }
@@ -509,21 +503,12 @@ impl ExportSettings {
         })
     }
 
-    pub fn with_absolute_paths<T: AsRef<Path>>(
-        &self,
-        relative_to: T,
-    ) -> Result<ExportSettings, Error> {
-        Ok(ExportSettings {
-            format: self.format.with_absolute_paths(&relative_to)?,
-            texture_destination: canonicalize(
-                relative_to.as_ref().join(&self.texture_destination),
-            )?,
-            metadata_destination: canonicalize(
-                relative_to.as_ref().join(&self.metadata_destination),
-            )?,
-            metadata_paths_root: canonicalize(
-                relative_to.as_ref().join(&self.metadata_paths_root),
-            )?,
-        })
+    pub fn with_absolute_paths<T: AsRef<Path>>(&self, relative_to: T) -> ExportSettings {
+        ExportSettings {
+            format: self.format.with_absolute_paths(&relative_to),
+            texture_destination: relative_to.as_ref().join(&self.texture_destination),
+            metadata_destination: relative_to.as_ref().join(&self.metadata_destination),
+            metadata_paths_root: relative_to.as_ref().join(&self.metadata_paths_root),
+        }
     }
 }
