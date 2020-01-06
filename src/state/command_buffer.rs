@@ -188,9 +188,11 @@ impl CommandBuffer {
         self.queue.push(Sync(Document(CancelExportAs)));
     }
 
-    pub fn end_export_as(&mut self, sheet: &Sheet) {
+    pub fn end_export_as(&mut self, sheet: &Sheet, export_settings: ExportSettings) {
         self.queue.push(Sync(Document(EndExportAs)));
-        self.queue.push(Async(Export(sheet.clone())));
+        let mut cloned_sheet = sheet.clone();
+        cloned_sheet.set_export_settings(export_settings);
+        self.queue.push(Async(Export(cloned_sheet)));
     }
 
     pub fn export(&mut self, sheet: &Sheet) {

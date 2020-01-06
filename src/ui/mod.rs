@@ -478,7 +478,7 @@ fn draw_export_popup<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
 
                     // TODO grey out and disable if bad settings
                     if ui.small_button(im_str!("Ok")) {
-                        commands.end_export_as(&document.sheet);
+                        commands.end_export_as(&document.sheet, settings.clone());
                     }
                     ui.same_line(0.0);
                     if ui.small_button(im_str!("Cancel")) {
