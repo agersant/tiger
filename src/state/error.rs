@@ -59,7 +59,7 @@ pub enum StateError {
 
 #[derive(Debug)]
 pub enum UserFacingError {
-    Open,
+    Open(String),
     Save,
     Export(String),
 }
@@ -70,7 +70,10 @@ impl UserFacingError {
         inner_error: &Error,
     ) -> Option<UserFacingError> {
         match source_command {
-            AsyncCommand::ReadDocument(_) => Some(UserFacingError::Open),
+            AsyncCommand::ReadDocument(_) => Some(UserFacingError::Open(format!(
+                "{}",
+                inner_error.find_root_cause()
+            ))),
             AsyncCommand::Save(_, _, _) => Some(UserFacingError::Save),
             AsyncCommand::SaveAs(_, _, _) => Some(UserFacingError::Save),
             AsyncCommand::Export(_) => Some(UserFacingError::Export(format!(
@@ -85,7 +88,9 @@ impl UserFacingError {
 impl fmt::Display for UserFacingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            UserFacingError::Open => write!(f, "Could not open document"),
+            UserFacingError::Open(ref details) => {
+                write!(f, "Could not open document:\n{}", details)
+            }
             UserFacingError::Save => write!(f, "Could not save document"),
             UserFacingError::Export(ref details) => write!(f, "Export failed:\n{}", details),
         }
