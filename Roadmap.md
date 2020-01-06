@@ -70,7 +70,7 @@
 - [x] Offer to save when closing individual documents
 - [ ] Visible handles for adjusting frame durations (instead of invisible buttons)
 - [x] Error dialogs
-- [ ] Handle save errors while performing a save on exit
+- [x] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
 - [x] Multiple selections
 - [x] Jump to next/previous frame

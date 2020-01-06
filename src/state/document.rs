@@ -1216,6 +1216,10 @@ impl Document {
         }
     }
 
+    pub fn cancel_close(&mut self) {
+        self.persistent.close_state = None;
+    }
+
     pub fn process_command(&mut self, command: DocumentCommand) -> Result<(), Error> {
         use DocumentCommand::*;
 

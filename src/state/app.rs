@@ -198,6 +198,7 @@ impl AppState {
 
     fn show_error(&mut self, e: UserFacingError) {
         self.errors.push(e);
+        self.cancel_exit();
     }
 
     fn clear_error(&mut self) {
@@ -213,6 +214,9 @@ impl AppState {
 
     fn cancel_exit(&mut self) {
         self.exit_state = None;
+        for document in self.documents.iter_mut() {
+            document.cancel_close();
+        }
     }
 
     fn process_app_command(&mut self, command: AppCommand) -> Result<(), Error> {
