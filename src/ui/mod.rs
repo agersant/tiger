@@ -618,11 +618,10 @@ fn draw_error_popup<'a>(
             Window::new(&popup_id)
                 .resizable(false)
                 .collapsible(false)
-                .movable(false)
                 .always_auto_resize(true)
                 .position(
                     [window_size.0 as f32 / 2.0, window_size.1 as f32 / 2.0],
-                    Condition::Always,
+                    Condition::Appearing,
                 )
                 .position_pivot([0.5, 0.5])
                 .build(ui, || {
