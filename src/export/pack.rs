@@ -12,6 +12,8 @@ use crate::sheet::Sheet;
 pub enum PackError {
     #[fail(display = "Error reading a frame")]
     FrameReadError,
+    #[fail(display = "Error while packing textures")]
+    PackingError,
     #[fail(display = "Error exporting texture from packing data")]
     PackerExportError,
 }
@@ -55,7 +57,9 @@ pub fn pack_sheet(sheet: &Sheet) -> Result<PackedSheet, Error> {
             ImageImporter::import_from_file(source).map_err(|_| PackError::FrameReadError)?;
 
         let name = source.to_string_lossy();
-        packer.pack_own(name.to_string(), texture);
+        packer
+            .pack_own(name.to_string(), texture)
+            .map_err(|_| PackError::PackingError)?;
     }
 
     let texture = ImageExporter::export(&packer).map_err(|_| PackError::PackerExportError)?;

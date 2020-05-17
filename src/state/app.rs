@@ -408,7 +408,9 @@ fn export(sheet: &Sheet) -> Result<(), Error> {
     }
     {
         let mut file = File::create(&export_settings.texture_destination)?;
-        packed_sheet.get_texture().write_to(&mut file, image::PNG)?;
+        packed_sheet
+            .get_texture()
+            .write_to(&mut file, image::ImageFormat::Png)?;
     }
 
     Ok(())

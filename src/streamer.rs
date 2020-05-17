@@ -57,7 +57,7 @@ pub fn load_from_disk(
         if io_time.as_millis() < MAX_TEXTURES_LOAD_TIME_PER_TICK {
             let start = std::time::Instant::now();
             if let Ok(file) = File::open(&path) {
-                if let Ok(image) = image::load(BufReader::new(file), image::PNG) {
+                if let Ok(image) = image::load(BufReader::new(file), image::ImageFormat::Png) {
                     new_textures.insert(path.clone(), image.to_rgba());
                 };
             } else {
