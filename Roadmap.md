@@ -94,7 +94,8 @@
 ## Tiger 0.4
 - [ ] Review TODO dpi
 - [ ] Workbench tabs?
-- [ ] Text filtering of frames/animations
+- [ ] Add menu entry to open recent files
+- [ ] Filter of frames/animations by text search
 - [ ] View animations and frames at the same time for faster browsing?
 - [ ] Content panel shows previews of frames and animations? (list view? grid view?)
 - [ ] Better rename UX
