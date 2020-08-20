@@ -72,6 +72,7 @@
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
+- [ ] Add option or keyboard shortcut (held) to hide origin crosshair
 - [x] Multiple selections
 - [x] Jump to next/previous frame
 - [ ] Export perf fixes
