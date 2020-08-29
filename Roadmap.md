@@ -68,7 +68,6 @@
 ## Tiger 0.3
 - [x] Cap undo history at 100 entries
 - [x] Offer to save when closing individual documents
-- [ ] Visible handles for adjusting frame durations (instead of invisible buttons)
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
 - [ ] Add option to hide hitboxes while looking at animations in workbench
@@ -76,22 +75,27 @@
 - [ ] Automatically add extension to exported files
 - [x] Multiple selections
 - [x] Jump to next/previous frame
-- [ ] Export perf fixes
-- [ ] Handle missing frame files (warning + offer to relocate)
+- [ ] Duplicate animation / keyframe (within same sheet)
 - [ ] Copy/paste hitboxes
 - [x] Auto reload images on frame edit
-- [ ] Timeline scrolling follows playback
-- [ ] Timeline scrolling follows frame selection (or double click?)
+- [ ] Visible handles for adjusting frame durations (instead of invisible buttons)
 - [ ] Time snapping of animation frames
 - [ ] Playback speed controls
-- [ ] Hitbox colors
 - [ ] Default paths for NFD dialogs
-- [ ] Draw hitbox names in workbench
-- [ ] Onion skin?
 - [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
-- [ ] Duplicate animation / keyframe (within same sheet)
 
 ## Tiger 0.4
+- [ ] Add buttons to align frame edges or center to origin
+- [ ] Frame and hitboxes can be moved using arrow keys
+- [ ] Draw hitbox names in workbench
+- [ ] Hitbox colors
+- [ ] Onion skin?
+- [ ] Export perf improvements
+- [ ] Timeline scrolling follows playback
+- [ ] Timeline scrolling follows frame selection (or double click?)
+- [ ] Handle missing frame files (warning + offer to relocate)
+
+## Tiger 0.5
 - [ ] Review TODO dpi
 - [ ] Workbench tabs?
 - [ ] Add menu entry to open recent files
