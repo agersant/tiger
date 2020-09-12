@@ -70,6 +70,7 @@
 - [x] Offer to save when closing individual documents
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
+- [ ] Move hitbox data from frames to animation frames
 - [ ] Add option to hide hitboxes while looking at animations in workbench
 - [ ] Add option or keyboard shortcut (held) to hide origin crosshair
 - [ ] Automatically add extension to exported files
