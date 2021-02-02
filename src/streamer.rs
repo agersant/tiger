@@ -1,10 +1,15 @@
 use euclid::default::*;
-use gfx::texture::{FilterMethod, SamplerInfo, WrapMode};
+use glium::{
+    backend::Facade,
+    texture::{RawImage2d, Texture2d},
+    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
+};
 use imgui::*;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
@@ -91,29 +96,29 @@ pub fn load_from_disk(
     }
 }
 
-pub fn upload<R, F>(
+pub fn upload<F>(
     texture_cache: &mut TextureCache,
-    factory: &mut F,
-    imgui_textures: &mut Textures<imgui_gfx_renderer::Texture<R>>,
+    gl_ctx: &F,
+    imgui_textures: &mut Textures<imgui_glium_renderer::Texture>,
     receiver: &Receiver<StreamerPayload>,
 ) where
-    R: gfx::Resources,
-    F: gfx::Factory<R>,
+    F: Facade,
 {
     if let Ok(payload) = receiver.try_recv() {
         for (path, texture_data) in payload.new_textures {
-            let sampler =
-                factory.create_sampler(SamplerInfo::new(FilterMethod::Scale, WrapMode::Clamp));
-            let size: Vector2D<u32> = texture_data.dimensions().into();
-            let kind =
-                gfx::texture::Kind::D2(size.x as u16, size.y as u16, gfx::texture::AaMode::Single);
-            if let Ok((_, texture)) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(
-                kind,
-                gfx::texture::Mipmap::Allocated,
-                &[&texture_data],
-            ) {
-                let id = imgui_textures.insert((texture, sampler));
-                texture_cache.insert_entry(path, id, size);
+            let (width, height) = texture_data.dimensions();
+            let raw = RawImage2d::from_raw_rgba(texture_data.into_raw(), (width, height));
+            if let Ok(gl_texture) = Texture2d::new(gl_ctx, raw) {
+                let texture = imgui_glium_renderer::Texture {
+                    texture: Rc::new(gl_texture),
+                    sampler: SamplerBehavior {
+                        magnify_filter: MagnifySamplerFilter::Nearest,
+                        minify_filter: MinifySamplerFilter::Linear,
+                        ..Default::default()
+                    },
+                };
+                let id = imgui_textures.insert(texture);
+                texture_cache.insert_entry(path, id, Vector2D::new(width, height));
             } else {
                 texture_cache.insert_error(path);
             }

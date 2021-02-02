@@ -1,7 +1,6 @@
 use euclid::default::*;
 use euclid::{rect, vec2};
-use failure::Error;
-use glutin::VirtualKeyCode;
+use glium::glutin::event::VirtualKeyCode;
 use imgui::StyleVar::*;
 use imgui::*;
 
@@ -18,71 +17,11 @@ mod spinner;
 mod timeline_window;
 mod workbench_window;
 
-pub fn init(window: &glutin::Window) -> Context {
-    let mut imgui_instance = Context::create();
-    imgui_instance.set_ini_filename(None);
-
-    // Fix incorrect colors with sRGB framebuffer
-    {
-        fn imgui_gamma_to_linear(col: [f32; 4]) -> [f32; 4] {
-            let x = col[0].powf(2.2);
-            let y = col[1].powf(2.2);
-            let z = col[2].powf(2.2);
-            let w = 1.0 - (1.0 - col[3]).powf(2.2);
-            [x, y, z, w]
-        }
-
-        let style = imgui_instance.style_mut();
-        for col in 0..style.colors.len() {
-            style.colors[col] = imgui_gamma_to_linear(style.colors[col]);
-        }
-    }
-
-    // Set up font
-    {
-        let rounded_hidpi_factor = window.get_hidpi_factor().round();
-        let font_size = (15.0 * rounded_hidpi_factor) as f32;
-
-        let font_data = include_bytes!("../../res/FiraSans-Regular.ttf");
-
-        imgui_instance.fonts().add_font(&[
-            FontSource::TtfData {
-                data: font_data,
-                size_pixels: font_size,
-                config: Some(FontConfig {
-                    glyph_ranges: FontGlyphRanges::default(),
-                    ..FontConfig::default()
-                }),
-            },
-            FontSource::TtfData {
-                data: font_data,
-                size_pixels: font_size,
-                config: Some(FontConfig {
-                    glyph_ranges: FontGlyphRanges::from_slice(&[8192, 8303, 0]), // General punctuation
-                    ..FontConfig::default()
-                }),
-            },
-        ]);
-
-        imgui_instance.io_mut().font_global_scale = (1.0 / rounded_hidpi_factor) as f32;
-    }
-
-    imgui_instance
-}
-
-pub fn run<'a>(
-    window: &glutin::Window,
-    ui: &Ui<'a>,
-    app_state: &AppState,
-    texture_cache: &TextureCache,
-) -> Result<CommandBuffer, Error> {
+pub fn run<'a>(ui: &Ui<'a>, app_state: &AppState, texture_cache: &TextureCache) -> CommandBuffer {
     let mut commands = CommandBuffer::new();
 
-    let window_size = match window.get_inner_size() {
-        Some(s) => s,
-        _ => bail!("Invalid window size"),
-    };
-    let (window_width, window_height) = (window_size.width as f32, window_size.height as f32);
+    let window_size = ui.io().display_size;
+    let (window_width, window_height) = (window_size[0], window_size[1]);
     let window_size = (window_width, window_height);
 
     let content_width = 0.12 * window_width;
@@ -160,7 +99,7 @@ pub fn run<'a>(
     draw_drag_and_drop(ui, app_state, texture_cache);
     process_shortcuts(ui, app_state, &mut commands);
 
-    Ok(commands)
+    commands
 }
 
 fn save_all(app_state: &AppState, commands: &mut CommandBuffer) {
@@ -717,7 +656,7 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                 commands.close_current_document();
             }
         }
-        if ui.is_key_pressed(VirtualKeyCode::Add as _)
+        if ui.is_key_pressed(VirtualKeyCode::NumpadAdd as _)
             || ui.is_key_pressed(VirtualKeyCode::Equals as _)
         {
             if ui.io().key_alt {
@@ -726,7 +665,7 @@ fn process_shortcuts<'a>(ui: &Ui<'a>, app_state: &AppState, commands: &mut Comma
                 commands.workbench_zoom_in();
             }
         }
-        if ui.is_key_pressed(VirtualKeyCode::Subtract as _)
+        if ui.is_key_pressed(VirtualKeyCode::NumpadSubtract as _)
             || ui.is_key_pressed(VirtualKeyCode::Minus as _)
         {
             if ui.io().key_alt {

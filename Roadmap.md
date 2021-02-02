@@ -72,7 +72,8 @@
 - [x] Offer to save when closing individual documents
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
-- [ ] Deps update
+- [x] Dependencies update
+- [x] Remove placeholder app icon
 - [ ] Get rid of failure crate
 - [ ] Move hitbox data from frames to animation frames
 - [ ] Editing hitboxes while animation is in workbench
@@ -137,8 +138,9 @@
 - [x] Compile on Rust Stable
 - [x] Remove commands threads (keep long commands thread)
 - [ ] Document template format
+- [ ] Readme Logo
 - [ ] About dialog
-- [ ] Logo
+- [ ] App icon
 - [ ] Itch.io or other distribution method
 
 ## Post 1.0
