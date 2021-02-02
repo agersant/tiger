@@ -87,7 +87,7 @@ fn get_frame_location(
 ) -> FrameLocation {
     let zoom = document.view.get_timeline_zoom_factor();
     let w = (keyframe.get_duration() as f32 * zoom).ceil();
-    let h = 20.0; // TODO DPI?
+    let h = 32.0; // TODO DPI?
     let top_left = ((frame_starts_at.as_millis() as f32 * zoom).floor(), 0.0);
     FrameLocation {
         top_left,
@@ -170,7 +170,9 @@ fn draw_keyframe<'a>(
         if let Some(name) = keyframe.get_frame().file_name() {
             draw_list.with_clip_rect_intersect(fill_top_left, fill_bottom_right, || {
                 let text_color = outline_color; // TODO.style
-                let text_position = [fill_top_left[0] + text_padding, fill_top_left[1]];
+                let x = fill_top_left[0] + text_padding;
+                let y = (fill_top_left[1] + fill_bottom_right[1]) / 2.0 - 8.0; // TODO style 8.0 is font_size/2
+                let text_position = [x, y];
                 draw_list.add_text(text_position, text_color, name.to_string_lossy());
             });
         }
