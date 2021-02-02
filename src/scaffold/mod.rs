@@ -42,7 +42,7 @@ pub fn init(title: &str) -> System {
     }
 
     let hidpi_factor = platform.hidpi_factor();
-    let font_size = (15.0 * hidpi_factor) as f32;
+    let font_size = (16.0 * hidpi_factor) as f32;
     let font_data = include_bytes!("../../res/FiraSans-Regular.ttf");
     imgui.fonts().add_font(&[
         FontSource::TtfData {
