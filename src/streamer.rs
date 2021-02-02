@@ -58,7 +58,7 @@ pub fn load_from_disk(
             let start = std::time::Instant::now();
             if let Ok(file) = File::open(&path) {
                 if let Ok(image) = image::load(BufReader::new(file), image::ImageFormat::Png) {
-                    new_textures.insert(path.clone(), image.to_rgba());
+                    new_textures.insert(path.clone(), image.to_rgba8());
                 };
             } else {
                 // TODO Log
