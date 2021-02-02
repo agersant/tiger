@@ -61,6 +61,7 @@ fn get_shaders(version: gfx_device_gl::Version) -> imgui_gfx_renderer::Shaders {
     }
 }
 
+// TODO why are async commands/results not using channels?
 #[derive(Debug, Default)]
 struct AsyncCommands {
     commands: Vec<state::AsyncCommand>,
