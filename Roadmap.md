@@ -1,15 +1,15 @@
-
 # Roadmap
 
 ## Tiger 0.1
+
 - [x] Don't store absolute paths in tiger files
 - [x] Show frame names in timeline
 - [x] Solution(s) to edit/order/insert frames in timeline
 - [x] Add, position, tag, delete hitboxes
 - [x] Full compat with crystal sheets:
-	- [x] Hitboxes
-	- [x] Sheet path in export
-	- [x] Top left coords available in template
+  - [x] Hitboxes
+  - [x] Sheet path in export
+  - [x] Top left coords available in template
 - [x] Tiger backwards compat
 - [x] Release pipeline
 - [x] No placeholder menu options
@@ -26,6 +26,7 @@
 - [x] Fix bugs when manipulating extremely short animation frames
 
 ## Tiger 0.2
+
 - [x] Unsaved file marker
 - [x] Offer to save on exit if needed
 - [x] Undo/Redo
@@ -66,6 +67,7 @@
 - [x] Handle scenario when using "Save as" onto a file that is already open
 
 ## Tiger 0.3
+
 - [x] Cap undo history at 100 entries
 - [x] Offer to save when closing individual documents
 - [x] Error dialogs
@@ -86,6 +88,7 @@
 - [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
 
 ## Tiger 0.4
+
 - [ ] Add buttons to align frame edges or center to origin
 - [ ] Frame and hitboxes can be moved using arrow keys
 - [ ] Draw hitbox names in workbench
@@ -97,6 +100,7 @@
 - [ ] Handle missing frame files (warning + offer to relocate)
 
 ## Tiger 0.5
+
 - [ ] Review TODO dpi
 - [ ] Workbench tabs?
 - [ ] Add menu entry to open recent files
@@ -112,6 +116,7 @@
 - [ ] Unit-test all the things
 
 ## Tiger 1.0
+
 - [ ] Review all TODO
 - [ ] Provide export templates for some common formats (TBD)
 - [x] Compile on Rust Stable
@@ -123,10 +128,11 @@
 - [ ] Itch.io or other distribution method
 
 ## Post 1.0
+
 - [ ] Tiger CLI
 - [ ] Open Recent
 - [ ] Sheet splitter tool
-- [ ] Import animation data from other software (TBD)
+- [ ] Import animation data from other software (Asesprite, TBD)
 - [ ] Anchor points (like hitbox but point)
 - [ ] Place arbitrary markers ("events") on timeline
 - [ ] Copy/paste animation or keyframe (between sheets)
