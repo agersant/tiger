@@ -144,36 +144,34 @@ fn draw_hitbox<'a>(
 
     let is_selected = document.is_hitbox_selected(hitbox);
 
-    let (is_hovered, is_active) = if is_selectable
-        && !rectangle.size.is_empty_or_negative()
-        && document.transient.is_none()
-    {
-        let hitbox_id = ImString::new(format!("hitbox_button_{}", hitbox.get_name()));
-        if ui.invisible_button(
-            &hitbox_id,
-            (rectangle.size.to_f32().to_vector() * zoom).to_array(),
-        ) {
-            let (mut selection, was_blank) = match &document.view.selection {
-                Some(Selection::Hitbox(s)) => (s.clone(), false),
-                _ => (
-                    MultiSelection::new(vec![hitbox.get_name().to_owned()]),
-                    true,
-                ),
-            };
-            if ui.io().key_ctrl {
-                if !was_blank {
-                    selection.toggle(&vec![hitbox.get_name().to_owned()]);
+    let (is_hovered, is_active) =
+        if is_selectable && !rectangle.size.is_empty() && document.transient.is_none() {
+            let hitbox_id = ImString::new(format!("hitbox_button_{}", hitbox.get_name()));
+            if ui.invisible_button(
+                &hitbox_id,
+                (rectangle.size.to_f32().to_vector() * zoom).to_array(),
+            ) {
+                let (mut selection, was_blank) = match &document.view.selection {
+                    Some(Selection::Hitbox(s)) => (s.clone(), false),
+                    _ => (
+                        MultiSelection::new(vec![hitbox.get_name().to_owned()]),
+                        true,
+                    ),
+                };
+                if ui.io().key_ctrl {
+                    if !was_blank {
+                        selection.toggle(&vec![hitbox.get_name().to_owned()]);
+                    }
+                } else {
+                    selection = MultiSelection::new(vec![hitbox.get_name().to_owned()]);
                 }
-            } else {
-                selection = MultiSelection::new(vec![hitbox.get_name().to_owned()]);
+                commands.select_hitboxes(&selection);
             }
-            commands.select_hitboxes(&selection);
-        }
-        ui.set_item_allow_overlap();
-        (ui.is_item_hovered(), ui.is_item_active())
-    } else {
-        (false, false)
-    };
+            ui.set_item_allow_overlap();
+            (ui.is_item_hovered(), ui.is_item_active())
+        } else {
+            (false, false)
+        };
 
     let outline_color = if is_selected {
         [1.0, 0.1, 0.6, 1.0] // TODO.style

@@ -10,7 +10,7 @@ pub struct Fill {
 }
 
 pub fn fill(space: Vector2D<f32>, content_size: Vector2D<f32>) -> Option<Fill> {
-    if content_size.to_size().is_empty_or_negative() || space.to_size().is_empty_or_negative() {
+    if content_size.to_size().is_empty() || space.to_size().is_empty() {
         return None;
     }
 
