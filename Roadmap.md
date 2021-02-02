@@ -72,45 +72,55 @@
 - [x] Offer to save when closing individual documents
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
+- [ ] Get rid of failure crate
 - [ ] Move hitbox data from frames to animation frames
-- [ ] Add option to hide hitboxes while looking at animations in workbench
-- [ ] Add option or keyboard shortcut (held) to hide origin crosshair
-- [ ] Automatically add extension to exported files
+- [ ] Editing hitboxes while animation is in workbench
 - [x] Multiple selections
 - [x] Jump to next/previous frame
-- [ ] Duplicate animation / keyframe (within same sheet)
-- [ ] Copy/paste hitboxes
 - [x] Auto reload images on frame edit
 - [ ] Visible handles for adjusting frame durations (instead of invisible buttons)
-- [ ] Time snapping of animation frames
-- [ ] Playback speed controls
-- [ ] Default paths for NFD dialogs
-- [ ] Editing hitboxes while animation is in workbench? Double click to edit frame?
 
 ## Tiger 0.4
 
+- [ ] Rework content browser: view animations and frames at the same time, possibly with previews?
+- [ ] Workbench tabs
+- [ ] Replace release tagging script with Github actions
+- [ ] Automatically add extensions to exported files
+- [ ] Default paths for NFD dialogs
+
+## Tiger 0.5
+
+- [ ] Support multiple directions/angles for the same animation
+- [ ] Export perf improvements
+- [ ] Duplicate animation / keyframe (within same sheet)
+- [ ] Copy/paste hitboxes
+
+## Tiger 0.6
+
+- [ ] Add option to hide hitboxes while looking at animations in workbench
+- [ ] Add option or keyboard shortcut (held) to hide origin crosshair
 - [ ] Add buttons to align frame edges or center to origin
 - [ ] Frame and hitboxes can be moved using arrow keys
 - [ ] Draw hitbox names in workbench
 - [ ] Hitbox colors
-- [ ] Onion skin?
-- [ ] Export perf improvements
+- [ ] Playback speed controls
+- [ ] Time snapping of animation frames
 - [ ] Timeline scrolling follows playback
 - [ ] Timeline scrolling follows frame selection (or double click?)
-- [ ] Handle missing frame files (warning + offer to relocate)
 
-## Tiger 0.5
+## Tiger 0.7
 
 - [ ] Review TODO dpi
-- [ ] Workbench tabs?
 - [ ] Add menu entry to open recent files
 - [ ] Filter of frames/animations by text search
-- [ ] View animations and frames at the same time for faster browsing?
-- [ ] Content panel shows previews of frames and animations? (list view? grid view?)
 - [ ] Better rename UX
 - [ ] Right click menu to rename/delete item
 - [ ] Document tabs (imgui 1.67+)
+- [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] Fix issue where O key gets stuck after using Ctrl+O shortcut (https://github.com/Gekkio/imgui-rs/pull/215)
+
+## Tiger 0.8
+
 - [ ] In-place tutorials instead of blank data
 - [ ] Prettier UI and review TODO.style
 - [ ] Unit-test all the things
@@ -121,7 +131,6 @@
 - [ ] Provide export templates for some common formats (TBD)
 - [x] Compile on Rust Stable
 - [x] Remove commands threads (keep long commands thread)
-- [ ] Get rid of failure crate
 - [ ] Document template format
 - [ ] About dialog
 - [ ] Logo
@@ -131,6 +140,7 @@
 
 - [ ] Tiger CLI
 - [ ] Open Recent
+- [ ] Onion skin?
 - [ ] Sheet splitter tool
 - [ ] Import animation data from other software (Asesprite, TBD)
 - [ ] Anchor points (like hitbox but point)
