@@ -72,6 +72,7 @@
 - [x] Offer to save when closing individual documents
 - [x] Error dialogs
 - [x] Handle save errors while performing a save on exit
+- [ ] Deps update
 - [ ] Get rid of failure crate
 - [ ] Move hitbox data from frames to animation frames
 - [ ] Editing hitboxes while animation is in workbench
@@ -94,6 +95,7 @@
 - [ ] Export perf improvements
 - [ ] Duplicate animation / keyframe (within same sheet)
 - [ ] Copy/paste hitboxes
+- [ ] Unit test sheet
 
 ## Tiger 0.6
 
@@ -102,28 +104,31 @@
 - [ ] Add buttons to align frame edges or center to origin
 - [ ] Frame and hitboxes can be moved using arrow keys
 - [ ] Draw hitbox names in workbench
-- [ ] Hitbox colors
 - [ ] Playback speed controls
 - [ ] Time snapping of animation frames
-- [ ] Timeline scrolling follows playback
-- [ ] Timeline scrolling follows frame selection (or double click?)
 
 ## Tiger 0.7
 
-- [ ] Review TODO dpi
 - [ ] Add menu entry to open recent files
 - [ ] Filter of frames/animations by text search
 - [ ] Better rename UX
 - [ ] Right click menu to rename/delete item
-- [ ] Document tabs (imgui 1.67+)
-- [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] Fix issue where O key gets stuck after using Ctrl+O shortcut (https://github.com/Gekkio/imgui-rs/pull/215)
 
 ## Tiger 0.8
 
+- [ ] Handle missing frame files (warning + offer to relocate)
 - [ ] In-place tutorials instead of blank data
+- [ ] Hitbox colors
+- [ ] Unit test state
+
+## Tiger 0.9
+
+- [ ] Review TODO dpi
+- [ ] Timeline scrolling follows playback
+- [ ] Timeline scrolling follows frame selection (or double click?)
 - [ ] Prettier UI and review TODO.style
-- [ ] Unit-test all the things
+- [ ] Unit test UI
 
 ## Tiger 1.0
 
